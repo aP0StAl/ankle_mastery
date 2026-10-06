@@ -41,7 +41,7 @@
     .stage-line{display:flex;gap:5px;margin-top:10px}.stage-dot{height:6px;flex:1;border-radius:10px;background:#253948}.stage-dot.done{background:var(--green)}.stage-dot.current{background:var(--blue)}
     .section-title{display:flex;justify-content:space-between;align-items:center;margin:20px 2px 10px}
     .section-title h2{font-size:18px;margin:0}.section-title small{color:var(--muted)}
-    .recommend{border:1px solid rgba(85,230,165,.65);background:linear-gradient(155deg,rgba(55,166,120,.23),rgba(12,31,42,.96));overflow:hidden}
+    .recommend{border:1px solid rgba(85,230,165,.65);background:linear-gradient(155deg,rgba(55,166,120,.23),rgba(12,31,42,.96));overflow:hidden;scroll-margin-top:80px}
     .best-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#b9ffdc;background:#113a30;padding:6px 9px;border-radius:999px}
     .rec-name{font-size:22px;font-weight:800;line-height:1.12;margin:11px 0 5px}.dose{color:#cfdae4;font-size:14px}
     .tags{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}.tag{font-size:11px;padding:6px 9px;border-radius:999px;background:#1b3342;color:#c9dce8}
@@ -210,6 +210,7 @@ const EX = EXCFG.exercises;
 const EXMAP = Object.fromEntries(EX.map(x => [x.id,x]));
 const KEY = 'ankle_mastery_static_v2';
 const DAY = 86400000;
+const TEST_REPEAT_DAYS = 7;
 const statusLabels={active:'Активен',available:'Можно добавить',available_manual:'Можно добавить',locked:'Пока недоступен',archived:'Скрыт'};
 const fatigueNames={low:'лёгкая усталость',medium:'умеренная усталость',high:'сильная усталость',easy:'легко',moderate:'умеренно устал',strong:'сильно устал'};
 const responseNames={better:'лучше',same:'так же',worse:'хуже'};
@@ -537,8 +538,36 @@ function nextGoodWindow(ex){
 function scoreExerciseAtTime(ex,ts){
   return scoreExercise(ex,ts);
 }
-function recommendations(){
-  return activeExercises().map(ex=>({ex,...scoreExercise(ex)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+function recommendations(ts=now()){
+  return activeExercises().map(ex=>({ex,...scoreExercise(ex,ts)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+}
+function testRecommendations(ts=now()){
+  const recent=reactionEntries().slice(-1)[0];
+  if(safetyFlag()||recent?.pain>=APP.assessment.moderate_pain_from||recent?.worse)return [];
+  if(state.assessment_sessions.some(s=>!s.completed_at))return [];
+  const fatigue=fatigueAt(ts),covered=new Set(RDCFG.tests.filter(t=>testHistory(t).length).map(t=>t.domain));
+  return RDCFG.tests.filter(testAvailable).flatMap(t=>{
+    const latest=testHistory(t).slice(-1)[0],age=latest?(ts-latest.ts)/DAY:Infinity;
+    if(age<TEST_REPEAT_DAYS)return [];
+    const load={load_channels:t.test_load_vector},rf=relevantFatigue(load,ts);
+    if(rf>=38||symptomMultiplier(load)<1||Object.entries(t.test_load_vector).some(([k,v])=>v>0&&fatigue[k]>=APP.fatigue_channels[k].red_from))return [];
+    // Measurement gaps and freshness matter; a low result never asks for an immediate retest.
+    const missingDomain=!covered.has(t.domain),overdue=latest?clamp((age-TEST_REPEAT_DAYS)/14):1;
+    const score=.7+(missingDomain?.12:0)+(t.status==='active'?.04:0)+.1*clamp(1-rf/100)+.04*overdue;
+    const reasons=[latest?`пора обновить измерение от ${fmtDate(latest.ts)}`:'ещё нет исходного измерения',missingDomain?'это направление ещё не проверено':'поможет отслеживать изменения','текущая нагрузка позволяет провести тест'];
+    return [{kind:'test',test:t,latest,score,status:'green',reasons}];
+  }).sort((a,b)=>b.score-a.score);
+}
+function actionRecommendations(ts=now()){
+  const order={green:0,yellow:1,red:2};
+  return [...recommendations(ts).map(r=>({...r,kind:'exercise'})),...testRecommendations(ts).slice(0,1)]
+    .sort((a,b)=>order[a.status]-order[b.status]||b.score-a.score);
+}
+function testDoseText(t){
+  return `${t.bilateral?'Левая и правая нога':'Один тест'}${testCap(t)?' · до '+testCap(t)+' '+t.unit_short:t.metric==='errors_per_30s'?' · 30 секунд на сторону':''}`;
+}
+function actionButtonHTML(r){
+  return r.kind==='test'?`<button class="btn primary" onclick="AM.openTest('${r.test.id}')">Пройти тест</button>`:`<button class="btn primary" onclick="AM.openExercise('${r.ex.id}')">Открыть</button><button class="btn secondary" onclick="AM.openLog('${r.ex.id}')">Сделал</button>`;
 }
 function exerciseMastery(ex){
   if(!ex.mastery_tracking?.enabled)return null;
@@ -654,22 +683,26 @@ function renderHome(){
   const line=document.getElementById('stageLine'); line.innerHTML='';
   RDCFG.stages.forEach(s=>{const d=document.createElement('i');d.className='stage-dot '+(s.order<stage.order?'done':s.order===stage.order?'current':'');line.appendChild(d)});
 
-  const recs=recommendations();
+  const recs=actionRecommendations();
   const best=recs[0];
   const bestEl=document.getElementById('bestNow');
   if(best){
     const when=best.status==='green'?'Можно сейчас':best.status==='yellow'?'Лучше чуть позже':'Пауза';
     bestEl.innerHTML=`
-      <span class="best-label">⭐ Лучшее сейчас · ${when}</span>
-      <div class="rec-name">${esc(best.ex.name)}</div>
-      <div class="dose">${esc(doseText(best.ex))}</div>
-      <div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||s)}</span>`).join('')}</div>
-      <div class="rec-actions"><button class="btn primary" onclick="AM.openExercise('${best.ex.id}')">Открыть</button><button class="btn secondary" onclick="AM.openLog('${best.ex.id}')">Сделал</button></div>
+      <span class="best-label">⭐ Лучшее сейчас · ${when} · ${best.kind==='test'?'Тест':'Упражнение'}</span>
+      <div class="rec-name">${esc(best.kind==='test'?best.test.name:best.ex.name)}</div>
+      <div class="dose">${esc(best.kind==='test'?testDoseText(best.test):doseText(best.ex))}</div>
+      ${best.kind==='test'?`<div class="reason">${esc(best.test.what_measures)}${best.latest?'<br>Последний результат: '+esc(resultText(best.test,best.latest)):''}</div>`:`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||s)}</span>`).join('')}</div>`}
+      <div class="rec-actions">${actionButtonHTML(best)}</div>
       <div class="reason"><b>Почему:</b> ${esc(best.reasons.slice(0,3).join(' · '))}</div>`;
-  }else bestEl.innerHTML='<div class="empty">Сейчас нет активных упражнений.</div>';
+  }else bestEl.innerHTML='<div class="empty">Сейчас нет подходящих действий. Отдохни и отметь реакцию после нагрузки.</div>';
 
   const list=document.getElementById('recommendations'); list.innerHTML='';
   recs.slice(1,6).forEach(r=>{
+    if(r.kind==='test'){
+      list.insertAdjacentHTML('beforeend',`<button type="button" class="list-item" style="color:inherit;text-align:left" onclick="AM.openTest('${r.test.id}')"><span class="status-dot status-green"></span><span class="li-main"><span class="li-title">${esc(r.test.name)}</span><span class="li-meta" style="display:block">${esc(testDoseText(r.test))} · ${esc(r.reasons[0])}</span></span><span class="pill green">Тест</span></button>`);
+      return;
+    }
     const next=nextGoodWindow(r.ex); const delay=next&&next-now()>20*60000?`лучше ${fmtTime(next)}`:(r.status==='green'?'можно сейчас':'снизить нагрузку');
     list.insertAdjacentHTML('beforeend',`
       <div class="list-item" onclick="AM.openExercise('${r.ex.id}')">
@@ -695,8 +728,10 @@ function renderHome(){
   document.getElementById('updatedAt').textContent=`обновлено ${fmtTime(now())}`;
 
   const p=pendingChecks(), wrap=document.getElementById('pendingChecksWrap'); wrap.innerHTML='';
+  const unfinished=state.assessment_sessions.findLast(s=>!s.completed_at);
+  if(unfinished)wrap.innerHTML=`<div class="card notice" style="margin-top:12px">Тест сохранён. Отметь самочувствие после самопроверки, чтобы уточнить следующие рекомендации.<br><button class="btn secondary" style="margin-top:10px" onclick="AM.openAssessment('${unfinished.id}')">Как чувствуются ноги? Завершить</button></div>`;
   if(p.length){
-    wrap.innerHTML=`<div class="section-title"><h2>Контроль реакции</h2><small>${p.length}</small></div><div class="card notice">Есть упражнения, после которых пора отметить реакцию позже/на следующее утро. <button class="btn secondary" style="margin-top:10px" onclick="AM.openCheck('${p[0].id}')">Заполнить</button></div>`;
+    wrap.insertAdjacentHTML('beforeend',`<div class="section-title"><h2>Контроль реакции</h2><small>${p.length}</small></div><div class="card notice">Есть упражнения, после которых пора отметить реакцию позже/на следующее утро. <button class="btn secondary" style="margin-top:10px" onclick="AM.openCheck('${p[0].id}')">Заполнить</button></div>`);
   }
   const assessmentChecks=pendingAssessmentChecks();
   for(const s of assessmentChecks)wrap.insertAdjacentHTML('beforeend',`<div class="card notice" style="margin-top:12px">Реакция после самопроверки ${fmtDate(s.started_at)}<br><button class="btn secondary" style="margin-top:10px" onclick="AM.openAssessmentCheck('${s.id}')">Как лодыжка на следующее утро?</button></div>`);
@@ -755,8 +790,10 @@ function renderTests(){
   const list=document.getElementById('testList');list.innerHTML='';
   RDCFG.tests.forEach(t=>{
     const logs=testHistory(t),latest=logs.slice(-1)[0],available=testAvailable(t);
+    const nextCheck=latest?latest.ts+TEST_REPEAT_DAYS*DAY:null;
+    const schedule=available?nextCheck?(now()<nextCheck?`Следующая проверка — примерно ${fmtDate(nextCheck)}`:'Пора обновить измерение · с учётом нагрузки и самочувствия'):'Можно пройти первое измерение':'';
     const protocols=[...new Set(state.testLogs.filter(l=>l.testId===t.id&&l.protocol_id!==t.protocol_id).map(l=>l.protocol_id))];
-    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?'Повторить тест':'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
+    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${schedule?`<div class="li-meta">${esc(schedule)}</div>`:''}${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?(latest?'Повторить тест':'Пройти тест'):'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
   });
   const road=document.getElementById('roadmap');road.innerHTML='';
   const cur=currentStage();
@@ -773,8 +810,8 @@ function loadSummaryHTML(channels){
   }).join('');
 }
 function nextActionHTML(){
-  const best=recommendations().find(r=>r.status==='green');
-  if(best)return `<div class="notice" style="margin-top:12px"><b>Следующее лучшее действие: ${esc(best.ex.name)}</b><details><summary>Почему?</summary>${esc(best.reasons.join(' · '))}</details></div>`;
+  const best=actionRecommendations().find(r=>r.status==='green');
+  if(best)return `<div class="notice" style="margin-top:12px"><b>Следующее лучшее действие: ${esc(best.kind==='test'?best.test.name:best.ex.name)}</b><div class="rec-actions">${actionButtonHTML(best)}</div><details><summary>Почему?</summary>${esc(best.reasons.join(' · '))}</details></div>`;
   const windows=recommendations().map(r=>nextGoodWindow(r.ex)).filter(t=>t!=null);
   return `<div class="notice" style="margin-top:12px"><b>${windows.length?'Отдохнуть ~'+Math.max(15,Math.ceil((Math.min(...windows)-now())/60000))+' минут':'Отдых и контроль реакции'}</b><details><summary>Почему?</summary>Сейчас нет подходящего упражнения без ограничений. Нагрузка затухает со временем; симптомы требуют последующей нормальной реакции.</details></div>`;
 }
@@ -960,8 +997,13 @@ function saveTest(id){
     if(input.value.trim()==='')return toast('Заполни результат с указанными единицами');
     values[k]=Number(input.value);
   }
-  try{recordTest(id,values);}catch(e){return toast(e.message);}
-  closeDialog('testDialog');save();toast('Тест сохранён. Нагрузка учтена в самопроверке');
+  let session;
+  try{session=recordTest(id,values);}catch(e){return toast(e.message);}
+  closeDialog('testDialog');save();
+  document.querySelector('.tab[data-screen="home"]').click();
+  document.getElementById('bestNow').scrollIntoView({block:'start'});
+  openAssessment(session.id);
+  toast('Тест сохранён. Отметь самочувствие');
 }
 function openCheck(id){
   const c=state.delayedChecks.find(x=>x.id===id);if(!c)return;const ex=EXMAP[c.exerciseId];
