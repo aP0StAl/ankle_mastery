@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#09131f" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Ankle Mastery</title>
+  <style>
+    :root{
+      --bg:#07111c; --bg2:#0b1724; --card:#101f2e; --card2:#142637; --line:#22374a;
+      --text:#f5f7fb; --muted:#98a9b9; --green:#55e6a5; --green2:#27c887;
+      --blue:#66b9ff; --yellow:#ffd166; --orange:#ff9b67; --red:#ff6b7d; --purple:#9b8cff;
+      --shadow:0 18px 50px rgba(0,0,0,.22); --radius:20px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:linear-gradient(180deg,#06101a 0%,#0a1622 100%);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif}
+    body{min-height:100vh}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .app{max-width:980px;margin:0 auto;min-height:100vh;padding:0 14px 100px}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+      padding:16px 2px 12px;background:linear-gradient(180deg,rgba(7,17,28,.98),rgba(7,17,28,.85),transparent);
+      backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand-mark{width:38px;height:38px;border-radius:14px;background:
+      radial-gradient(circle at 65% 30%,#7bf1bc 0 12%,transparent 13%),
+      linear-gradient(145deg,#17304a,#0a1927);border:1px solid #28445b;display:grid;place-items:center;font-size:21px}
+    h1{font-size:20px;margin:0}.sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .icon-btn{border:1px solid var(--line);background:var(--card);color:var(--text);width:40px;height:40px;border-radius:13px}
+    .screen{display:none}.screen.active{display:block}
+    .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;margin-top:4px}
+    .card{background:linear-gradient(180deg,var(--card),#0d1c29);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+    .metric-card{display:flex;align-items:center;gap:14px}
+    .ring{--v:0;--c:var(--green);width:88px;height:88px;border-radius:50%;display:grid;place-items:center;
+      background:conic-gradient(var(--c) calc(var(--v)*1%),#203241 0);position:relative;flex:0 0 auto}
+    .ring:after{content:"";position:absolute;inset:8px;border-radius:50%;background:#0d1b28}
+    .ring strong{position:relative;z-index:2;font-size:22px}
+    .metric-title{font-size:13px;color:var(--muted)} .metric-name{font-size:17px;font-weight:750;margin:3px 0 6px}
+    .stage-line{display:flex;gap:5px;margin-top:10px}.stage-dot{height:6px;flex:1;border-radius:10px;background:#253948}.stage-dot.done{background:var(--green)}.stage-dot.current{background:var(--blue)}
+    .section-title{display:flex;justify-content:space-between;align-items:center;margin:20px 2px 10px}
+    .section-title h2{font-size:18px;margin:0}.section-title small{color:var(--muted)}
+    .recommend{border:1px solid rgba(85,230,165,.65);background:linear-gradient(155deg,rgba(55,166,120,.23),rgba(12,31,42,.96));overflow:hidden}
+    .best-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#b9ffdc;background:#113a30;padding:6px 9px;border-radius:999px}
+    .rec-name{font-size:22px;font-weight:800;line-height:1.12;margin:11px 0 5px}.dose{color:#cfdae4;font-size:14px}
+    .tags{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}.tag{font-size:11px;padding:6px 9px;border-radius:999px;background:#1b3342;color:#c9dce8}
+    .rec-actions{display:flex;gap:8px;margin-top:14px}.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:750}
+    .btn.primary{background:linear-gradient(180deg,#65ecae,#41d895);color:#032517;flex:1}.btn.secondary{background:#183044;color:#dce8ef;border:1px solid #2b465b}
+    .btn.danger{background:#3b1d27;color:#ffbac4;border:1px solid #61303d}.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+    .reason{margin-top:12px;color:#a9bbc9;font-size:12px;line-height:1.45;border-top:1px solid #254052;padding-top:10px}
+    .list{display:grid;gap:9px}.list-item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:11px 12px}
+    .status-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}.status-green{background:var(--green)}.status-yellow{background:var(--yellow)}.status-red{background:var(--red)}
+    .li-main{min-width:0;flex:1}.li-title{font-weight:700;font-size:14px}.li-meta{font-size:11px;color:var(--muted);margin-top:4px}
+    .pill{font-size:11px;border-radius:999px;padding:5px 8px;background:#1c3242;color:#bfd0db;white-space:nowrap}
+    .pill.green{color:#b8f9d8;background:#123c30}.pill.yellow{color:#ffe3a0;background:#46391d}.pill.red{color:#ffc0c9;background:#49202b}
+    .daily-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+    .daily-cell{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:10px 6px;text-align:center}.daily-cell .circle{width:34px;height:34px;margin:0 auto 6px;border-radius:50%;border:3px solid #2c4659;display:grid;place-items:center;font-weight:800;font-size:12px}.daily-cell.done .circle{border-color:var(--green);color:var(--green)}
+    .daily-cell label{display:block;font-size:10px;color:#aab8c3;line-height:1.15}
+    .fatigue-row{display:grid;grid-template-columns:90px 1fr 36px;gap:10px;align-items:center;margin:10px 0;font-size:12px}
+    .bar{height:8px;border-radius:99px;background:#213544;overflow:hidden}.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#54e3aa,#67b8ff)}
+    .tabbar{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(980px,100%);z-index:30;background:rgba(8,18,29,.96);backdrop-filter:blur(18px);border-top:1px solid #203648;padding:8px max(10px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr)}
+    .tab{border:0;background:transparent;color:#7e93a5;font-size:10px;padding:7px 4px;border-radius:12px}.tab b{display:block;font-size:20px;margin-bottom:2px}.tab.active{color:#67b8ff;background:#102336}
+    .filters{display:flex;gap:7px;overflow:auto;padding-bottom:3px}.filter{border:1px solid var(--line);background:var(--card);color:#b8c8d3;padding:8px 12px;border-radius:999px;white-space:nowrap;font-size:12px}.filter.active{background:#dcefff;color:#102536}
+    .exercise-card{display:grid;grid-template-columns:1fr auto;gap:10px}.source{font-size:10px;color:#8da1b0}.tier{font-size:11px;font-weight:800;padding:4px 7px;border-radius:8px;background:#1b3143;color:#c8dce8}
+    .progress{height:7px;background:#213543;border-radius:99px;overflow:hidden;margin-top:8px}.progress>i{display:block;height:100%;background:linear-gradient(90deg,#54e3aa,#64bfff)}
+    .mastery-label{font-size:11px;color:#9db0bd;margin-top:6px}
+    .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.test-card .big{font-size:28px;font-weight:800}.test-card .muted{color:var(--muted);font-size:12px}
+    .roadmap{display:grid;gap:10px}.stage-card{position:relative;padding-left:50px}.stage-card:before{content:"";position:absolute;left:21px;top:0;bottom:-10px;width:2px;background:#274052}.stage-card:last-child:before{bottom:50%}.stage-icon{position:absolute;left:8px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#173043;border:2px solid #34536a;font-size:13px}.stage-card.current .stage-icon{background:#235b4a;border-color:var(--green)}.stage-card.locked{opacity:.55}
+    .chart{display:flex;align-items:flex-end;height:120px;gap:5px;padding:10px 0}.chart-col{flex:1;min-width:6px;background:linear-gradient(180deg,#64c5ff,#50dfa3);border-radius:5px 5px 2px 2px}.chart-labels{display:flex;justify-content:space-between;color:#7890a2;font-size:10px}
+    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #203545}.setting-row:last-child{border-bottom:0}
+    .empty{padding:28px;text-align:center;color:#8296a7}
+    dialog{border:1px solid #2a4357;background:#0c1926;color:var(--text);border-radius:22px;padding:0;width:min(560px,calc(100% - 24px));box-shadow:0 30px 90px rgba(0,0,0,.55)}
+    dialog::backdrop{background:rgba(0,0,0,.64);backdrop-filter:blur(5px)}
+    .modal{padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:18px}.x{border:0;background:#172a3a;color:#c8d6df;border-radius:11px;width:34px;height:34px}
+    .field{margin:12px 0}.field label{display:block;font-size:12px;color:#a5b7c4;margin-bottom:7px}.field input,.field select,.field textarea{width:100%;background:#0f2231;color:#eef5fa;border:1px solid #294359;border-radius:12px;padding:11px}.field textarea{min-height:75px;resize:vertical}
+    .seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{border:1px solid #294358;background:#102433;color:#bed0db;border-radius:10px;padding:9px 11px}.seg button.selected{background:#174c3b;color:#c7ffe6;border-color:#38c790}
+    .range-row{display:grid;grid-template-columns:1fr 42px;gap:10px;align-items:center}.range-row input{padding:0}.range-val{text-align:center;font-weight:800}
+    .modal-actions{display:flex;gap:8px;margin-top:16px}.modal-actions .btn{flex:1}
+    .notice{background:#12283a;border:1px solid #29495e;border-radius:14px;padding:11px 12px;font-size:12px;color:#bed0dc;line-height:1.45}
+    .warn{background:#3a2e16;border-color:#624c1d;color:#ffe2a2}.bad{background:#39202a;border-color:#63313f;color:#ffc0ca}
+    .toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);opacity:0;transition:.25s;background:#142b3c;border:1px solid #345066;color:#edf6fb;padding:11px 14px;border-radius:12px;z-index:100;pointer-events:none;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .kv{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:12px;margin:8px 0}.muted{color:var(--muted)}
+    .source-badge{display:inline-block;margin-top:7px;font-size:10px;padding:4px 6px;border-radius:7px;background:#1b3140;color:#a9bdca}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:720px){.hero{grid-template-columns:1fr}.daily-grid{grid-template-columns:repeat(3,1fr)}.test-grid{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">🦶</div><div><h1>Ankle Mastery</h1><div class="sub" id="todayLabel"></div></div></div>
+    <button class="icon-btn" id="quickActivityBtn" title="Добавить активность">＋</button>
+  </header>
+
+  <main>
+    <section id="screen-home" class="screen active">
+      <div class="hero">
+        <div class="card metric-card">
+          <div class="ring" id="masteryRing" style="--c:var(--green)"><strong id="masteryValue">0%</strong></div>
+          <div><div class="metric-title">Training Mastery</div><div class="metric-name">Освоение реабилитации</div><div class="muted" id="masteryHint">Начни с коротких сессий</div></div>
+        </div>
+        <div class="card metric-card">
+          <div class="ring" id="readinessRing" style="--c:var(--blue)"><strong id="readinessValue">—</strong></div>
+          <div style="flex:1"><div class="metric-title">Run Readiness</div><div class="metric-name" id="stageName">Rehab</div><div class="stage-line" id="stageLine"></div><div class="muted" id="readinessHint">Готовность ≠ медицинский допуск</div></div>
+        </div>
+      </div>
+
+      <div id="pendingChecksWrap"></div>
+
+      <div class="section-title"><h2>Что сделать сейчас?</h2><small id="updatedAt"></small></div>
+      <div class="card recommend" id="bestNow"></div>
+
+      <div class="section-title"><h2>Другие варианты</h2><small>с учётом нагрузки</small></div>
+      <div class="list" id="recommendations"></div>
+
+      <div class="section-title"><h2>Сегодня</h2><small id="dailyCount"></small></div>
+      <div class="daily-grid" id="dailyGrid"></div>
+
+      <div class="section-title"><h2>Текущая нагрузка</h2><small>затухает со временем</small></div>
+      <div class="card" id="fatigueCard"></div>
+    </section>
+
+    <section id="screen-exercises" class="screen">
+      <div class="section-title"><h2>Упражнения</h2><small id="activeExerciseCount"></small></div>
+      <div class="filters" id="exerciseFilters"></div>
+      <div class="list" id="exerciseList" style="margin-top:12px"></div>
+    </section>
+
+    <section id="screen-tests" class="screen">
+      <div class="section-title"><h2>Самопроверка</h2><small>не медицинский допуск</small></div>
+      <div class="card">
+        <div class="metric-card">
+          <div class="ring" id="readinessRing2" style="--c:var(--blue)"><strong id="readinessValue2">—</strong></div>
+          <div><div class="metric-name" id="stageName2">Rehab</div><div class="muted">Медиана последних 3 валидных тестов, где возможно</div></div>
+        </div>
+      </div>
+      <div class="section-title"><h2>Тесты</h2><small>правая vs левая</small></div>
+      <div class="list" id="testList"></div>
+      <div class="section-title"><h2>Этапы возврата к бегу</h2></div>
+      <div class="roadmap" id="roadmap"></div>
+    </section>
+
+    <section id="screen-stats" class="screen">
+      <div class="section-title"><h2>Статистика</h2><small>последние 14 дней</small></div>
+      <div class="card"><div class="metric-name">Активность</div><div class="chart" id="activityChart"></div><div class="chart-labels"><span>−13 дн.</span><span>сегодня</span></div></div>
+      <div class="section-title"><h2>Навыки</h2></div>
+      <div class="card" id="skillStats"></div>
+      <div class="section-title"><h2>Последние записи</h2></div>
+      <div class="list" id="historyList"></div>
+    </section>
+
+    <section id="screen-settings" class="screen">
+      <div class="section-title"><h2>Настройки и данные</h2></div>
+      <div class="card">
+        <div class="setting-row"><div><b>Хранение</b><div class="muted">Только localStorage этого браузера</div></div><span class="pill green">На устройстве</span></div>
+        <div class="setting-row"><div><b>LLM / сервер</b><div class="muted">Не используются</div></div><span class="pill">Нет</span></div>
+        <div class="setting-row"><div><b>Экспорт</b><div class="muted">Резервная копия в JSON</div></div><button class="btn secondary" id="exportBtn">Скачать</button></div>
+        <div class="setting-row"><div><b>Импорт</b><div class="muted">Восстановить резервную копию</div></div><button class="btn secondary" id="importBtn">Выбрать</button></div>
+        <div class="setting-row"><div><b>Сброс</b><div class="muted">Удалить историю на этом устройстве</div></div><button class="btn danger" id="resetBtn">Сбросить</button></div>
+      </div>
+      <input type="file" id="importFile" accept="application/json" hidden />
+      <div class="section-title"><h2>Важно</h2></div>
+      <div class="notice warn">Пороговые значения readiness, fatigue и progression в приложении — продуктовые эвристики из ТЗ. Они не являются медицинским диагнозом или разрешением на бег. При боли, отёке или нестабильности приоритет у очного специалиста.</div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabbar">
+  <button class="tab active" data-screen="home"><b>⌂</b>Главная</button>
+  <button class="tab" data-screen="exercises"><b>♟</b>Упражнения</button>
+  <button class="tab" data-screen="tests"><b>◎</b>Тесты</button>
+  <button class="tab" data-screen="stats"><b>▥</b>Статистика</button>
+  <button class="tab" data-screen="settings"><b>⚙</b>Настройки</button>
+</nav>
+
+<dialog id="exerciseDialog"><div class="modal" id="exerciseModal"></div></dialog>
+<dialog id="logDialog"><div class="modal" id="logModal"></div></dialog>
+<dialog id="activityDialog"><div class="modal" id="activityModal"></div></dialog>
+<dialog id="testDialog"><div class="modal" id="testModal"></div></dialog>
+<dialog id="checkDialog"><div class="modal" id="checkModal"></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script type="application/json" id="appConfigJSON">{"version": 2, "app": {"name": "Ankle Mastery", "locale": "ru", "llm_required": false, "offline_first": true, "timezone_mode": "local_device"}, "core_principles": ["scheduler объяснимый: каждая рекомендация показывает причины", "симптомы и усталость важнее дневных целей", "не фармить XP повторением одного простого упражнения", "load overlap не равен mastery и не равен prescription completion", "run readiness не является медицинским разрешением на бег"], "ui": {"home_screen": {"show": ["training_mastery", "run_readiness", "best_now", "can_do_now", "better_later", "daily_prescription_progress", "skill_balance", "fatigue_channels", "next_recommended_time", "why_this_recommendation"]}, "quick_actions": ["done", "choose_other", "skip", "cannot_do", "log_custom_activity", "log_symptoms", "add_available_exercise"], "skip_reasons": ["нет оборудования", "нет места", "устал", "дискомфорт", "не хочу сейчас", "другое"], "traffic_light": {"green": "можно сейчас", "yellow": "доступно, но есть причина отложить/уменьшить", "red": "не рекомендовать сейчас"}}, "program": {"prescription_groups": {"towel_straight": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "towel_bent": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "tiptoe_static": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "line_walk": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician", "variants_share_credit": true}, "front_back_balance": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "side_lunge": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}}, "clinician_session_defaults": {"recommended_sessions_per_week": 3, "exercises_per_session": [3, 5], "note": "product default only; not clinician-prescribed frequency"}}, "skills": {"mobility": {"weight": 0.08}, "calf_strength_endurance": {"weight": 0.14}, "static_balance": {"weight": 0.12}, "dynamic_balance": {"weight": 0.16}, "lateral_stability": {"weight": 0.14}, "ankle_control": {"weight": 0.12}, "gait_control": {"weight": 0.08}, "reactive_control": {"weight": 0.08}, "multidirectional_control": {"weight": 0.08}}, "fatigue_channels": {"calf": {"decay_half_life_hours": 8, "yellow_from": 35, "red_from": 70}, "ankle_control": {"decay_half_life_hours": 4, "yellow_from": 40, "red_from": 75}, "dynamic_balance": {"decay_half_life_hours": 3, "yellow_from": 45, "red_from": 80}, "lateral": {"decay_half_life_hours": 5, "yellow_from": 40, "red_from": 75}, "impact": {"decay_half_life_hours": 18, "yellow_from": 25, "red_from": 60}}, "scheduler": {"strategy": "deterministic_score_v2", "refresh_on": ["app_open", "exercise_logged", "custom_activity_logged", "symptom_logged", "exercise_status_changed", "clock_tick_15_min"], "score_weights": {"daily_deficit": 0.25, "skill_deficit": 0.2, "freshness": 0.2, "weekly_balance": 0.15, "variety": 0.1, "progression_value": 0.1}, "multipliers": ["fatigue_modifier", "exercise_tolerance_modifier", "symptom_modifier", "context_availability_modifier"], "same_exercise_soft_penalty_minutes": 120, "same_primary_skill_penalty": 0.2, "recommended_list_size": 5, "next_time": {"resolution_minutes": 15, "search_horizon_hours": 24, "green_score_threshold": 0.58}, "explain_recommendation": true}, "overlap": {"load_credit_affects_fatigue": true, "load_credit_can_reduce_priority_of_similar_exercises": true, "load_credit_closes_prescription_target": false, "structured_skill_credit_counts_for_weekly_skill_balance": true, "custom_activity_skill_mastery_credit": false, "family_variant_can_close_same_prescription_target": true}, "exercise_tolerance": {"rolling_window_sessions": 5, "positive_sessions_for_progression": 3, "modifiers": {"normal": 1.0, "mild_reaction": 0.85, "moderate_reaction": 0.6, "strong_reaction": 0.3, "safety_lock": 0.0}, "rules": [{"if": "pain_after <= 1 && !next_day_worse && !swelling && !instability", "state": "normal"}, {"if": "pain_after == 2 || fatigue == moderate", "state": "mild_reaction"}, {"if": "pain_after in [3,4] || next_day_worse", "state": "moderate_reaction"}, {"if": "pain_after >= 5", "state": "strong_reaction"}, {"if": "swelling || instability", "state": "safety_lock"}], "note": "all numeric cutoffs are product heuristics, not medical diagnostic thresholds"}, "symptom_checks": {"after_fields": ["pain_during_0_10", "pain_after_0_10", "local_outer_ankle_pain", "fatigue_low_medium_high", "instability", "swelling", "difficulty_easy_normal_hard"], "delayed_fields": ["later_same_day_worse_same_better", "next_morning_worse_same_better"], "light_exercises_can_skip_full_check": true, "always_ask_after": ["tier:S", "tier:FUTURE", "custom_activity_high_load"]}, "progression": {"success_requires": {"target_completed": true, "pain_during_max": 2, "pain_after_max": 2, "next_day_worse": false, "swelling": false, "instability": false, "technique": ["good", "ok"]}, "successful_sessions_required_default": 3, "auto_progress_inside_same_exercise": false, "offer_progression_confirmation": true, "never_auto_unlock_new_exercise": true}, "gamification": {"xp": {"base_per_useful_dose": 10, "same_skill_daily_multipliers": [1.0, 0.65, 0.35, 0.15], "extra_volume_beyond_cap_xp": 0, "no_bonus_for_pain_or_failure": true}, "streak": {"day_counts_if_distinct_skills_at_least": 2, "rest_freezes_per_week": 2, "no_penalty_for_safety_rest": true}, "training_mastery": {"separate_from_run_readiness": true, "formula": {"exercise_mastery": 0.5, "skill_consistency_14d": 0.3, "symptom_stability_7d": 0.2}}}, "exercise_lifecycle": {"states": ["active", "available", "locked", "archived"], "available_to_active": "manual user action only", "locked_to_available": "manual stage transition / explicit unlock rule; never regular scheduler", "archive_preserves_history": true, "show_source_badge": true}, "substitutions": {"enabled": true, "trigger_reasons": ["нет оборудования", "нет места", "не хочу сейчас"], "method": "explicit substitute_ids first; then vector similarity", "minimum_skill_similarity": 0.7, "respect_fatigue_and_symptom_locks": true, "do_not_use_locked_or_archived": true}, "custom_activity_logging": {"enabled": true, "presets": {"sand_tiptoe_fun": {"name": "Носки на песке", "load": {"calf": 60, "ankle_control": 40, "dynamic_balance": 35, "lateral": 15, "impact": 0}}, "long_tiptoe_walk": {"name": "Долгая ходьба на носках", "load": {"calf": 55, "ankle_control": 30, "dynamic_balance": 25, "lateral": 10, "impact": 0}}, "general_walk": {"name": "Обычная прогулка", "load": {"calf": 10, "ankle_control": 10, "dynamic_balance": 5, "lateral": 0, "impact": 0}}}, "manual_fields": ["duration_minutes", "calf_load_low_medium_high", "balance_load_low_medium_high", "lateral_load_low_medium_high", "pain_after_0_10", "fatigue_low_medium_high"], "freeform_requires_llm": false, "mastery_credit": false}, "return_to_running": {"module_enabled": true, "permission_semantics": "readiness estimator only; never medical clearance", "initial_stage": "rehab", "automatic_running_permission": false, "impact_tests_locked_initially": true, "clinician_context": "реабилитолог рекомендовал примерно пару месяцев тренировать ноги/голеностоп до уверенного мастерства", "calendar_hint_days": 56, "calendar_hint_is_approximation": true}, "notifications": {"enabled_by_default": false, "optional": ["next_good_window", "evening_delayed_check", "next_morning_check", "weekly_self_test"]}}</script>
+<script type="application/json" id="exercisesConfigJSON">{"version": 2, "semantics": {"status": {"active": "участвует в рекомендациях", "available": "есть в каталоге, но добавляется пользователем вручную", "locked": "следующая стадия, не может быть включена обычным scheduler", "archived": "скрыто из активной программы, история сохраняется"}, "source": {"clinician_home": "явно назначено для дома", "clinician_session": "выполнялось с реабилитологом; домашняя частота не задавалась", "optional_context": "дополнительная/игровая активность", "assistant_suggested_disabled": "обсуждалось как возможное дополнение; не назначено очным специалистом"}, "important": "load credit, prescription credit и mastery credit — независимые вещи"}, "exercises": [{"id": "towel_stretch_straight_knee", "name": "Растяжка икры полотенцем — прямое колено", "source": "clinician_home", "enabled": true, "tier": "B", "primary_skills": ["mobility"], "secondary_skills": ["calf"], "load_channels": {"calf": 0.1, "ankle_control": 0.0, "dynamic_balance": 0.0, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "duration", "target_sec": 60, "sets": 1}, "recommended_frequency": {"min_per_day": 3, "max_per_day": 4}, "min_rest_minutes": 90, "instructions": ["Сидя или лёжа, колено выпрямлено.", "Полотенце вокруг передней части стопы, мягко потянуть носок на себя.", "Тянуть до ощущения растяжения в икре, не до боли около наружной лодыжки."], "progression": {"type": "none"}, "status": "active", "order_in_tier": 1, "mastery_tracking": {"enabled": false}, "symptom_check_policy": "light", "prescription_credit": {"group": "towel_straight", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4}, "skill_credit": {"mobility": 1.0}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": false, "track_outer_ankle_pain": true}}, {"id": "towel_stretch_bent_knee", "name": "Растяжка икры полотенцем — согнутое колено", "source": "clinician_home", "enabled": true, "tier": "B", "primary_skills": ["mobility"], "secondary_skills": ["soleus"], "load_channels": {"calf": 0.1, "ankle_control": 0.0, "dynamic_balance": 0.0, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "duration", "target_sec": 60, "sets": 1}, "recommended_frequency": {"min_per_day": 3, "max_per_day": 4}, "min_rest_minutes": 90, "instructions": ["Согнуть колено и мягко потянуть стопу полотенцем на себя.", "Цель — мягкая растяжка, без боли в наружной лодыжке."], "progression": {"type": "none"}, "status": "active", "order_in_tier": 2, "mastery_tracking": {"enabled": false}, "symptom_check_policy": "light", "prescription_credit": {"group": "towel_bent", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4}, "skill_credit": {"mobility": 1.0}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": false, "track_outer_ankle_pain": true}}, {"id": "bilateral_tiptoe_static", "name": "Статика на носках двух ног", "source": "clinician_home", "enabled": true, "tier": "B", "primary_skills": ["calf", "static_balance"], "secondary_skills": ["ankle_control"], "load_channels": {"calf": 0.3, "ankle_control": 0.25, "dynamic_balance": 0.0, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "hold_reps", "hold_sec": 5, "reps": 10, "sets": 1}, "recommended_frequency": {"min_per_day": 3, "max_per_day": 4}, "min_rest_minutes": 120, "instructions": ["Подняться на носки двумя ногами.", "Удерживать 5 секунд, плавно опуститься.", "Не выполнять до дрожи/отказа."], "progression": {"type": "quality_then_load_shift", "notes": "Когда базовый вариант становится очень лёгким, повышать сложность только вручную или по отдельному разрешению: больше веса на правую ногу, затем более продвинутые варианты."}, "status": "active", "order_in_tier": 3, "mastery_tracking": {"enabled": true, "metric": "hold_reps", "levels": [5, 10], "successful_sessions_required": 3, "quality_fields": ["technique"], "terminal_base_level": true}, "symptom_check_policy": "light", "prescription_credit": {"group": "tiptoe_static", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4}, "skill_credit": {"calf_strength_endurance": 0.7, "static_balance": 0.4, "ankle_control": 0.4}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": false, "track_outer_ankle_pain": true}}, {"id": "tandem_walk_flat", "name": "Ходьба по линии пятка-к-носку", "source": "clinician_home", "enabled": true, "tier": "A", "primary_skills": ["dynamic_balance", "gait_control"], "secondary_skills": ["ankle_control"], "load_channels": {"calf": 0.1, "ankle_control": 0.3, "dynamic_balance": 0.35, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "steps", "target_steps": 16, "sets": 1}, "recommended_frequency": {"min_per_day": 1, "max_per_day": 4}, "min_rest_minutes": 90, "instructions": ["Идти по прямой, ставя пятку одной стопы почти вплотную перед носком другой.", "Двигаться медленно и без рывков."], "progression": {"type": "unlock_next", "next_exercise_id": "tandem_walk_tiptoe", "success_sessions": 3, "require_pain_at_most": 2, "require_rpe_at_most": 5}, "status": "active", "order_in_tier": 4, "mastery_tracking": {"enabled": true, "metric": "steps", "levels": [8, 12, 16, 24], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"]}, "symptom_check_policy": "standard", "prescription_credit": {"group": "line_walk", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4}, "skill_credit": {"dynamic_balance": 0.8, "gait_control": 0.8, "ankle_control": 0.4}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "tandem_walk_tiptoe", "name": "Ходьба по линии на носках", "source": "clinician_home", "enabled": true, "tier": "A", "primary_skills": ["dynamic_balance", "calf"], "secondary_skills": ["ankle_control"], "load_channels": {"calf": 0.45, "ankle_control": 0.4, "dynamic_balance": 0.45, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "steps", "target_steps": 12, "sets": 1}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 2}, "min_rest_minutes": 180, "instructions": ["Продвинутый вариант ходьбы по линии.", "Не выполнять, если икры уже сильно утомлены."], "progression": {"type": "none"}, "status": "active", "order_in_tier": 5, "mastery_tracking": {"enabled": true, "metric": "steps", "levels": [6, 8, 12, 16], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"]}, "symptom_check_policy": "standard", "prescription_credit": {"group": "line_walk", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4, "variant_of": "tandem_walk_flat"}, "skill_credit": {"dynamic_balance": 0.8, "calf_strength_endurance": 0.7, "ankle_control": 0.6}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "right_leg_balance_left_front_back", "name": "Баланс на правой ноге: левая вперёд/назад", "source": "clinician_home", "enabled": true, "tier": "A", "primary_skills": ["static_balance", "ankle_control"], "secondary_skills": ["dynamic_balance"], "load_channels": {"calf": 0.15, "ankle_control": 0.45, "dynamic_balance": 0.3, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "cycles", "front_hold_sec": 5, "back_hold_sec": 5, "cycles": 5, "sets": 1}, "recommended_frequency": {"min_per_day": 1, "max_per_day": 4}, "min_rest_minutes": 90, "instructions": ["Правая нога — опорная.", "Левое колено поднять перед собой и удерживать 5 секунд.", "Левую ногу отвести назад; при необходимости слегка коснуться пола носком и удерживать 5 секунд.", "Правая стопа остаётся спокойной, без резких завалов."], "progression": {"type": "reduce_support", "notes": "Постепенно уменьшать опору носком левой ноги, если всё комфортно."}, "status": "active", "order_in_tier": 6, "mastery_tracking": {"enabled": true, "metric": "clean_cycles", "levels": [3, 5, 8, 10], "successful_sessions_required": 3, "quality_fields": ["support_touches", "balance_errors", "technique"]}, "symptom_check_policy": "standard", "prescription_credit": {"group": "front_back_balance", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4}, "skill_credit": {"static_balance": 0.9, "ankle_control": 0.8, "dynamic_balance": 0.5}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "left_side_lunge_right_leg_straight", "name": "Боковой выпад влево с прямой правой ногой", "source": "clinician_home", "enabled": true, "tier": "A", "primary_skills": ["lateral_stability", "dynamic_balance"], "secondary_skills": ["ankle_control"], "load_channels": {"calf": 0.2, "ankle_control": 0.45, "dynamic_balance": 0.45, "lateral": 0.4, "impact": 0.0}, "dose": {"type": "hold_reps", "hold_sec": 5, "reps": 5, "sets": 1}, "recommended_frequency": {"min_per_day": 1, "max_per_day": 4}, "min_rest_minutes": 120, "instructions": ["Сделать шаг левой ногой в сторону и перейти в неглубокий боковой выпад.", "Правая нога остаётся прямой; правая стопа контролируемо на полу.", "Удерживать 5 секунд.", "Возвращаться медленно: сначала в нейтральное положение, затем обычным шагом поставить левую стопу рядом.", "Не выполнять прыжковый возврат."], "progression": {"type": "increase_controlled_range"}, "status": "active", "order_in_tier": 7, "mastery_tracking": {"enabled": true, "metric": "clean_reps", "levels": [3, 5, 8, 10], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"]}, "symptom_check_policy": "standard", "prescription_credit": {"group": "side_lunge", "min_per_day": 3, "target_per_day": 3, "max_per_day": 4}, "skill_credit": {"lateral_stability": 0.9, "dynamic_balance": 0.7, "ankle_control": 0.6}, "frequency_basis": "clinician_prescribed", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "slider_injured_leg_three_directions", "name": "Слайдер больной ногой: вправо / назад / вперёд", "source": "clinician_session", "enabled": true, "tier": "B", "primary_skills": ["ankle_control", "movement_control"], "secondary_skills": ["hip_control"], "load_channels": {"calf": 0.1, "ankle_control": 0.25, "dynamic_balance": 0.15, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "directional_reps", "directions": ["right", "back", "forward"], "reps_per_direction": 5, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 240, "instructions": ["Здоровая левая нога — опорная и слегка согнута.", "Правая стопа прижимает скользящий кружок к полу.", "Сдвинуть вправо и вернуть, назад и вернуть, вперёд и вернуть.", "Движение медленное и контролируемое."], "notes": "Домашняя частота реабилитологом явно не задавалась; значения частоты — технический консервативный default приложения, а не медицинское назначение.", "status": "active", "order_in_tier": 8, "mastery_tracking": {"enabled": true}, "symptom_check_policy": "light", "skill_credit": {"movement_control": 0.7, "ankle_control": 0.5, "dynamic_balance": 0.4}, "frequency_basis": "product_default_after_supervised_tolerance", "equipment": ["slider_or_towel_on_smooth_floor"], "context_tags": ["smooth_floor"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": false, "track_outer_ankle_pain": true}}, {"id": "hemisphere_weight_shift_injured_front", "name": "Полусфера: перенос веса на больную ногу", "source": "clinician_session", "enabled": true, "tier": "S", "primary_skills": ["static_balance", "ankle_control"], "secondary_skills": ["dynamic_balance"], "load_channels": {"calf": 0.2, "ankle_control": 0.55, "dynamic_balance": 0.35, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "duration_sets", "target_sec": 10, "sets": 3}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 3}, "min_rest_minutes": 240, "instructions": ["Поставить переднюю часть/носок правой стопы на полусферу.", "Плавно перенести вес и удерживать положение.", "Не бороться за равновесие на пределе; цель — спокойный контроль."], "progression": {"type": "duration_levels", "levels_sec": [10, 15, 20, 30], "success_sessions_per_level": 3, "require_pain_at_most": 2, "require_rpe_at_most": 5, "final_goal": "несколько комфортных подходов по 20–30 секунд", "next_variant": "поднять пятку задней ноги, уменьшая её помощь"}, "status": "active", "order_in_tier": 9, "mastery_tracking": {"enabled": true, "metric": "hold_seconds", "levels": [10, 15, 20, 30], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"], "mastered_definition": "3x30s comfortable, low errors, no symptom reaction"}, "symptom_check_policy": "standard", "skill_credit": {"static_balance": 1.0, "ankle_control": 0.9, "dynamic_balance": 0.5}, "frequency_basis": "product_default_after_supervised_tolerance", "notes": "", "equipment": ["hemisphere_or_balance_dome"], "context_tags": ["equipment"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "hemisphere_weight_shift_rear_heel_up", "name": "Полусфера: перенос веса + задняя пятка поднята", "source": "clinician_session", "enabled": true, "tier": "S", "primary_skills": ["static_balance", "ankle_control"], "secondary_skills": ["calf"], "load_channels": {"calf": 0.3, "ankle_control": 0.65, "dynamic_balance": 0.4, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "duration_sets", "target_sec": 10, "sets": 3}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 300, "prerequisites": ["hemisphere_weight_shift_injured_front"], "instructions": ["Как в базовом варианте на полусфере, но пятку задней ноги поднять.", "Больше веса переносится на рабочую ногу."], "progression": {"type": "duration_levels", "levels_sec": [10, 15, 20, 30], "success_sessions_per_level": 3}, "status": "active", "order_in_tier": 10, "mastery_tracking": {"enabled": true, "metric": "hold_seconds", "levels": [10, 15, 20, 30], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"]}, "symptom_check_policy": "standard", "skill_credit": {"static_balance": 1.0, "ankle_control": 1.0, "calf_strength_endurance": 0.4}, "frequency_basis": "product_default_after_supervised_tolerance", "notes": "", "equipment": ["hemisphere_or_balance_dome"], "context_tags": ["equipment"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "obstacle_high_knee_heel_to_toe", "name": "Перешагивание препятствий: цапля + пятка-перекат", "source": "clinician_session", "enabled": true, "tier": "A", "primary_skills": ["gait_control", "single_leg_control"], "secondary_skills": ["dynamic_balance"], "load_channels": {"calf": 0.15, "ankle_control": 0.3, "dynamic_balance": 0.3, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "passes", "passes": 3}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 180, "instructions": ["Медленно перешагивать через безопасные невысокие препятствия.", "Перед шагом поднимать колено высоко, как 'цапля'.", "Ставить стопу на пятку и плавно перекатываться через всю стопу к носку.", "Не торопиться; качество шага важнее скорости."], "notes": "Домашняя частота реабилитологом явно не задавалась.", "status": "active", "order_in_tier": 11, "mastery_tracking": {"enabled": true, "metric": "clean_passes", "levels": [1, 2, 3, 4], "successful_sessions_required": 3, "quality_fields": ["stumbles", "technique"]}, "symptom_check_policy": "standard", "skill_credit": {"gait_control": 1.0, "single_leg_control": 0.8, "dynamic_balance": 0.5}, "frequency_basis": "product_default_after_supervised_tolerance", "equipment": ["safe_low_obstacles"], "context_tags": ["space"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "tiptoe_sidewalk_ball_reaction", "name": "Боковая ходьба на носках + ловля мяча", "source": "clinician_session", "enabled": true, "tier": "A", "primary_skills": ["reactive_balance", "lateral_stability"], "secondary_skills": ["calf", "ankle_control"], "load_channels": {"calf": 0.55, "ankle_control": 0.55, "dynamic_balance": 0.6, "lateral": 0.55, "impact": 0.0}, "dose": {"type": "duration_sets", "target_sec": 30, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 360, "instructions": ["Ходить на носках вправо-влево.", "Партнёр бросает большой мягкий мяч как прямо в корпус, так и немного в стороны.", "Задача — ловить мяч без резких провалов стопы и без потери контроля."], "solo_alternative": "броски небольшого мягкого мяча в стену с небольшими смещениями цели", "notes": "Домашняя частота реабилитологом явно не задавалась.", "status": "active", "order_in_tier": 12, "mastery_tracking": {"enabled": true, "metric": "seconds", "levels": [20, 30, 45, 60], "successful_sessions_required": 3, "quality_fields": ["misses", "balance_errors", "technique"]}, "symptom_check_policy": "standard", "skill_credit": {"reactive_control": 1.0, "lateral_stability": 0.8, "dynamic_balance": 0.8, "calf_strength_endurance": 0.6}, "frequency_basis": "product_default_after_supervised_tolerance", "equipment": ["soft_ball_or_wall"], "substitute_ids": ["tiptoe_sidewalk_cone_reach"], "context_tags": ["space", "dynamic"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "tiptoe_square_corner_lunges", "name": "Фишки-квадрат: выпады к углам на носках", "source": "clinician_session", "enabled": true, "tier": "S", "primary_skills": ["multidirectional_control", "dynamic_balance"], "secondary_skills": ["calf", "lateral_stability"], "load_channels": {"calf": 0.5, "ankle_control": 0.6, "dynamic_balance": 0.65, "lateral": 0.6, "impact": 0.0}, "dose": {"type": "directional_rounds", "directions": 4, "rounds": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 360, "instructions": ["Встать в центр квадрата из четырёх фишек.", "Работать на носках.", "Делать контролируемые выпады больной правой ногой к углам и касаться соответствующей фишки рукой.", "Возвращаться контролируемо, не прыжком."], "notes": "Домашняя частота реабилитологом явно не задавалась.", "status": "active", "order_in_tier": 13, "mastery_tracking": {"enabled": true, "metric": "clean_rounds", "levels": [1, 2, 3, 4], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"]}, "symptom_check_policy": "standard", "skill_credit": {"multidirectional_control": 1.0, "dynamic_balance": 1.0, "lateral_stability": 0.8, "calf_strength_endurance": 0.6}, "frequency_basis": "product_default_after_supervised_tolerance", "equipment": ["4_cones_or_markers"], "context_tags": ["space", "dynamic"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "tiptoe_sidewalk_cone_reach", "name": "Боковая ходьба на носках + касание фишек", "source": "clinician_session", "enabled": true, "tier": "A", "primary_skills": ["lateral_stability", "dynamic_balance"], "secondary_skills": ["calf"], "load_channels": {"calf": 0.5, "ankle_control": 0.5, "dynamic_balance": 0.55, "lateral": 0.55, "impact": 0.0}, "dose": {"type": "duration_sets", "target_sec": 30, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 300, "instructions": ["Поставить фишки/ориентиры по бокам.", "Ходить вправо-влево на носках.", "По очереди дотягиваться рукой до фишек."], "notes": "Домашняя частота реабилитологом явно не задавалась.", "status": "active", "order_in_tier": 14, "mastery_tracking": {"enabled": true, "metric": "seconds", "levels": [20, 30, 45, 60], "successful_sessions_required": 3, "quality_fields": ["balance_errors", "technique"]}, "symptom_check_policy": "standard", "skill_credit": {"lateral_stability": 0.9, "dynamic_balance": 0.8, "calf_strength_endurance": 0.6}, "frequency_basis": "product_default_after_supervised_tolerance", "equipment": ["cones_or_household_markers"], "substitute_ids": ["tiptoe_sidewalk_ball_reaction"], "context_tags": ["space", "dynamic"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "sand_tiptoe_walk_or_stand", "name": "Стояние/ходьба на носках по песку", "source": "optional_context", "enabled": false, "tier": "C", "primary_skills": ["calf_endurance", "unstable_surface_control"], "secondary_skills": ["dynamic_balance"], "load_channels": {"calf": 0.65, "ankle_control": 0.45, "dynamic_balance": 0.4, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "duration_sets", "target_sec": 45, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 1}, "min_rest_minutes": 480, "instructions": ["Использовать как дополнительную игровую активность, а не тест на максимальную выносливость.", "Не соревноваться регулярно 'до последнего'."], "notes": "Если после песка икры заметно утомлены несколько часов, считать силовую/икроножную нагрузку на день частично выполненной.", "status": "available", "order_in_tier": 15, "mastery_tracking": {"enabled": true}, "symptom_check_policy": "light", "skill_credit": {"calf_strength_endurance": 0.7, "unstable_surface_control": 0.7, "dynamic_balance": 0.5}, "frequency_basis": "optional_activity", "equipment": ["sand"], "context_tags": ["outdoors"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": false, "track_outer_ankle_pain": true}}, {"id": "single_leg_calf_raise", "name": "Подъём на носок одной ногой", "source": "assistant_suggested_disabled", "enabled": false, "tier": "S", "primary_skills": ["calf_strength", "ankle_control"], "load_channels": {"calf": 0.75, "ankle_control": 0.35, "dynamic_balance": 0.1, "lateral": 0.0, "impact": 0.0}, "dose": {"type": "reps_sets", "reps": 10, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 720, "activation_rule": "Включать вручную, когда пользователь/врач решит добавить отдельную силовую прогрессию.", "status": "available", "order_in_tier": 16, "mastery_tracking": {"enabled": true}, "symptom_check_policy": "standard", "skill_credit": {"calf_strength_endurance": 1.0, "ankle_control": 0.5}, "frequency_basis": "manual_add_only", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "band_eversion", "name": "Эверсия стопы с резинкой", "source": "assistant_suggested_disabled", "enabled": false, "tier": "S", "primary_skills": ["peroneal_strength", "lateral_stability"], "load_channels": {"calf": 0.2, "ankle_control": 0.3, "dynamic_balance": 0.0, "lateral": 0.35, "impact": 0.0}, "dose": {"type": "reps_sets", "reps": 15, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 360, "activation_rule": "Не включать автоматически: это обсуждалось как полезное дополнение, но не было назначено очным реабилитологом.", "status": "available", "order_in_tier": 17, "mastery_tracking": {"enabled": true}, "symptom_check_policy": "standard", "skill_credit": {"lateral_stability": 0.8, "peroneal_strength": 1.0}, "frequency_basis": "manual_add_only", "equipment": ["resistance_band"], "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "hops_and_direction_changes", "name": "Прыжки и быстрые смены направления", "source": "assistant_suggested_disabled", "enabled": false, "tier": "FUTURE", "primary_skills": ["plyometric_control", "return_to_run"], "load_channels": {"calf": 0.8, "ankle_control": 0.8, "dynamic_balance": 0.9, "lateral": 0.0, "impact": 0.9}, "min_rest_minutes": 1440, "activation_rule": "Только отдельной ручной активацией после разрешения врача/реабилитолога или явного решения пользователя на следующем этапе.", "status": "locked", "order_in_tier": 18, "mastery_tracking": {"enabled": true}, "symptom_check_policy": "standard", "skill_credit": {"impact_control": 1.0, "reactive_control": 1.0, "return_to_run": 1.0}, "frequency_basis": "manual_add_only", "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}, {"id": "single_leg_multidirectional_reach", "name": "Баланс на правой ноге + reach свободной ногой в нескольких направлениях", "source": "assistant_suggested_disabled", "status": "available", "enabled": false, "tier": "S", "order_in_tier": 999, "primary_skills": ["multidirectional_control", "single_leg_control"], "secondary_skills": ["ankle_control", "dynamic_balance"], "skill_credit": {"multidirectional_control": 1.0, "single_leg_control": 0.9, "ankle_control": 0.8, "dynamic_balance": 0.7}, "load_channels": {"calf": 0.25, "ankle_control": 0.55, "dynamic_balance": 0.55, "lateral": 0.35, "impact": 0.0}, "dose": {"type": "directional_reps", "directions": ["front", "side", "back_diagonal"], "reps_per_direction": 3, "sets": 2}, "recommended_frequency": {"min_per_day": 0, "max_per_day": 1, "suggested_days_per_week": 2}, "min_rest_minutes": 300, "instructions": ["Правая нога остаётся опорной.", "Свободной ногой дотянуться/коснуться ориентиров в разных направлениях.", "Двигаться медленно; качество и спокойная стопа важнее дальности."], "frequency_basis": "manual_add_only", "activation_rule": "Обсуждалось как полезное дополнение; добавлять в ACTIVE только вручную.", "mastery_tracking": {"enabled": true, "metric": "clean_reaches", "successful_sessions_required": 3, "quality_fields": ["balance_errors", "support_touches", "technique"]}, "tolerance_tracking": {"rolling_sessions": 5, "track_pain": true, "track_fatigue": true, "track_next_day": true, "track_outer_ankle_pain": true}}]}</script>
+<script type="application/json" id="readinessConfigJSON">{"version": 1, "principles": ["Run Readiness отдельный от Training Mastery", "самотесты сравнивают правую травмированную сторону с левой, когда тест двусторонний", "лучший единичный рекорд не используется как единственная база; предпочтительна медиана последних 3 валидных тестов", "пороговые значения помечены как product_heuristic", "приложение не выдаёт медицинское разрешение на бег"], "domains": {"pain": {"weight": 0.18}, "ankle_capacity": {"weight": 0.2}, "confidence": {"weight": 0.12}, "sensorimotor_control": {"weight": 0.25}, "impact_running_capacity": {"weight": 0.25}}, "self_report": {"frequency_days": 7, "questions": [{"id": "trust_right_leg", "text": "Насколько ты доверяешь правому голеностопу?", "scale": [0, 10], "higher_is_better": true}, {"id": "fear_of_rolling", "text": "Насколько боишься, что нога подвернётся?", "scale": [0, 10], "higher_is_better": false}, {"id": "feel_ready_to_easy_run", "text": "Насколько готов сейчас к лёгкому бегу?", "scale": [0, 10], "higher_is_better": true}]}, "tests": [{"id": "hemisphere_hold", "name": "Полусфера — спокойное удержание", "status": "active", "domain": "sensorimotor_control", "metric": "seconds", "bilateral": true, "aggregate": "median_last_3", "target_injured_side_sec": 30, "target_note": "ориентир от реабилитолога: несколько комфортных подходов 20–30 секунд"}, {"id": "tandem_tiptoe_clean_steps", "name": "Ходьба по линии на носках — чистые шаги", "status": "active", "domain": "sensorimotor_control", "metric": "clean_steps", "bilateral": false, "aggregate": "median_last_3"}, {"id": "multidirectional_control_clean_rounds", "name": "Мног方向ный контроль — чистые раунды", "status": "active", "domain": "sensorimotor_control", "metric": "clean_rounds", "bilateral": false, "aggregate": "median_last_3"}, {"id": "knee_to_wall", "name": "Knee-to-wall / тыльное сгибание", "status": "available_manual", "domain": "ankle_capacity", "metric": "cm", "bilateral": true, "aggregate": "median_last_3", "symmetry_target": 0.9, "threshold_type": "product_heuristic"}, {"id": "single_leg_calf_raise_test", "name": "Подъёмы на носок одной ногой — тест", "status": "available_manual", "domain": "ankle_capacity", "metric": "clean_reps", "bilateral": true, "aggregate": "median_last_3", "symmetry_target": 0.9, "threshold_type": "product_heuristic", "note": "не делает упражнение ACTIVE в тренировочной программе"}, {"id": "single_leg_balance_errors", "name": "Одноногий баланс — ошибки", "status": "available_manual", "domain": "sensorimotor_control", "metric": "errors_per_30s", "bilateral": true, "lower_is_better": true, "aggregate": "median_last_3"}, {"id": "pogo_bilateral", "name": "Лёгкие pogo двумя ногами", "status": "locked", "domain": "impact_running_capacity", "metric": "clean_reps", "unlock_stage": "ready_for_impact"}, {"id": "single_leg_hop_basic", "name": "Базовый одноногий hop-тест", "status": "locked", "domain": "impact_running_capacity", "metric": "distance_or_reps", "bilateral": true, "symmetry_target": 0.9, "threshold_type": "product_heuristic", "unlock_stage": "ready_for_impact"}, {"id": "lateral_hop", "name": "Боковые прыжки", "status": "locked", "domain": "impact_running_capacity", "metric": "clean_reps", "bilateral": true, "symmetry_target": 0.9, "threshold_type": "product_heuristic", "unlock_stage": "ready_for_impact"}], "stages": [{"id": "rehab", "order": 0, "name": "Rehab", "description": "контроль, баланс, сила и походка без ударной нагрузки"}, {"id": "ready_for_impact", "order": 1, "name": "Ready for impact", "description": "можно вручную открыть ударные самотесты; не равно разрешению на бег", "entry_heuristics": ["pain_24h <= 1", "no_swelling", "no_instability", "ankle_capacity_symmetry >= 0.90 when tests available", "sensorimotor_score >= 0.85", "confidence >= 8/10"], "threshold_type": "product_heuristic"}, {"id": "ready_for_run_walk", "order": 2, "name": "Ready for run/walk", "description": "impact-тесты переносятся без симптомов и без ухудшения следующим утром", "manual_confirmation_required": true}, {"id": "easy_continuous_run", "order": 3, "name": "Ready for easy continuous running", "manual_confirmation_required": true}, {"id": "normal_volume", "order": 4, "name": "Ready for normal running volume", "manual_confirmation_required": true}, {"id": "speed_hills_direction", "order": 5, "name": "Ready for speed / hills / direction changes", "manual_confirmation_required": true}], "run_readiness_formula": {"domain_weighted_score": true, "missing_locked_domain_policy": "show_as_locked_not_zero", "do_not_claim_100_until_impact_domain_available": true, "symmetry_formula": "injured / healthy, clamped to 1.0; for lower-is-better metrics invert appropriately"}, "delayed_response_gate": {"required_for_impact_and_run_stages": true, "checks": ["same_day_reaction", "next_morning_reaction"], "if_worse": "stage progression blocked until stable recheck"}}</script>
+
+<script>
+(() => {
+'use strict';
+
+const APP = JSON.parse(document.getElementById('appConfigJSON').textContent);
+const EXCFG = JSON.parse(document.getElementById('exercisesConfigJSON').textContent);
+const RDCFG = JSON.parse(document.getElementById('readinessConfigJSON').textContent);
+const EX = EXCFG.exercises;
+const EXMAP = Object.fromEntries(EX.map(x => [x.id,x]));
+const KEY = 'ankle_mastery_static_v2';
+const DAY = 86400000;
+
+const skillLabels = {
+  mobility:'Подвижность', calf_strength_endurance:'Икры', static_balance:'Статический баланс',
+  dynamic_balance:'Динамический баланс', lateral_stability:'Боковая устойчивость',
+  ankle_control:'Контроль голеностопа', gait_control:'Походка', reactive_control:'Реактивный контроль',
+  multidirectional_control:'Разные направления', peroneal_strength:'Малоберцовые мышцы',
+  unstable_surface_control:'Нестабильная поверхность', single_leg_control:'Одноногий контроль',
+  impact_control:'Ударная нагрузка', return_to_run:'Возврат к бегу'
+};
+const fatigueLabels = {calf:'Икры', ankle_control:'Контроль', dynamic_balance:'Баланс', lateral:'Боковая нагрузка', impact:'Ударная'};
+const sourceLabels = {
+  clinician_home:'Назначено домой', clinician_session:'Делалось с реабилитологом',
+  optional_context:'Дополнительная активность', assistant_suggested_disabled:'Дополнение, не назначенное очно'
+};
+const groupShort = {
+  towel_straight:'Прямая', towel_bent:'Согнутая', tiptoe_static:'Носки',
+  line_walk:'Линия', front_back_balance:'Баланс', side_lunge:'Выпад'
+};
+
+function defaultState(){
+  const statuses = {};
+  EX.forEach(x => statuses[x.id] = x.status || (x.enabled ? 'active':'available'));
+  return {
+    version:2, createdAt:Date.now(), logs:[], customActivities:[], testLogs:[], selfReports:[],
+    delayedChecks:[], exerciseStatuses:statuses, xp:0, selectedStage:'rehab', settings:{}
+  };
+}
+let state = loadState();
+function loadState(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return defaultState();
+    const x = JSON.parse(raw);
+    return {...defaultState(),...x, exerciseStatuses:{...defaultState().exerciseStatuses,...(x.exerciseStatuses||{})}};
+  }catch(e){ return defaultState(); }
+}
+function save(){ localStorage.setItem(KEY,JSON.stringify(state)); renderAll(); }
+function now(){ return Date.now(); }
+function startOfDay(ts=now()){ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
+function daysAgo(n){ return startOfDay()-n*DAY; }
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); }
+function fmtDate(ts){ return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'}); }
+function clamp(v,a=0,b=1){ return Math.max(a,Math.min(b,v)); }
+function median(a){ if(!a.length)return null; const b=[...a].sort((x,y)=>x-y),m=Math.floor(b.length/2); return b.length%2?b[m]:(b[m-1]+b[m])/2; }
+function pct(v){ return Math.round(clamp(v)*100); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function doseText(ex){
+  const d=ex.dose||{};
+  switch(d.type){
+    case 'duration': return `${d.target_sec||60} сек`;
+    case 'hold_reps': return `${d.reps||1} × ${d.hold_sec||5} сек`;
+    case 'steps': return `${d.target_steps||12} шагов`;
+    case 'cycles': return `${d.cycles||5} циклов`;
+    case 'duration_sets': return `${d.sets||1} × ${d.target_sec||30} сек`;
+    case 'directional_rounds': return `${d.rounds||2} круга × ${d.directions||4} направления`;
+    case 'reps_sets': return `${d.sets||2} × ${d.reps||10}`;
+    case 'directional_reps': return `${d.sets||2} × ${d.reps_per_direction||3} в каждом направлении`;
+    default: return 'по технике';
+  }
+}
+function activeExercises(){ return EX.filter(x=>state.exerciseStatuses[x.id]==='active'); }
+function logsToday(){ return state.logs.filter(l=>l.ts>=startOfDay()); }
+function customToday(){ return state.customActivities.filter(l=>l.ts>=startOfDay()); }
+function allLoadEvents(){
+  const exEvents = state.logs.map(l => {
+    const ex=EXMAP[l.exerciseId]; if(!ex)return null;
+    const factor = l.doseFactor || 1;
+    const load={};
+    for(const k of Object.keys(APP.fatigue_channels)) load[k]=(ex.load_channels?.[k]||0)*45*factor;
+    return {ts:l.ts,load,source:'exercise',exerciseId:l.exerciseId};
+  }).filter(Boolean);
+  const cEvents = state.customActivities.map(a=>({ts:a.ts,load:a.load||{},source:'custom'}));
+  return [...exEvents,...cEvents];
+}
+function fatigueAt(ts=now()){
+  const out={}; Object.keys(APP.fatigue_channels).forEach(k=>out[k]=0);
+  for(const ev of allLoadEvents()){
+    if(ev.ts>ts) continue;
+    const hours=(ts-ev.ts)/3600000;
+    for(const [k,cfg] of Object.entries(APP.fatigue_channels)){
+      const val=ev.load?.[k]||0;
+      out[k]+=val*Math.pow(0.5,hours/cfg.decay_half_life_hours);
+    }
+  }
+  for(const k in out) out[k]=Math.min(100,out[k]);
+  return out;
+}
+function relevantFatigue(ex,ts=now()){
+  const f=fatigueAt(ts), loads=ex.load_channels||{};
+  let num=0,den=0;
+  for(const k of Object.keys(APP.fatigue_channels)){ const w=loads[k]||0; num+=w*(f[k]||0); den+=w; }
+  return den?num/den:0;
+}
+function prescriptionCounts(){
+  const counts={};
+  for(const [g] of Object.entries(APP.program.prescription_groups)) counts[g]=0;
+  for(const l of logsToday()){
+    const ex=EXMAP[l.exerciseId]; const g=ex?.prescription_credit?.group;
+    if(g) counts[g]=(counts[g]||0)+1;
+  }
+  return counts;
+}
+function dailyDeficit(ex){
+  const g=ex.prescription_credit?.group; if(!g)return .35;
+  const target=APP.program.prescription_groups[g]?.target_per_day||ex.prescription_credit?.target_per_day||0;
+  if(!target)return .35;
+  const n=prescriptionCounts()[g]||0;
+  return clamp((target-n)/target);
+}
+function weeklySkillExposure(){
+  const since=now()-7*DAY, out={};
+  for(const s of Object.keys(APP.skills)) out[s]=0;
+  const valid=state.logs.filter(l=>l.ts>=since);
+  for(const l of valid){
+    const ex=EXMAP[l.exerciseId]; if(!ex)continue;
+    for(const [s,v] of Object.entries(ex.skill_credit||{})) out[s]=(out[s]||0)+v;
+  }
+  return out;
+}
+function skillDeficit(ex){
+  const exp=weeklySkillExposure(), skills=Object.entries(ex.skill_credit||{});
+  if(!skills.length)return .4;
+  const vals=skills.map(([s])=>1-clamp((exp[s]||0)/6));
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function weeklyBalance(ex){ return skillDeficit(ex); }
+function variety(ex){
+  const recent=state.logs.filter(l=>now()-l.ts<120*60000).sort((a,b)=>b.ts-a.ts);
+  let v=1;
+  if(recent[0]?.exerciseId===ex.id)v-=.5;
+  const last2=state.logs.slice(-2).map(l=>EXMAP[l.exerciseId]?.primary_skills?.[0]);
+  if(ex.primary_skills?.[0] && last2.includes(ex.primary_skills[0])) v-=.2;
+  if(dailyDeficit(ex)>.7)v+=.2;
+  return clamp(v);
+}
+function classifyLog(l){
+  if(l.swelling||l.instability)return 'safety_lock';
+  if((l.painAfter??0)>=5)return 'strong_reaction';
+  if((l.painAfter??0)>=3 || l.nextDay==='worse')return 'moderate_reaction';
+  if((l.painAfter??0)===2 || l.fatigue==='medium')return 'mild_reaction';
+  return 'normal';
+}
+function tolerance(ex){
+  const ls=state.logs.filter(l=>l.exerciseId===ex.id).slice(-5);
+  if(!ls.length)return 1;
+  const map=APP.exercise_tolerance.modifiers;
+  const weights=[1,.8,.65,.5,.4].slice(0,ls.length).reverse();
+  let n=0,d=0;
+  ls.forEach((l,i)=>{n+=(map[classifyLog(l)]??1)*weights[i];d+=weights[i]});
+  return d?n/d:1;
+}
+function progressionValue(ex){
+  if(!ex.mastery_tracking?.enabled)return .2;
+  const req=ex.mastery_tracking.successful_sessions_required||APP.progression.successful_sessions_required_default||3;
+  const good=state.logs.filter(l=>l.exerciseId===ex.id && isSuccessful(l)).slice(-req).length;
+  return clamp(good/req);
+}
+function isSuccessful(l){
+  return (l.painDuring??0)<=2 && (l.painAfter??0)<=2 && !l.swelling && !l.instability && l.nextDay!=='worse' && (l.technique||'ok')!=='poor';
+}
+function maxPerDayReached(ex){
+  const max=ex.prescription_credit?.max_per_day ?? ex.recommended_frequency?.max_per_day;
+  if(max==null)return false;
+  return logsToday().filter(l=>l.exerciseId===ex.id).length>=max;
+}
+function symptomMultiplier(ex){
+  const recent = [...state.logs].sort((a,b)=>b.ts-a.ts)[0];
+  if(!recent)return 1;
+  if(recent.swelling||recent.instability){
+    const load=(ex.load_channels?.dynamic_balance||0)+(ex.load_channels?.lateral||0)+(ex.load_channels?.impact||0);
+    return load>.6?0:.55;
+  }
+  if(recent.nextDay==='worse' && now()-recent.ts<24*3600000)return .7;
+  return 1;
+}
+function fatigueModifier(ex,ts=now()){
+  const rf=relevantFatigue(ex,ts);
+  if(rf>=70)return .35;
+  if(rf>=45)return .65;
+  if(rf>=30)return .82;
+  return 1;
+}
+function scoreExercise(ex,ts=now()){
+  const lifecycleStatus=state.exerciseStatuses[ex.id];
+  if(lifecycleStatus!=='active')return {score:-1,status:'red',reasons:['не активно']};
+  if(maxPerDayReached(ex))return {score:-1,status:'red',reasons:['достигнут максимум на сегодня']};
+
+  const dd=dailyDeficit(ex), sd=skillDeficit(ex), fresh=clamp(1-relevantFatigue(ex,ts)/100),
+        wb=weeklyBalance(ex), va=variety(ex), pv=progressionValue(ex), tol=tolerance(ex);
+  const w=APP.scheduler.score_weights;
+  let base=w.daily_deficit*dd+w.skill_deficit*sd+w.freshness*fresh+w.weekly_balance*wb+w.variety*va+w.progression_value*pv;
+  const fm=fatigueModifier(ex,ts), sm=symptomMultiplier(ex);
+  let sc=base*fm*tol*sm;
+  const rf=relevantFatigue(ex,ts);
+  let status='green';
+  if(tol<.55 || sm===0 || rf>=78)status='red';
+  else if(tol<.75 || rf>=38 || sm<1)status='yellow';
+  const reasons=[];
+  if(dd>.65)reasons.push('дневная цель ещё не закрыта');
+  if(sd>.65)reasons.push('этот навык недотренирован на неделе');
+  if(fresh>.78)reasons.push('нагрузка по этому паттерну свежая');
+  if(fresh<.55)reasons.push('есть пересечение с недавней нагрузкой');
+  if(va<.7)reasons.push('недавно уже был похожий паттерн');
+  if(tol<.85)reasons.push('последняя переносимость снижает приоритет');
+  if(pv>.65)reasons.push('близко к следующему уровню мастерства');
+  if(!reasons.length)reasons.push('хорошо вписывается в текущий баланс нагрузки');
+  return {score:sc,status,reasons,parts:{dd,sd,fresh,wb,va,pv,tol,rf}};
+}
+function nextGoodWindow(ex){
+  const step=(APP.scheduler.next_time.resolution_minutes||15)*60000;
+  const horizon=(APP.scheduler.next_time.search_horizon_hours||24)*3600000;
+  const threshold=APP.scheduler.next_time.green_score_threshold||.58;
+  for(let t=now();t<=now()+horizon;t+=step){
+    const r=scoreExerciseAtTime(ex,t);
+    if(r.status==='green' && r.score>=threshold)return t;
+  }
+  return null;
+}
+function scoreExerciseAtTime(ex,ts){
+  // same score, but only time-dependent fatigue and soft repeat effect are approximated
+  const dd=dailyDeficit(ex), sd=skillDeficit(ex), fresh=clamp(1-relevantFatigue(ex,ts)/100), wb=weeklyBalance(ex), va=variety(ex), pv=progressionValue(ex), tol=tolerance(ex);
+  const w=APP.scheduler.score_weights;
+  const base=w.daily_deficit*dd+w.skill_deficit*sd+w.freshness*fresh+w.weekly_balance*wb+w.variety*va+w.progression_value*pv;
+  const rf=relevantFatigue(ex,ts); let fm=1;if(rf>=70)fm=.35;else if(rf>=45)fm=.65;else if(rf>=30)fm=.82;
+  let sc=base*fm*tol*symptomMultiplier(ex), status='green';
+  if(tol<.55 || rf>=78)status='red'; else if(tol<.75 || rf>=38)status='yellow';
+  return {score:sc,status};
+}
+function recommendations(){
+  return activeExercises().map(ex=>({ex,...scoreExercise(ex)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+}
+function exerciseMastery(ex){
+  if(!ex.mastery_tracking?.enabled)return null;
+  const logs=state.logs.filter(l=>l.exerciseId===ex.id);
+  if(!logs.length)return 0;
+  const levels=ex.mastery_tracking.levels||[1,2,3,4,5];
+  const currentGood=logs.filter(isSuccessful).length;
+  const normalizedLevel=clamp(currentGood/(Math.max(3,levels.length*3)));
+  const recent=logs.slice(-5);
+  const quality=recent.reduce((a,l)=>a+(l.technique==='good'?1:(l.technique==='ok'||!l.technique?0.7:0.35)),0)/recent.length;
+  const repeat=clamp(recent.filter(isSuccessful).length/3);
+  const symptom=recent.reduce((a,l)=>a+(classifyLog(l)==='normal'?1:(classifyLog(l)==='mild_reaction'?0.75:0.4)),0)/recent.length;
+  return clamp(.40*normalizedLevel+.25*quality+.20*repeat+.15*symptom);
+}
+function trainingMastery(){
+  const vals=activeExercises().map(ex=>exerciseMastery(ex)).filter(v=>v!==null);
+  const exm=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+  const since=now()-14*DAY;
+  const days=new Set(state.logs.filter(l=>l.ts>=since).map(l=>startOfDay(l.ts))).size;
+  const consistency=clamp(days/10);
+  const recent=state.logs.filter(l=>l.ts>=now()-7*DAY);
+  const stability=recent.length?recent.reduce((a,l)=>a+(classifyLog(l)==='normal'?1:(classifyLog(l)==='mild_reaction'?0.75:0.35)),0)/recent.length:0;
+  return clamp(.5*exm+.3*consistency+.2*stability);
+}
+function readinessSummary(){
+  const domainScores={pain:null,ankle_capacity:null,confidence:null,sensorimotor_control:null,impact_running_capacity:null};
+
+  const recentLogs=state.logs.filter(l=>l.ts>=now()-7*DAY);
+  if(recentLogs.length){
+    const avgPain=recentLogs.reduce((a,l)=>a+(l.painAfter||0),0)/recentLogs.length;
+    domainScores.pain=clamp(1-avgPain/5);
+  }
+
+  const sr=state.selfReports.slice(-1)[0];
+  if(sr){
+    const trust=(sr.trust??0)/10, fear=1-(sr.fear??0)/10, ready=(sr.ready??0)/10;
+    domainScores.confidence=clamp((trust+fear+ready)/3);
+  }
+
+  const testMap={};
+  for(const t of RDCFG.tests){
+    const logs=state.testLogs.filter(l=>l.testId===t.id).slice(-3);
+    if(!logs.length)continue;
+    let values=[];
+    for(const l of logs){
+      if(t.bilateral && l.right!=null && l.left!=null){
+        let sym=t.lower_is_better ? Math.min(l.left,l.right)/Math.max(l.left,l.right) : Math.min(1,l.right/l.left);
+        values.push(sym);
+      } else if(l.value!=null){
+        if(t.id==='hemisphere_hold') values.push(clamp(l.value/30));
+        else values.push(clamp(l.value/(l.target||Math.max(1,l.value))));
+      }
+    }
+    if(values.length)testMap[t.id]=median(values);
+  }
+
+  const capIds=['knee_to_wall','single_leg_calf_raise_test'];
+  const sensorIds=['hemisphere_hold','tandem_tiptoe_clean_steps','multidirectional_control_clean_rounds','single_leg_balance_errors'];
+  const impactIds=['pogo_bilateral','single_leg_hop_basic','lateral_hop'];
+  const avg=(ids)=>{const v=ids.map(id=>testMap[id]).filter(x=>x!=null);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
+  domainScores.ankle_capacity=avg(capIds);
+  domainScores.sensorimotor_control=avg(sensorIds);
+  domainScores.impact_running_capacity=avg(impactIds);
+
+  let n=0,d=0;
+  for(const [dom,cfg] of Object.entries(RDCFG.domains)){
+    const v=domainScores[dom];
+    if(v!=null){n+=v*cfg.weight;d+=cfg.weight;}
+  }
+  const score=d?n/d:null;
+  return {score,domainScores};
+}
+function currentStage(){
+  return RDCFG.stages.find(x=>x.id===state.selectedStage)||RDCFG.stages[0];
+}
+function xpAndStreak(){
+  const xp=state.xp||0;
+  let streak=0; let cursor=startOfDay();
+  for(let i=0;i<60;i++){
+    const logs=state.logs.filter(l=>startOfDay(l.ts)===cursor);
+    const skills=new Set(logs.flatMap(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{})));
+    if(skills.size>=2){streak++;cursor-=DAY;}else if(i===0){cursor-=DAY;}else break;
+  }
+  return {xp,streak};
+}
+function maybeAddDelayedCheck(log){
+  const ex=EXMAP[log.exerciseId];
+  if(!ex || ex.symptom_check_policy==='light')return;
+  state.delayedChecks.push({id:'c'+Math.random().toString(36).slice(2),logId:log.id,exerciseId:log.exerciseId,createdAt:log.ts,sameDay:null,nextMorning:null});
+}
+function pendingChecks(){
+  return state.delayedChecks.filter(c=>c.sameDay==null || c.nextMorning==null).filter(c=>now()-c.createdAt>2*3600000);
+}
+function addXp(ex){
+  const skills=Object.keys(ex.skill_credit||{});
+  const today=logsToday();
+  let mult=1;
+  if(skills.length){
+    const count=today.filter(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{}).some(s=>skills.includes(s))).length;
+    mult=APP.gamification.xp.same_skill_daily_multipliers[Math.min(count,APP.gamification.xp.same_skill_daily_multipliers.length-1)]||.15;
+  }
+  state.xp=(state.xp||0)+Math.round(APP.gamification.xp.base_per_useful_dose*mult);
+}
+
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
+function showDialog(id){ document.getElementById(id).showModal(); }
+function closeDialog(id){ document.getElementById(id).close(); }
+
+function renderHome(){
+  const tm=trainingMastery(); setRing('masteryRing','masteryValue',tm);
+  document.getElementById('masteryHint').textContent=`${xpAndStreak().streak} дн. серии · ${state.xp||0} XP`;
+
+  const rs=readinessSummary(); setRing('readinessRing','readinessValue',rs.score,'—');
+  const stage=currentStage(); document.getElementById('stageName').textContent=stage.name;
+  const line=document.getElementById('stageLine'); line.innerHTML='';
+  RDCFG.stages.forEach(s=>{const d=document.createElement('i');d.className='stage-dot '+(s.order<stage.order?'done':s.order===stage.order?'current':'');line.appendChild(d)});
+
+  const recs=recommendations();
+  const best=recs[0];
+  const bestEl=document.getElementById('bestNow');
+  if(best){
+    const when=best.status==='green'?'Можно сейчас':best.status==='yellow'?'Лучше чуть позже':'Пауза';
+    bestEl.innerHTML=`
+      <span class="best-label">⭐ Лучшее сейчас · ${when}</span>
+      <div class="rec-name">${esc(best.ex.name)}</div>
+      <div class="dose">${esc(doseText(best.ex))}</div>
+      <div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||s)}</span>`).join('')}</div>
+      <div class="rec-actions"><button class="btn primary" onclick="AM.openExercise('${best.ex.id}')">Открыть</button><button class="btn secondary" onclick="AM.openLog('${best.ex.id}')">Сделал</button></div>
+      <div class="reason"><b>Почему:</b> ${esc(best.reasons.slice(0,3).join(' · '))}</div>`;
+  }else bestEl.innerHTML='<div class="empty">Сейчас нет активных упражнений.</div>';
+
+  const list=document.getElementById('recommendations'); list.innerHTML='';
+  recs.slice(1,6).forEach(r=>{
+    const next=nextGoodWindow(r.ex); const delay=next&&next-now()>20*60000?`лучше ${fmtTime(next)}`:(r.status==='green'?'можно сейчас':'снизить нагрузку');
+    list.insertAdjacentHTML('beforeend',`
+      <div class="list-item" onclick="AM.openExercise('${r.ex.id}')">
+        <span class="status-dot status-${r.status}"></span><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-meta">${esc(doseText(r.ex))} · ${esc(r.reasons[0]||'')}</div></div>
+        <span class="pill ${r.status}">${esc(delay)}</span>
+      </div>`);
+  });
+
+  const counts=prescriptionCounts(), grid=document.getElementById('dailyGrid');grid.innerHTML='';
+  let closed=0,total=0;
+  for(const [g,cfg] of Object.entries(APP.program.prescription_groups)){
+    total++; const n=counts[g]||0, done=n>=cfg.target_per_day;if(done)closed++;
+    grid.insertAdjacentHTML('beforeend',`<div class="daily-cell ${done?'done':''}"><div class="circle">${n}/${cfg.target_per_day}</div><label>${esc(groupShort[g]||g)}</label></div>`);
+  }
+  document.getElementById('dailyCount').textContent=`${closed}/${total} целей`;
+
+  const f=fatigueAt(), fc=document.getElementById('fatigueCard');fc.innerHTML='';
+  for(const [k,v] of Object.entries(f)){
+    fc.insertAdjacentHTML('beforeend',`<div class="fatigue-row"><span>${esc(fatigueLabels[k]||k)}</span><div class="bar"><i style="width:${Math.round(v)}%"></i></div><b>${Math.round(v)}</b></div>`);
+  }
+  document.getElementById('updatedAt').textContent=`обновлено ${fmtTime(now())}`;
+
+  const p=pendingChecks(), wrap=document.getElementById('pendingChecksWrap'); wrap.innerHTML='';
+  if(p.length){
+    wrap.innerHTML=`<div class="section-title"><h2>Контроль реакции</h2><small>${p.length}</small></div><div class="card notice">Есть упражнения, после которых пора отметить реакцию позже/на следующее утро. <button class="btn secondary" style="margin-top:10px" onclick="AM.openCheck('${p[0].id}')">Заполнить</button></div>`;
+  }
+}
+function setRing(id,valId,v,empty='0%'){
+  const el=document.getElementById(id), ve=document.getElementById(valId);
+  if(v==null){el.style.setProperty('--v',0);ve.textContent=empty;}else{el.style.setProperty('--v',pct(v));ve.textContent=pct(v)+'%';}
+}
+
+let exerciseFilter='active';
+function renderExercises(){
+  const filters=[['active','Активные'],['available','Доступные'],['locked','Заблокированные'],['all','Все']];
+  const f=document.getElementById('exerciseFilters');f.innerHTML=filters.map(([id,n])=>`<button class="filter ${exerciseFilter===id?'active':''}" onclick="AM.setExerciseFilter('${id}')">${n}</button>`).join('');
+  let items=EX.filter(x=>exerciseFilter==='all'||state.exerciseStatuses[x.id]===exerciseFilter);
+  items.sort((a,b)=>(a.order_in_tier||999)-(b.order_in_tier||999));
+  const list=document.getElementById('exerciseList');list.innerHTML='';
+  if(!items.length)list.innerHTML='<div class="empty">Ничего нет.</div>';
+  items.forEach(ex=>{
+    const st=state.exerciseStatuses[ex.id], m=exerciseMastery(ex), tr=scoreExercise(ex);
+    list.insertAdjacentHTML('beforeend',`
+      <div class="list-item exercise-card" onclick="AM.openExercise('${ex.id}')">
+        <div class="li-main"><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><div class="li-title">${esc(ex.name)}</div>
+          <div class="li-meta">${esc(doseText(ex))}${st==='active'?' · '+(tr.status==='green'?'можно сейчас':tr.status==='yellow'?'лучше позже':'пауза'):''}</div>
+          ${m==null?'':`<div class="progress"><i style="width:${pct(m)}%"></i></div><div class="mastery-label">Mastery ${pct(m)}% · ${masteryLabel(m)}</div>`}
+        </div><div><span class="tier">${esc(ex.tier||'')}</span><div class="pill" style="margin-top:8px">${esc(st)}</div></div>
+      </div>`);
+  });
+  document.getElementById('activeExerciseCount').textContent=`${activeExercises().length} активно`;
+}
+function masteryLabel(v){const p=pct(v);return p<25?'Learning':p<50?'Stable':p<70?'Confident':p<90?'Mastered':'Automatic';}
+
+function renderTests(){
+  const rs=readinessSummary();setRing('readinessRing2','readinessValue2',rs.score,'—');
+  document.getElementById('stageName2').textContent=currentStage().name;
+  const list=document.getElementById('testList');list.innerHTML='';
+  RDCFG.tests.forEach(t=>{
+    const logs=state.testLogs.filter(l=>l.testId===t.id);
+    const status=t.status==='locked' && currentStage().order<1?'locked':t.status;
+    let result='нет данных';
+    if(logs.length){
+      const l=logs[logs.length-1];
+      if(t.bilateral && l.left!=null && l.right!=null){
+        const sym=t.lower_is_better?Math.min(l.left,l.right)/Math.max(l.left,l.right):Math.min(1,l.right/l.left);
+        result=`Л ${l.left} · П ${l.right} · ${pct(sym)}%`;
+      } else result=`${l.value ?? '—'} ${t.metric==='seconds'?'сек':''}`;
+    }
+    list.insertAdjacentHTML('beforeend',`<div class="list-item ${status==='locked'?'muted':''}" ${status==='locked'?'':`onclick="AM.openTest('${t.id}')"`}><div class="li-main"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(result)}</div></div><span class="pill">${esc(status)}</span></div>`);
+  });
+
+  const road=document.getElementById('roadmap');road.innerHTML='';
+  const cur=currentStage();
+  RDCFG.stages.forEach(s=>{
+    const cls=s.order===cur.order?'current':s.order>cur.order?'locked':'';
+    road.insertAdjacentHTML('beforeend',`<div class="card stage-card ${cls}"><div class="stage-icon">${s.order<cur.order?'✓':s.order===cur.order?'●':'🔒'}</div><b>Stage ${s.order} — ${esc(s.name)}</b><div class="muted" style="margin-top:4px">${esc(s.description||'')}</div>${s.order===cur.order+1?`<button class="btn secondary" style="margin-top:10px" onclick="AM.suggestStage('${s.id}')">Проверить переход</button>`:''}</div>`);
+  });
+}
+
+function renderStats(){
+  const chart=document.getElementById('activityChart');chart.innerHTML='';
+  const vals=[];
+  for(let i=13;i>=0;i--){const d=daysAgo(i),n=state.logs.filter(l=>startOfDay(l.ts)===d).length+state.customActivities.filter(l=>startOfDay(l.ts)===d).length;vals.push(n);}
+  const max=Math.max(1,...vals);vals.forEach(n=>chart.insertAdjacentHTML('beforeend',`<div class="chart-col" title="${n}" style="height:${Math.max(3,(n/max)*100)}%"></div>`));
+
+  const exp=weeklySkillExposure(), sk=document.getElementById('skillStats');sk.innerHTML='';
+  for(const [s,cfg] of Object.entries(APP.skills)){
+    const v=clamp((exp[s]||0)/6);
+    sk.insertAdjacentHTML('beforeend',`<div class="fatigue-row"><span>${esc(skillLabels[s]||s)}</span><div class="bar"><i style="width:${pct(v)}%"></i></div><b>${pct(v)}</b></div>`);
+  }
+
+  const hist=document.getElementById('historyList');hist.innerHTML='';
+  const all=[
+    ...state.logs.map(l=>({ts:l.ts,title:EXMAP[l.exerciseId]?.name||'Упражнение',meta:`боль ${l.painAfter??0}/10 · ${l.fatigue||'low'}`})),
+    ...state.customActivities.map(a=>({ts:a.ts,title:a.name,meta:'произвольная активность'}))
+  ].sort((a,b)=>b.ts-a.ts).slice(0,20);
+  if(!all.length)hist.innerHTML='<div class="empty">История пока пустая.</div>';
+  all.forEach(x=>hist.insertAdjacentHTML('beforeend',`<div class="list-item"><div class="li-main"><div class="li-title">${esc(x.title)}</div><div class="li-meta">${fmtDate(x.ts)} ${fmtTime(x.ts)} · ${esc(x.meta)}</div></div></div>`));
+}
+
+function renderAll(){
+  document.getElementById('todayLabel').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  renderHome();renderExercises();renderTests();renderStats();
+}
+
+function openExercise(id){
+  const ex=EXMAP[id]; if(!ex)return; const st=state.exerciseStatuses[id],m=exerciseMastery(ex),rec=scoreExercise(ex);
+  const statusActions = st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:
+                        st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
+  document.getElementById('exerciseModal').innerHTML=`
+    <div class="modal-head"><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('exerciseDialog')">×</button></div>
+    <div class="notice"><b>${esc(doseText(ex))}</b><br>${esc((ex.primary_skills||[]).map(s=>skillLabels[s]||s).join(' · '))}</div>
+    <div style="margin-top:14px">${(ex.instructions||[]).map((x,i)=>`<div class="kv"><span>${i+1}. ${esc(x)}</span></div>`).join('')}</div>
+    ${m==null?'':`<div style="margin-top:14px"><b>Mastery ${pct(m)}% — ${masteryLabel(m)}</b><div class="progress"><i style="width:${pct(m)}%"></i></div></div>`}
+    ${st==='active'?`<div class="reason"><b>Сейчас:</b> ${esc(rec.reasons.join(' · '))}</div>`:''}
+    <div class="source-badge">${esc(sourceLabels[ex.source]||ex.source)}</div>
+    <div class="modal-actions">${st==='active'?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>`:''}${statusActions}</div>`;
+  showDialog('exerciseDialog');
+}
+function openLog(id){
+  const ex=EXMAP[id]; if(!ex)return;
+  document.getElementById('logModal').innerHTML=`
+    <div class="modal-head"><div><div class="source">Запись выполнения</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
+    <div class="notice">${esc(doseText(ex))}</div>
+    <div class="field"><label>Боль во время: <span id="pdv">0</span>/10</label><div class="range-row"><input id="painDuring" type="range" min="0" max="10" value="0" oninput="pdv.textContent=this.value"><span class="range-val" id="pdv2">0</span></div></div>
+    <div class="field"><label>Боль после: <span id="pav">0</span>/10</label><div class="range-row"><input id="painAfter" type="range" min="0" max="10" value="0" oninput="pav.textContent=this.value"><span class="range-val" id="pav2">0</span></div></div>
+    <div class="field"><label>Общая усталость</label><select id="fatigueSel"><option value="low">Лёгкая</option><option value="medium">Средняя</option><option value="high">Сильная</option></select></div>
+    <div class="field"><label>Техника</label><select id="techSel"><option value="good">Хорошая</option><option value="ok">Нормальная</option><option value="poor">Развалилась</option></select></div>
+    <div class="split">
+      <label class="notice"><input type="checkbox" id="outerPain"> Локальная боль у наружной лодыжки</label>
+      <label class="notice"><input type="checkbox" id="instability"> Нестабильность / подворачивание</label>
+    </div>
+    <label class="notice" style="display:block;margin-top:10px"><input type="checkbox" id="swelling"> Новый/усилившийся отёк</label>
+    <div class="field"><label>Комментарий</label><textarea id="comment" placeholder="необязательно"></textarea></div>
+    <div class="modal-actions"><button class="btn primary" onclick="AM.saveLog('${id}')">Сохранить</button></div>`;
+  showDialog('logDialog');
+}
+function saveLog(id){
+  const ex=EXMAP[id],log={
+    id:'l'+Math.random().toString(36).slice(2),exerciseId:id,ts:now(),
+    painDuring:+document.getElementById('painDuring').value,painAfter:+document.getElementById('painAfter').value,
+    fatigue:document.getElementById('fatigueSel').value,technique:document.getElementById('techSel').value,
+    localOuterAnklePain:document.getElementById('outerPain').checked,instability:document.getElementById('instability').checked,
+    swelling:document.getElementById('swelling').checked,comment:document.getElementById('comment').value.trim(),nextDay:null,sameDay:null
+  };
+  state.logs.push(log);addXp(ex);maybeAddDelayedCheck(log);closeDialog('logDialog');save();
+  toast(log.painAfter>=3?'Записано. Scheduler снизил похожую нагрузку.':'Записано ✓');
+}
+
+function openActivity(){
+  const presets=APP.custom_activity_logging.presets;
+  document.getElementById('activityModal').innerHTML=`
+    <div class="modal-head"><h3>Добавить активность</h3><button class="x" onclick="AM.close('activityDialog')">×</button></div>
+    <div class="field"><label>Что делал?</label><select id="activityPreset">
+      ${Object.entries(presets).map(([id,p])=>`<option value="${id}">${esc(p.name)}</option>`).join('')}
+      <option value="manual">Другая активность</option>
+    </select></div>
+    <div class="field"><label>Название для другой активности</label><input id="activityName" placeholder="например, игры на пляже"></div>
+    <div class="field"><label>Длительность, минут</label><input id="activityMinutes" type="number" value="15" min="1" max="240"></div>
+    <div class="field"><label>Интенсивность</label><select id="activityIntensity"><option value="0.7">Лёгкая</option><option value="1" selected>Средняя</option><option value="1.25">Высокая</option></select></div>
+    <div class="field"><label>Боль после, 0–10</label><input id="activityPain" type="number" min="0" max="10" value="0"></div>
+    <div class="modal-actions"><button class="btn primary" onclick="AM.saveActivity()">Сохранить</button></div>`;
+  showDialog('activityDialog');
+}
+function saveActivity(){
+  const id=document.getElementById('activityPreset').value,p=APP.custom_activity_logging.presets[id];
+  const mins=Math.max(1,+document.getElementById('activityMinutes').value||15),intensity=+document.getElementById('activityIntensity').value||1;
+  let load,name;
+  if(p){load={};for(const [k,v] of Object.entries(p.load))load[k]=Math.min(100,v*intensity*Math.min(1.5,mins/15));name=p.name;}
+  else{
+    name=document.getElementById('activityName').value.trim()||'Другая активность';
+    load={calf:35*intensity,ankle_control:25*intensity,dynamic_balance:20*intensity,lateral:15*intensity,impact:0};
+  }
+  state.customActivities.push({id:'a'+Math.random().toString(36).slice(2),ts:now(),presetId:id,name,minutes:mins,load,painAfter:+document.getElementById('activityPain').value||0});
+  closeDialog('activityDialog');save();toast('Активность учтена в текущей нагрузке');
+}
+function openTest(id){
+  const t=RDCFG.tests.find(x=>x.id===id);if(!t)return;
+  const bilateral=t.bilateral;
+  document.getElementById('testModal').innerHTML=`
+    <div class="modal-head"><h3>${esc(t.name)}</h3><button class="x" onclick="AM.close('testDialog')">×</button></div>
+    <div class="notice">${t.threshold_type==='product_heuristic'?'Порог — продуктовая эвристика, не медицинский норматив.':'Результат используется только как ориентир динамики.'}</div>
+    ${bilateral?`<div class="split"><div class="field"><label>Левая (здоровая)</label><input id="testLeft" type="number" step="0.1"></div><div class="field"><label>Правая</label><input id="testRight" type="number" step="0.1"></div></div>`:`<div class="field"><label>Результат</label><input id="testValue" type="number" step="0.1"></div>`}
+    <div class="modal-actions"><button class="btn primary" onclick="AM.saveTest('${id}')">Сохранить</button></div>`;
+  showDialog('testDialog');
+}
+function saveTest(id){
+  const t=RDCFG.tests.find(x=>x.id===id),o={id:'t'+Math.random().toString(36).slice(2),testId:id,ts:now()};
+  if(t.bilateral){o.left=+document.getElementById('testLeft').value;o.right=+document.getElementById('testRight').value;if(!o.left||!o.right)return toast('Заполни обе стороны');}
+  else{o.value=+document.getElementById('testValue').value;if(!o.value)return toast('Введи результат');}
+  state.testLogs.push(o);closeDialog('testDialog');save();toast('Тест сохранён');
+}
+function openCheck(id){
+  const c=state.delayedChecks.find(x=>x.id===id);if(!c)return;const ex=EXMAP[c.exerciseId];
+  document.getElementById('checkModal').innerHTML=`
+    <div class="modal-head"><div><div class="source">Отложенная реакция</div><h3>${esc(ex?.name||'Упражнение')}</h3></div><button class="x" onclick="AM.close('checkDialog')">×</button></div>
+    <div class="field"><label>Позже в тот же день</label><select id="sameDay"><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
+    <div class="field"><label>На следующее утро</label><select id="nextMorning"><option value="">Ещё не знаю</option><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
+    <div class="modal-actions"><button class="btn primary" onclick="AM.saveCheck('${id}')">Сохранить</button></div>`;
+  showDialog('checkDialog');
+}
+function saveCheck(id){
+  const c=state.delayedChecks.find(x=>x.id===id),l=state.logs.find(x=>x.id===c.logId);
+  c.sameDay=document.getElementById('sameDay').value;c.nextMorning=document.getElementById('nextMorning').value||null;
+  if(l){l.sameDay=c.sameDay;l.nextDay=c.nextMorning;}
+  closeDialog('checkDialog');save();toast(c.nextMorning==='worse'?'Учтено: прогрессия временно понижена':'Реакция сохранена');
+}
+function activateExercise(id){state.exerciseStatuses[id]='active';closeDialog('exerciseDialog');save();toast('Упражнение добавлено в программу');}
+function archiveExercise(id){state.exerciseStatuses[id]='archived';closeDialog('exerciseDialog');save();toast('Упражнение убрано из активных');}
+
+function suggestStage(id){
+  const target=RDCFG.stages.find(x=>x.id===id),rs=readinessSummary();
+  let reasons=[];
+  const recent=state.logs.filter(l=>l.ts>=now()-7*DAY),maxPain=Math.max(0,...recent.map(l=>l.painAfter||0));
+  const unsafe=recent.some(l=>l.swelling||l.instability||l.nextDay==='worse');
+  if(maxPain>1)reasons.push(`есть недавняя боль до ${maxPain}/10`);
+  if(unsafe)reasons.push('есть отёк/нестабильность/ухудшение');
+  if((rs.domainScores.sensorimotor_control??0)<.85)reasons.push('сенсомоторный контроль ниже продуктового ориентира');
+  if((rs.domainScores.confidence??0)<.8)reasons.push('нет достаточной записи уверенности');
+  if(reasons.length)toast('Пока рано: '+reasons.slice(0,2).join(' · '));
+  else if(confirm(`Критерии выглядят выполненными по данным приложения. Перейти на этап "${target.name}"? Это не медицинское разрешение.`)){state.selectedStage=id;save();}
+}
+function saveSelfReport(){
+  const trust=+prompt('Насколько доверяешь правому голеностопу? 0–10','8');if(Number.isNaN(trust))return;
+  const fear=+prompt('Насколько боишься, что нога подвернётся? 0–10','2');
+  const ready=+prompt('Насколько готов сейчас к лёгкому бегу? 0–10','5');
+  state.selfReports.push({ts:now(),trust,fear,ready});save();toast('Самооценка сохранена');
+}
+
+function setupTabs(){
+  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    document.getElementById('screen-'+b.dataset.screen).classList.add('active');
+    if(b.dataset.screen==='tests' && !state.selfReports.length) setTimeout(()=>{ if(confirm('Добавить недельную самооценку уверенности?')) saveSelfReport(); },250);
+  }));
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ankle-mastery-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importData(file){
+  const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x||!Array.isArray(x.logs))throw new Error();state={...defaultState(),...x};save();toast('Данные импортированы');}catch(e){toast('Не удалось прочитать резервную копию')}};r.readAsText(file);
+}
+function resetData(){if(confirm('Удалить всю историю Ankle Mastery на этом устройстве?')){localStorage.removeItem(KEY);state=defaultState();save();toast('История удалена');}}
+
+document.getElementById('quickActivityBtn').onclick=openActivity;
+document.getElementById('exportBtn').onclick=exportData;
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>e.target.files[0]&&importData(e.target.files[0]);
+document.getElementById('resetBtn').onclick=resetData;
+setupTabs();
+
+window.AM={
+  openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,openCheck,saveCheck,
+  activateExercise,archiveExercise,suggestStage,close:closeDialog,
+  setExerciseFilter:(x)=>{exerciseFilter=x;renderExercises()}
+};
+
+renderAll();
+setInterval(renderHome,15*60*1000);
+})();
+</script>
+</body>
+</html>
