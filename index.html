@@ -45,7 +45,7 @@
     .best-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#b9ffdc;background:#113a30;padding:6px 9px;border-radius:999px}
     .rec-name{font-size:22px;font-weight:800;line-height:1.12;margin:11px 0 5px}.dose{color:#cfdae4;font-size:14px}
     .tags{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}.tag{font-size:11px;padding:6px 9px;border-radius:999px;background:#1b3342;color:#c9dce8}
-    .rec-actions{display:flex;gap:8px;margin-top:14px}.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:750}
+    .rec-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:750}
     .btn.primary{background:linear-gradient(180deg,#65ecae,#41d895);color:#032517;flex:1}.btn.secondary{background:#183044;color:#dce8ef;border:1px solid #2b465b}
     .btn.danger{background:#3b1d27;color:#ffbac4;border:1px solid #61303d}.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
     .reason{margin-top:12px;color:#a9bbc9;font-size:12px;line-height:1.45;border-top:1px solid #254052;padding-top:10px}
@@ -119,6 +119,7 @@
 
       <div class="section-title"><h2>Что сделать сейчас?</h2><small id="updatedAt"></small></div>
       <div class="card recommend" id="bestNow"></div>
+      <div id="postponedWrap"></div>
 
       <div class="section-title"><h2>Другие варианты</h2><small>с учётом нагрузки</small></div>
       <div class="list" id="recommendations"></div>
@@ -193,6 +194,7 @@
 <dialog id="checkDialog"><div class="modal" id="checkModal"></div></dialog>
 <dialog id="assessmentDialog"><div class="modal" id="assessmentModal"></div></dialog>
 <dialog id="selfReportDialog"><div class="modal" id="selfReportModal"></div></dialog>
+<dialog id="postponeDialog"><div class="modal" id="postponeModal"></div></dialog>
 <div class="toast" id="toast"></div>
 
 <script type="application/json" id="appConfigJSON">{"version": 3, "app": {"name": "Ankle Mastery", "locale": "ru", "llm_required": false, "offline_first": true, "timezone_mode": "local_device"}, "core_principles": ["scheduler объяснимый: каждая рекомендация показывает причины", "симптомы и усталость важнее дневных целей", "не фармить XP повторением одного простого упражнения", "load overlap не равен mastery и не равен prescription completion", "run readiness не является медицинским разрешением на бег"], "ui": {"home_screen": {"show": ["training_mastery", "run_readiness", "best_now", "can_do_now", "better_later", "daily_prescription_progress", "skill_balance", "fatigue_channels", "next_recommended_time", "why_this_recommendation"]}, "quick_actions": ["done", "choose_other", "skip", "cannot_do", "log_custom_activity", "log_symptoms", "add_available_exercise"], "skip_reasons": ["нет оборудования", "нет места", "устал", "дискомфорт", "не хочу сейчас", "другое"], "traffic_light": {"green": "можно сейчас", "yellow": "доступно, но есть причина отложить/уменьшить", "red": "не рекомендовать сейчас"}}, "program": {"prescription_groups": {"towel_straight": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "towel_bent": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "tiptoe_static": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "line_walk": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician", "variants_share_credit": true}, "front_back_balance": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "side_lunge": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}}, "clinician_session_defaults": {"recommended_sessions_per_week": 3, "exercises_per_session": [3, 5], "note": "product default only; not clinician-prescribed frequency"}}, "skills": {"mobility": {"weight": 0.08}, "calf_strength_endurance": {"weight": 0.14}, "static_balance": {"weight": 0.12}, "dynamic_balance": {"weight": 0.16}, "lateral_stability": {"weight": 0.14}, "ankle_control": {"weight": 0.12}, "gait_control": {"weight": 0.08}, "reactive_control": {"weight": 0.08}, "multidirectional_control": {"weight": 0.08}}, "fatigue_channels": {"calf": {"decay_half_life_hours": 8, "yellow_from": 35, "red_from": 70}, "ankle_control": {"decay_half_life_hours": 4, "yellow_from": 40, "red_from": 75}, "dynamic_balance": {"decay_half_life_hours": 3, "yellow_from": 45, "red_from": 80}, "lateral": {"decay_half_life_hours": 5, "yellow_from": 40, "red_from": 75}, "impact": {"decay_half_life_hours": 18, "yellow_from": 25, "red_from": 60}}, "scheduler": {"strategy": "deterministic_score_v2", "refresh_on": ["app_open", "exercise_logged", "custom_activity_logged", "symptom_logged", "exercise_status_changed", "clock_tick_15_min"], "score_weights": {"daily_deficit": 0.25, "skill_deficit": 0.2, "freshness": 0.2, "weekly_balance": 0.15, "variety": 0.1, "progression_value": 0.1}, "multipliers": ["fatigue_modifier", "exercise_tolerance_modifier", "symptom_modifier", "context_availability_modifier"], "same_exercise_soft_penalty_minutes": 120, "same_primary_skill_penalty": 0.2, "recommended_list_size": 5, "next_time": {"resolution_minutes": 15, "search_horizon_hours": 24, "green_score_threshold": 0.58}, "explain_recommendation": true, "fatigue_demand_reference": 0.65}, "overlap": {"load_credit_affects_fatigue": true, "load_credit_can_reduce_priority_of_similar_exercises": true, "load_credit_closes_prescription_target": false, "structured_skill_credit_counts_for_weekly_skill_balance": true, "custom_activity_skill_mastery_credit": false, "family_variant_can_close_same_prescription_target": true}, "exercise_tolerance": {"rolling_window_sessions": 5, "positive_sessions_for_progression": 3, "modifiers": {"normal": 1.0, "mild_reaction": 0.85, "moderate_reaction": 0.6, "strong_reaction": 0.3, "safety_lock": 0.0}, "rules": [{"if": "pain_after <= 1 && !next_day_worse && !swelling && !instability", "state": "normal"}, {"if": "pain_after == 2 || fatigue == moderate", "state": "mild_reaction"}, {"if": "pain_after in [3,4] || next_day_worse", "state": "moderate_reaction"}, {"if": "pain_after >= 5", "state": "strong_reaction"}, {"if": "swelling || instability", "state": "safety_lock"}], "note": "all numeric cutoffs are product heuristics, not medical diagnostic thresholds"}, "symptom_checks": {"after_fields": ["pain_during_0_10", "pain_after_0_10", "local_outer_ankle_pain", "fatigue_low_medium_high", "instability", "swelling", "difficulty_easy_normal_hard"], "delayed_fields": ["later_same_day_worse_same_better", "next_morning_worse_same_better"], "light_exercises_can_skip_full_check": true, "always_ask_after": ["tier:S", "tier:FUTURE", "custom_activity_high_load"]}, "progression": {"success_requires": {"target_completed": true, "pain_during_max": 2, "pain_after_max": 2, "next_day_worse": false, "swelling": false, "instability": false, "technique": ["good", "ok"]}, "successful_sessions_required_default": 3, "auto_progress_inside_same_exercise": false, "offer_progression_confirmation": true, "never_auto_unlock_new_exercise": true}, "gamification": {"xp": {"base_per_useful_dose": 10, "same_skill_daily_multipliers": [1.0, 0.65, 0.35, 0.15], "extra_volume_beyond_cap_xp": 0, "no_bonus_for_pain_or_failure": true}, "streak": {"day_counts_if_distinct_skills_at_least": 2, "rest_freezes_per_week": 2, "no_penalty_for_safety_rest": true}, "training_mastery": {"separate_from_run_readiness": true, "formula": {"exercise_mastery": 0.5, "skill_consistency_14d": 0.3, "symptom_stability_7d": 0.2}}}, "exercise_lifecycle": {"states": ["active", "available", "locked", "archived"], "available_to_active": "manual user action only", "locked_to_available": "manual stage transition / explicit unlock rule; never regular scheduler", "archive_preserves_history": true, "show_source_badge": true}, "substitutions": {"enabled": true, "trigger_reasons": ["нет оборудования", "нет места", "не хочу сейчас"], "method": "explicit substitute_ids first; then vector similarity", "minimum_skill_similarity": 0.7, "respect_fatigue_and_symptom_locks": true, "do_not_use_locked_or_archived": true}, "custom_activity_logging": {"enabled": true, "presets": {"sand_tiptoe_fun": {"name": "Носки на песке", "load": {"calf": 60, "ankle_control": 40, "dynamic_balance": 35, "lateral": 15, "impact": 0}}, "long_tiptoe_walk": {"name": "Долгая ходьба на носках", "load": {"calf": 55, "ankle_control": 30, "dynamic_balance": 25, "lateral": 10, "impact": 0}}, "general_walk": {"name": "Обычная прогулка", "load": {"calf": 10, "ankle_control": 10, "dynamic_balance": 5, "lateral": 0, "impact": 0}}}, "manual_fields": ["duration_minutes", "calf_load_low_medium_high", "balance_load_low_medium_high", "lateral_load_low_medium_high", "pain_after_0_10", "fatigue_low_medium_high"], "freeform_requires_llm": false, "mastery_credit": false}, "return_to_running": {"module_enabled": true, "permission_semantics": "readiness estimator only; never medical clearance", "initial_stage": "rehab", "automatic_running_permission": false, "impact_tests_locked_initially": true, "clinician_context": "реабилитолог рекомендовал примерно пару месяцев тренировать ноги/голеностоп до уверенного мастерства", "calendar_hint_days": 56, "calendar_hint_is_approximation": true}, "notifications": {"enabled_by_default": false, "optional": ["next_good_window", "evening_delayed_check", "next_morning_check", "weekly_self_test"]}, "assessment": {"session_gap_minutes": 60, "nominal_load": 45, "load_factor_min": 0.5, "load_factor_max": 1.5, "fatigue_multipliers": {"easy": 0.9, "moderate": 1, "strong": 1.25}, "moderate_pain_from": 3, "safety_pain_from": 5, "reaction_modifier": 0.6}}</script>
@@ -239,7 +241,7 @@ function defaultState(){
   return {
     version:3, createdAt:Date.now(), logs:[], customActivities:[], testLogs:[], selfReports:[],
     assessment_sessions:[], load_events:[], last_self_report_at:null,
-    delayedChecks:[], exerciseStatuses:statuses, xp:0, selectedStage:'rehab', settings:{}
+    delayedChecks:[], exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
   };
 }
 let state = loadState();
@@ -539,7 +541,7 @@ function scoreExerciseAtTime(ex,ts){
   return scoreExercise(ex,ts);
 }
 function recommendations(ts=now()){
-  return activeExercises().map(ex=>({ex,...scoreExercise(ex,ts)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+  return activeExercises().filter(ex=>!postponedUntil('exercise',ex.id,ts)).map(ex=>({ex,...scoreExercise(ex,ts)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
 }
 function testRecommendations(ts=now()){
   const recent=reactionEntries().slice(-1)[0];
@@ -547,6 +549,7 @@ function testRecommendations(ts=now()){
   if(state.assessment_sessions.some(s=>!s.completed_at))return [];
   const fatigue=fatigueAt(ts),covered=new Set(RDCFG.tests.filter(t=>testHistory(t).length).map(t=>t.domain));
   return RDCFG.tests.filter(testAvailable).flatMap(t=>{
+    if(postponedUntil('test',t.id,ts))return [];
     const latest=testHistory(t).slice(-1)[0],age=latest?(ts-latest.ts)/DAY:Infinity;
     if(age<TEST_REPEAT_DAYS)return [];
     const load={load_channels:t.test_load_vector},rf=relevantFatigue(load,ts);
@@ -567,7 +570,40 @@ function testDoseText(t){
   return `${t.bilateral?'Левая и правая нога':'Один тест'}${testCap(t)?' · до '+testCap(t)+' '+t.unit_short:t.metric==='errors_per_30s'?' · 30 секунд на сторону':''}`;
 }
 function actionButtonHTML(r){
-  return r.kind==='test'?`<button class="btn primary" onclick="AM.openTest('${r.test.id}')">Пройти тест</button>`:`<button class="btn primary" onclick="AM.openExercise('${r.ex.id}')">Открыть</button><button class="btn secondary" onclick="AM.openLog('${r.ex.id}')">Сделал</button>`;
+  const buttons=r.kind==='test'?`<button class="btn primary" onclick="AM.openTest('${r.test.id}')">Пройти тест</button>`:`<button class="btn primary" onclick="AM.openExercise('${r.ex.id}')">Открыть</button><button class="btn secondary" onclick="AM.openLog('${r.ex.id}')">Сделал</button>`;
+  return buttons+`<button class="btn ghost" onclick="AM.openPostpone('${r.kind}','${r.kind==='test'?r.test.id:r.ex.id}')">Отложить</button>`;
+}
+let lastPostponed=null,postponedTimer=null;
+function postponedUntil(kind,id,ts=now()){
+  const until=state.postponedActions[kind+':'+id];
+  return until>ts?until:null;
+}
+function openPostpone(kind,id){
+  const item=kind==='test'?RDCFG.tests.find(t=>t.id===id):EXMAP[id];
+  document.getElementById('postponeModal').innerHTML=`<div class="modal-head"><h3>Отложить рекомендацию</h3><button class="x" aria-label="Закрыть" onclick="AM.close('postponeDialog')">×</button></div><p>${esc(item.name)}</p><div class="list">${[['hour','На час'],['tomorrow','До завтра'],['week','На неделю']].map(([period,label])=>`<button class="btn secondary" onclick="AM.postponeAction('${kind}','${id}','${period}')">${label}</button>`).join('')}</div><div class="li-meta" style="margin-top:12px">Покажем следующий вариант. Это действие останется в каталоге, и его можно вернуть раньше.</div>`;
+  showDialog('postponeDialog');
+}
+function postponeAction(kind,id,period,ts=now()){
+  const tomorrow=new Date(ts);tomorrow.setDate(tomorrow.getDate()+1);tomorrow.setHours(0,0,0,0);
+  const until=period==='hour'?ts+3600000:period==='tomorrow'?tomorrow.getTime():ts+7*DAY;
+  state.postponedActions[kind+':'+id]=until;
+  lastPostponed={kind,id,until};
+  closeDialog('postponeDialog');save();
+}
+function resumeAction(kind,id){
+  delete state.postponedActions[kind+':'+id];
+  if(lastPostponed?.kind===kind&&lastPostponed.id===id)lastPostponed=null;
+  save();
+}
+function renderPostponed(best){
+  const entries=Object.entries(state.postponedActions).filter(([,until])=>until>now());
+  clearTimeout(postponedTimer);
+  postponedTimer=entries.length?setTimeout(renderAll,Math.max(0,Math.min(...entries.map(([,until])=>until))-now())):null;
+  const feedback=lastPostponed&&postponedUntil(lastPostponed.kind,lastPostponed.id)?`<div class="notice" role="status" style="margin-top:12px">Отложено до ${fmtDate(lastPostponed.until)} ${fmtTime(lastPostponed.until)} <button class="btn ghost" onclick="AM.resumeAction('${lastPostponed.kind}','${lastPostponed.id}')">Отменить</button></div>`:'';
+  document.getElementById('postponedWrap').innerHTML=feedback+(entries.length?`<details ${best?'':'open'}><summary>Отложенные действия · ${entries.length}</summary><div class="list" style="margin-top:10px">${entries.map(([key,until])=>{
+    const [kind,id]=key.split(':'),item=kind==='test'?RDCFG.tests.find(t=>t.id===id):EXMAP[id];
+    return item?`<div class="list-item"><div class="li-main"><div class="li-title">${esc(item.name)}</div><div class="li-meta">До ${fmtDate(until)} ${fmtTime(until)}</div></div><button class="btn secondary" onclick="AM.resumeAction('${kind}','${id}')">Вернуть</button></div>`:'';
+  }).join('')}</div></details>`:'');
 }
 function exerciseMastery(ex){
   if(!ex.mastery_tracking?.enabled)return null;
@@ -695,7 +731,8 @@ function renderHome(){
       ${best.kind==='test'?`<div class="reason">${esc(best.test.what_measures)}${best.latest?'<br>Последний результат: '+esc(resultText(best.test,best.latest)):''}</div>`:`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||s)}</span>`).join('')}</div>`}
       <div class="rec-actions">${actionButtonHTML(best)}</div>
       <div class="reason"><b>Почему:</b> ${esc(best.reasons.slice(0,3).join(' · '))}</div>`;
-  }else bestEl.innerHTML='<div class="empty">Сейчас нет подходящих действий. Отдохни и отметь реакцию после нагрузки.</div>';
+  }else bestEl.innerHTML=Object.values(state.postponedActions).some(until=>until>now())?'<div class="empty">Сейчас нет рекомендаций. Есть отложенные действия — их можно вернуть ниже.</div>':'<div class="empty">Сейчас нет подходящих действий. Отдохни и отметь реакцию после нагрузки.</div>';
+  renderPostponed(best);
 
   const list=document.getElementById('recommendations'); list.innerHTML='';
   recs.slice(1,6).forEach(r=>{
@@ -756,6 +793,7 @@ function renderExercises(){
       <div class="list-item exercise-card" onclick="AM.openExercise('${ex.id}')">
         <div class="li-main"><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><div class="li-title">${esc(ex.name)}</div>
           <div class="li-meta">${esc(doseText(ex))}${st==='active'?' · '+(tr.status==='green'?'можно сейчас':tr.status==='yellow'?'лучше позже':'пауза'):''}</div>
+          ${postponedUntil('exercise',ex.id)?`<div class="li-meta">Отложено до ${fmtDate(postponedUntil('exercise',ex.id))} ${fmtTime(postponedUntil('exercise',ex.id))}</div>`:''}
           ${m==null?'':`<div class="progress"><i style="width:${pct(m)}%"></i></div><div class="mastery-label">Освоение ${pct(m)}% · ${masteryLabel(m)}</div>`}
         </div><div><span class="tier">${ex.tier==='FUTURE'?'Позже':'Уровень '+esc(ex.tier||'—')}</span><div class="pill" style="margin-top:8px">${esc(statusLabels[st]||'Статус неизвестен')}</div></div>
       </div>`);
@@ -792,8 +830,9 @@ function renderTests(){
     const logs=testHistory(t),latest=logs.slice(-1)[0],available=testAvailable(t);
     const nextCheck=latest?latest.ts+TEST_REPEAT_DAYS*DAY:null;
     const schedule=available?nextCheck?(now()<nextCheck?`Следующая проверка — примерно ${fmtDate(nextCheck)}`:'Пора обновить измерение · с учётом нагрузки и самочувствия'):'Можно пройти первое измерение':'';
+    const until=postponedUntil('test',t.id);
     const protocols=[...new Set(state.testLogs.filter(l=>l.testId===t.id&&l.protocol_id!==t.protocol_id).map(l=>l.protocol_id))];
-    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${schedule?`<div class="li-meta">${esc(schedule)}</div>`:''}${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?(latest?'Повторить тест':'Пройти тест'):'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
+    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${schedule?`<div class="li-meta">${esc(schedule)}</div>`:''}${until?`<div class="notice" style="margin-top:10px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('test','${t.id}')">Вернуть в рекомендации</button></div>`:''}${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?(latest?'Повторить тест':'Пройти тест'):'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
   });
   const road=document.getElementById('roadmap');road.innerHTML='';
   const cur=currentStage();
@@ -905,6 +944,7 @@ function renderAll(){
 
 function openExercise(id){
   const ex=EXMAP[id]; if(!ex)return; const st=state.exerciseStatuses[id],m=exerciseMastery(ex),rec=scoreExercise(ex);
+  const until=postponedUntil('exercise',id);
   const statusActions = st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:
                         st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
   document.getElementById('exerciseModal').innerHTML=`
@@ -914,6 +954,7 @@ function openExercise(id){
     ${m==null?'':`<div style="margin-top:14px"><b>Освоение ${pct(m)}% — ${masteryLabel(m)}</b><div class="progress"><i style="width:${pct(m)}%"></i></div></div>`}
     ${st==='active'?`<div class="reason"><b>Сейчас:</b> ${esc(rec.reasons.join(' · '))}</div>`:''}
     <div class="source-badge">${esc(sourceLabels[ex.source]||ex.source)}</div>
+    ${until?`<div class="notice" style="margin-top:12px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:''}
     <div class="modal-actions">${st==='active'?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>`:''}${statusActions}</div>`;
   showDialog('exerciseDialog');
 }
@@ -1068,6 +1109,7 @@ document.getElementById('resetBtn').onclick=resetData;
 setupTabs();
 
 window.AM={
+  openPostpone,postponeAction,resumeAction,
   openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,openCheck,saveCheck,
   activateExercise,archiveExercise,suggestStage,openAssessment,saveAssessment,chooseFatigue,openAssessmentCheck,saveAssessmentCheck,openSelfReport,saveSelfReport,close:closeDialog,
   setExerciseFilter:(x)=>{exerciseFilter=x;renderExercises()}

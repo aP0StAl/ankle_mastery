@@ -16,9 +16,9 @@ function app(saved){
     }
     return elements.get(id);
   };
-  const context={document:{getElementById:get,querySelectorAll:()=>[],createElement:()=>({click(){}})},window:{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date,Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,setInterval:()=>0,confirm:()=>false};
+  const context={document:{getElementById:get,querySelectorAll:()=>[],createElement:()=>({click(){}})},window:{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date,Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -184,4 +184,52 @@ test('missing results do not always outrank training, and the catalog shows the 
   assert.ok(d.testRecommendations(ts).some(r=>!r.latest));
   d.renderTests();
   assert.match(get('testList').innerHTML,/Следующая проверка — примерно/);
+});
+test('postponing replaces the recommendation without changing history, load, mastery or XP',()=>{
+  const {dev:d,get}=app(),ts=Date.now();
+  const before=plain(d.getState()),id='towel_stretch_straight_knee';
+  d.postponeAction('exercise',id,'hour',ts);
+  assert.ok(!d.recommendations(ts).some(r=>r.ex.id===id));
+  assert.ok(d.recommendations(ts).length>0);
+  assert.equal(d.postponedUntil('exercise',id,ts),ts+3600000);
+  assert.ok(d.recommendations(ts+3600000).some(r=>r.ex.id===id));
+  const after=plain(d.getState());
+  delete before.postponedActions;delete after.postponedActions;
+  assert.deepEqual(after,before);
+  const first=d.actionRecommendations(ts)[0].test.id;
+  d.postponeAction('test',first,'week',ts);
+  assert.ok(!d.testRecommendations(ts).some(r=>r.test.id===first));
+  assert.notEqual(d.actionRecommendations(ts)[0].test?.id,first);
+  assert.ok(d.testRecommendations(ts+7*86400000).some(r=>r.test.id===first));
+  assert.match(get('postponedWrap').innerHTML,/Отменить/);
+  d.resumeAction('test',first);
+  assert.ok(d.testRecommendations(ts).some(r=>r.test.id===first));
+});
+test('until tomorrow uses the next local calendar day and postponements survive reload and import',()=>{
+  const {dev:d,storage,context}=app(),ts=new Date(2026,9,6,23,45).getTime(),id='hemisphere_hold';
+  d.postponeAction('test',id,'tomorrow',ts);
+  const tomorrow=new Date(2026,9,7,0,0).getTime();
+  assert.equal(d.postponedUntil('test',id,ts),tomorrow);
+  const saved=JSON.parse(storage.get(KEY)),restored=app(saved).dev;
+  assert.equal(restored.postponedUntil('test',id,ts),tomorrow);
+  assert.ok(restored.testRecommendations(tomorrow).some(r=>r.test.id===id));
+  const old=plain(d.defaultState());delete old.postponedActions;
+  assert.deepEqual(plain(app(old).dev.getState().postponedActions),{});
+  d.resumeAction('test',id);
+  assert.equal(d.postponedUntil('test',id,ts),null);
+  context.FileReader=class{readAsText(file){this.result=file;this.onload();}};
+  d.importData(JSON.stringify(saved));
+  assert.equal(d.postponedUntil('test',id,ts),tomorrow);
+});
+test('all postponed actions leave an explanation and can be restored from the home screen',()=>{
+  const {dev:d,get}=app(),ts=Date.now();
+  for(const ex of Object.values(d.EXMAP).filter(ex=>d.getState().exerciseStatuses[ex.id]==='active'))d.getState().postponedActions['exercise:'+ex.id]=ts+7*86400000;
+  for(const t of d.RDCFG.tests)d.getState().postponedActions['test:'+t.id]=ts+7*86400000;
+  assert.equal(d.actionRecommendations(ts).length,0);
+  d.renderHome();
+  assert.match(get('bestNow').innerHTML,/отложенные/);
+  assert.match(get('postponedWrap').innerHTML,/<details open>/);
+  assert.match(get('postponedWrap').innerHTML,/Вернуть/);
+  d.resumeAction('exercise','towel_stretch_straight_knee');
+  assert.equal(d.actionRecommendations(ts)[0].ex.id,'towel_stretch_straight_knee');
 });
