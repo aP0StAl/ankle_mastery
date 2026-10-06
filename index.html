@@ -61,6 +61,9 @@
     .rec-name{font-size:22px;font-weight:800;line-height:1.12;margin:11px 0 5px}.dose{color:#cfdae4;font-size:14px}
     .tags{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0}.tag{font-size:11px;padding:6px 9px;border-radius:999px;background:#1b3342;color:#c9dce8}
     .rec-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.btn{border:none;border-radius:13px;padding:12px 14px;font-weight:750}
+    .recommend .rec-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .recommend .rec-actions .btn{min-width:0}
+    .recommend .rec-actions.exercise-actions .primary,.recommend .rec-actions .btn:only-child{grid-column:1/-1}
     .btn.primary{background:linear-gradient(180deg,#65ecae,#41d895);color:#032517;flex:1}.btn.secondary{background:#183044;color:#dce8ef;border:1px solid #2b465b}
     .btn.danger{background:#3b1d27;color:#ffbac4;border:1px solid #61303d}.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
     .reason{margin-top:12px;color:#a9bbc9;font-size:12px;line-height:1.45;border-top:1px solid #254052;padding-top:10px}
@@ -974,7 +977,7 @@ function renderHome(){
       <div class="rec-name">${esc(best.kind==='test'?best.test.name:best.ex.name)}</div>
       <div class="dose">${esc(best.kind==='test'?testDoseText(best.test):doseText(best.ex,best.dose))}</div>
       ${best.kind==='test'?`<div class="li-meta">${esc(best.test.what_measures)}</div>`:''}
-      <div class="rec-actions">${actionButtonHTML(best)}</div>
+      <div class="rec-actions ${best.kind==='exercise'?'exercise-actions':''}">${actionButtonHTML(best)}</div>
       <div class="reason"><b>Почему:</b> ${esc(best.reasons[0])}</div>
       <details class="recommend-details"><summary>Подробнее о рекомендации</summary>${best.reasons.slice(1).map(r=>`<div class="reason">${esc(r)}</div>`).join('')}${best.kind==='test'?best.latest?'<div class="li-meta">Последний результат: '+esc(resultText(best.test,best.latest))+'</div>':'':`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||fatigueLabels[s]||s)}</span>`).join('')}</div>`}</details>`;
   }else bestEl.innerHTML=noRecommendationHTML();
