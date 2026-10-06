@@ -13,13 +13,15 @@ function app(saved,clock=null){
   const get=id=>{
     if(!elements.has(id)){
       const config=html.match(new RegExp('id="'+id+'">(.*?)</script>'));
-      elements.set(id,{textContent:config?config[1]:'',value:'',innerHTML:'',style:{setProperty(){}},classList:{add(){},remove(){},toggle(){}},appendChild(){},insertAdjacentHTML(_,s){this.innerHTML+=s;},showModal(){},close(){},click(){}});
+      const classes=new Set(),handlers={};
+      elements.set(id,{textContent:config?config[1]:'',value:'',innerHTML:'',style:{setProperty(){}},classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k),toggle(k,on){if(on??!classes.has(k))classes.add(k);else classes.delete(k);}},appendChild(){},insertAdjacentHTML(_,s){this.innerHTML+=s;},open:false,showModal(){this.open=true;},close(){this.open=false;handlers.close?.();},addEventListener(k,fn){handlers[k]=fn;},querySelector(){return this.focused||null;},click(){}});
     }
     return elements.get(id);
   };
-  const context={document:{getElementById:get,querySelectorAll:()=>[],createElement:()=>({click(){}})},window:{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
+  const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
+  const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -476,4 +478,50 @@ test('different unconfirmed volumes do not add up to a confirmed working level',
   }
   assert.equal(d.exerciseProgress(ex).confirmed,false);assert.equal(d.exerciseProgress(ex).confirmedDays,1);
   assert.ok(d.exerciseMastery(ex)<=1/3);
+});
+
+
+test('a single postponed test does not hide load limits and the exact rest windows',()=>{
+  const today=dayStart(Date.now()),clock=today+(22*60+9)*60000+30000;
+  const {dev:d,get}=app(null,clock);assessmentScenario(d,today+16*3600000);
+  const staticEx=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(staticEx.id,staticEx.dose,comfortable,today+19*3600000);
+  d.recordSymptoms({pain:2,steadiness:'shaky',fatigue:'low',response:'worse'},l.id,today+22*3600000);
+  for(const [id,minutes] of [['towel_stretch_straight_knee',5],['towel_stretch_bent_knee',9]]){
+    const ex=d.EXMAP[id];d.recordExercise(id,ex.dose,comfortable,today+(22*60+minutes)*60000);
+  }
+  d.getState().postponedActions['test:knee_to_wall']=today+DAY;
+  assert.equal(d.actionRecommendations(clock).length,0);d.renderHome();
+  const card=get('bestNow').innerHTML;
+  assert.match(card,/Сейчас восстановление/);assert.match(card,/шаткая, боль 2/);assert.match(card,/На сегодня достаточно похожей нагрузки/);
+  assert.match(card,/перерыв 90 мин/);assert.match(card,/23:35/);assert.match(card,/23:39/);
+  assert.doesNotMatch(card,/Есть отложенные действия/);assert.ok(get('bestNow').classList.contains('rest'));
+  assert.ok(d.recommendations(today+(23*60+35)*60000).some(r=>r.ex.id==='towel_stretch_straight_knee'));
+  assert.ok(!d.recommendations(clock).some(r=>r.ex.id===staticEx.id));
+  const load=plain(d.fatigueAt(clock));
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',response:'better'},'unknown',clock);
+  assert.equal(d.actionRecommendations(clock).length,0);assert.deepEqual(plain(d.fatigueAt(clock)),load);
+  d.renderHome();assert.match(get('bestNow').innerHTML,/Последняя отметка: устойчива, боль 0/);
+  assert.match(get('bestNow').innerHTML,/23:35/);assert.doesNotMatch(get('bestNow').innerHTML,/Тесты ждут нормальной реакции/);
+  assert.ok(d.recommendations(today+(23*60+35)*60000).some(r=>r.ex.id==='towel_stretch_straight_knee'));
+});
+test('dialogs keep the page locked through nested dialogs and restore scroll after all close',()=>{
+  const {dev:d,get,context}=app();context.window.scrollY=640;
+  d.showDialog('exerciseDialog');assert.ok(get('body').classList.contains('modal-open'));assert.equal(get('body').style.top,'-640px');
+  context.window.scrollY=0;d.showDialog('logDialog');d.closeDialog('exerciseDialog');
+  assert.ok(get('body').classList.contains('modal-open'));assert.equal(context.window.restoredScrollY,undefined);
+  let blurred=false;get('logDialog').focused={blur(){blurred=true;}};
+  d.closeDialog('logDialog');assert.ok(blurred);assert.ok(!get('body').classList.contains('modal-open'));
+  assert.equal(get('body').style.top,'');assert.equal(context.window.restoredScrollY,640);
+  context.window.scrollY=315;d.showDialog('symptomsDialog');get('symptomsDialog').close();
+  assert.ok(!get('body').classList.contains('modal-open'));assert.equal(context.window.restoredScrollY,315);
+});
+
+test('a daily maximum is explained even when an unrelated test is postponed',()=>{
+  const clock=Date.now(),{dev:d}=app(null,clock),ex=d.EXMAP.towel_stretch_straight_knee;
+  for(const id of Object.keys(d.getState().exerciseStatuses))d.getState().exerciseStatuses[id]='archived';
+  d.getState().exerciseStatuses[ex.id]='active';
+  for(let i=0;i<ex.prescription_credit.max_per_day;i++)d.getState().logs.push({id:'max'+i,exerciseId:ex.id,ts:dayStart(clock)+i*60000,painAfter:0});
+  d.getState().postponedActions['test:knee_to_wall']=clock+DAY;
+  const card=d.noRecommendationHTML(clock);assert.match(card,/достигнут максимум на сегодня/);assert.doesNotMatch(card,/Есть отложенные действия/);
 });
