@@ -7,7 +7,8 @@ const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const KEY='ankle_mastery_static_v2';
 const plain=x=>JSON.parse(JSON.stringify(x));
-function app(saved){
+const comfortable={painDuring:0,painAfter:0,fatigue:'low',technique:'good',steadiness:'steady',instability:false,swelling:false,difficulty:'normal'};
+function app(saved,clock=null){
   const storage=new Map(saved?[[KEY,JSON.stringify(saved)]]:[]),elements=new Map();
   const get=id=>{
     if(!elements.has(id)){
@@ -16,9 +17,9 @@ function app(saved){
     }
     return elements.get(id);
   };
-  const context={document:{getElementById:get,querySelectorAll:()=>[],createElement:()=>({click(){}})},window:{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date,Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
+  const context={document:{getElementById:get,querySelectorAll:()=>[],createElement:()=>({click(){}})},window:{},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -41,7 +42,7 @@ test('requested assessment increases fatigue and lowers overlap without training
   assert.ok(heavy.score<initial.score*.65);
   assert.notEqual(d.recommendations()[0].ex.id,'tiptoe_square_corner_lunges');
   assert.equal(d.scoreExercise(d.EXMAP.towel_stretch_straight_knee,ts).status,'green');
-  assert.equal(d.scoreExercise(d.EXMAP.slider_injured_leg_three_directions,ts).status,'green');
+  assert.equal(d.scoreExercise(d.EXMAP.slider_injured_leg_three_directions,ts).status,'red'); // Shared control load has filled the daily budget.
   assert.deepEqual(plain(d.prescriptionCounts()),before.counts);
   assert.deepEqual(plain(Object.fromEntries(Object.entries(d.EXMAP).map(([k,x])=>[k,d.exerciseMastery(x)]))),before.mastery);
   assert.equal(d.trainingMastery(),before.tm);
@@ -93,7 +94,7 @@ test('pain, swelling, instability and delayed worsening restrict load and safety
   d.completeAssessment(s,{swelling:false,instability:true},ts);assert.equal(d.safetyFlag(),true);
   const normal=d.recordTest('hemisphere_hold',{left:30,right:15},ts+61*60000);
   d.completeAssessment(normal,{pain_after:0,instability:false,swelling:false,next_day_response:'same',same_day_response:'same'},ts+86400000);
-  assert.equal(d.safetyFlag(),false);assert.equal(d.assessmentSymptomModifier(ex),1);
+  assert.equal(d.safetyFlag(ts+86400000),false);assert.equal(d.assessmentSymptomModifier(ex,ts+86400000),1);
 });
 test('self report interval and export/import round trip keep assessment loads',()=>{
   const a=app(),d=a.dev;assessmentScenario(d);
@@ -232,4 +233,247 @@ test('all postponed actions leave an explanation and can be restored from the ho
   assert.match(get('postponedWrap').innerHTML,/Вернуть/);
   d.resumeAction('exercise','towel_stretch_straight_knee');
   assert.equal(d.actionRecommendations(ts)[0].ex.id,'towel_stretch_straight_knee');
+});
+
+
+const DAY=86400000;
+function dayStart(ts){const d=new Date(ts);d.setHours(0,0,0,0);return +d;}
+function morningAt(ts){const d=new Date(ts);d.setDate(d.getDate()+1);d.setHours(8,0,0,0);return +d;}
+function morning(d,l,response={}){
+  return d.recordSymptoms({phase:'morning',trainingDay:dayStart(l.ts),response:'same',historyKnown:true,historyWorse:false,pain:0,fatigue:'low',steadiness:'steady',swelling:false,...response},'combined',morningAt(l.ts));
+}
+function confirmedDose(d,ex,dose,effort='easy',end=Date.now()-2*DAY){
+  const logs=[];
+  for(let i=0;i<3;i++){
+    const l=d.recordExercise(ex.id,dose,{...comfortable,difficulty:effort},end-(2-i)*DAY);morning(d,l);logs.push(l);
+  }
+  return logs;
+}
+test('moderate effort and fatigue without worsening retain dose over repeated days',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
+  for(let i=0;i<7;i++){
+    const ts=Date.now()-(9-i)*DAY,dose=d.suggestedDose(ex,ts).dose;
+    assert.equal(dose.reps,10);
+    const l=d.recordExercise(ex.id,dose,{...comfortable,fatigue:'medium',difficulty:'hard'},ts);morning(d,l);
+  }
+  assert.equal(d.suggestedDose(ex).dose.reps,10);assert.equal(d.suggestedDose(ex).trial,null);
+});
+test('one pain-free execution gives neither running readiness nor half mastery',()=>{
+  const {dev:d,get}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
+  d.recordExercise(ex.id,ex.dose,comfortable);
+  assert.equal(d.readinessSummary().score,null);assert.equal(d.exerciseMastery(ex),0);
+  d.renderHome();assert.match(get('readinessHint').textContent,/Недостаточно данных/);
+  assert.equal(get('readinessValue').textContent,'—');
+});
+test('three confirmed days establish a working level; shortened time or daily load preserve it',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
+  confirmedDose(d,ex,ex.dose);
+  assert.equal(d.exerciseProgress(ex).confirmed,true);
+  for(const doseReason of ['time','daily_load']){
+    const l=d.recordExercise(ex.id,{...ex.dose,reps:4},{...comfortable,doseReason},Date.now()-DAY);morning(d,l);
+    assert.equal(d.suggestedDose(ex).working.reps,10);assert.equal(d.suggestedDose(ex).dose.reps,10);
+  }
+});
+test('late adverse reaction and current recovery remain independent immutable observations',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,ts=Date.now()-DAY;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,ts),before=plain(l),load=plain(d.allLoadEvents()),xp=d.getState().xp;
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky',swelling:false},l.id,ts+3600000);
+  assert.deepEqual(plain(l),before);assert.equal(d.classifyLog(l),'moderate_reaction');
+  const reduced=d.suggestedDose(ex).dose.reps;assert.ok(reduced<10);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady',swelling:false},l.id,ts+7200000);
+  assert.equal(d.currentSymptoms().steadiness,'steady');assert.equal(d.exerciseResponse(l).steadiness,'shaky');
+  assert.equal(d.suggestedDose(ex).dose.reps,reduced);assert.equal(d.suggestedDose(ex).working.reps,10);
+  assert.deepEqual(plain(d.allLoadEvents()),load);assert.equal(d.getState().xp,xp);
+});
+test('equivalent pain is classified consistently and is not automatically labelled worse',()=>{
+  const first=app().dev,second=app().dev,ex=first.EXMAP.bilateral_tiptoe_static,ts=Date.now()-DAY;
+  const a=first.recordExercise(ex.id,ex.dose,{...comfortable,painAfter:2},ts);
+  const b=second.recordExercise(ex.id,ex.dose,comfortable,ts);
+  const r=second.recordSymptoms({pain:2,fatigue:'low',steadiness:'steady',swelling:false,response:'same'},b.id,ts+3600000);
+  assert.equal(r.worse,false);assert.equal(first.classifyLog(a),second.classifyLog(b));
+  assert.equal(first.suggestedDose(ex).dose.reps,second.suggestedDose(second.EXMAP[ex.id]).dose.reps);
+  const stable=app().dev,l=stable.recordExercise(ex.id,ex.dose,{...comfortable,painBefore:2,painDuring:2,painAfter:2},ts);
+  assert.equal(stable.classifyLog(l),'normal');assert.equal(stable.suggestedDose(stable.EXMAP[ex.id]).dose.reps,10);
+});
+test('unknown cumulative reaction leaves individual evidence intact and allows one light load before rest',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,ts=Date.now()-3*3600000;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,ts),before=plain(l),mastery=d.exerciseMastery(ex);
+  d.recordSymptoms({pain:0,fatigue:'medium',steadiness:'shaky',swelling:false},'combined',ts+3600000);
+  assert.deepEqual(plain(l),before);assert.equal(d.exerciseMastery(ex),mastery);
+  const dose=d.suggestedDose(ex).dose;assert.ok(dose.reps<10);
+  d.recordExercise(ex.id,dose,{...comfortable,doseReason:'daily_load'},Date.now()-60000);
+  assert.equal(d.dailyLoadPlan(d.EXMAP.slider_injured_leg_three_directions).status,'pause');
+  assert.equal(d.testRecommendations().length,0);
+  assert.ok(d.recommendations().every(r=>Math.max(...Object.values(r.ex.load_channels))<.25));
+});
+test('daily budget includes activities, tests and exercises and resets by calendar day',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,ts=Date.now();
+  d.getState().customActivities.push({id:'walk',ts,load:{calf:65,ankle_control:70},painAfter:0});
+  assert.equal(d.dailyLoadPlan(ex,ts).status,'pause');assert.ok(!d.recommendations(ts).some(r=>r.ex.id===ex.id));
+  assert.equal(d.dailyLoadPlan(ex,ts+2*DAY).status,'normal');
+  const other=app().dev;assessmentScenario(other,ts);
+  assert.equal(other.dailyLoadPlan(other.EXMAP.slider_injured_leg_three_directions,ts).status,'pause');
+});
+test('same-day sessions and invented same-day morning feedback cannot confirm or progress a level',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,day=dayStart(Date.now()-2*DAY);
+  for(let i=0;i<3;i++){
+    const l=d.recordExercise(ex.id,{...ex.dose,reps:6},{...comfortable,difficulty:'easy'},day+(9+i*2)*3600000);
+    d.recordSymptoms({phase:'morning',trainingDay:day,response:'same',historyKnown:true,pain:0,fatigue:'low',steadiness:'steady'},'combined',day+20*3600000);
+    morning(d,l);
+  }
+  assert.equal(d.exerciseProgress(ex).confirmed,false);assert.equal(d.exerciseProgress(ex).confirmedDays,1);
+  assert.equal(d.suggestedDose(ex).trial,null);
+});
+test('numeric progression is an explicit trial with the actual delta and keeps the confirmed working level',()=>{
+  const {dev:d,get}=app(),ex=d.EXMAP.tiptoe_square_corner_lunges;
+  confirmedDose(d,ex,ex.dose);
+  const plan=d.suggestedDose(ex);assert.equal(plan.dose.rounds,2);assert.equal(plan.trial.rounds,3);
+  d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/\+50%/);
+  d.openLog(ex.id);assert.match(get('logModal').innerHTML,/value="2"/);
+  d.openLog(ex.id,true);assert.match(get('logModal').innerHTML,/value="3"/);
+  const l=d.recordExercise(ex.id,plan.trial,{...comfortable,doseReason:'trial'},Date.now()-DAY);morning(d,l);
+  const next=d.suggestedDose(ex);assert.equal(next.working.rounds,2);assert.equal(next.dose.rounds,3);assert.equal(next.trial,null);
+});
+test('duration, support, range and weight distribution use exercise-specific trial steps',()=>{
+  for(const [id,key,value] of [
+    ['hemisphere_weight_shift_injured_front','target_sec',15],
+    ['right_leg_balance_left_front_back','support','light'],
+    ['left_side_lunge_right_leg_straight','range','increased'],
+    ['bilateral_tiptoe_static','weight_distribution','right_bias']
+  ]){
+    const {dev:d}=app(),ex=d.EXMAP[id];confirmedDose(d,ex,ex.dose);
+    assert.equal(d.suggestedDose(ex).trial[key],value);
+  }
+});
+test('a failed trial returns to the confirmed variant instead of continuing the harder option',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static;confirmedDose(d,ex,ex.dose);
+  const plan=d.suggestedDose(ex),l=d.recordExercise(ex.id,plan.trial,{...comfortable,doseReason:'trial'},Date.now()-DAY);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky'},l.id,l.ts+3600000);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady'},'unknown',Date.now()-3600000);
+  const next=d.suggestedDose(ex);assert.equal(next.working.reps,10);assert.notEqual(next.dose.weight_distribution,'right_bias');
+  assert.equal(next.trial,null);
+});
+test('normal effort confirms a level while unresolved recovery and missing feedback prevent growth',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
+  const logs=confirmedDose(d,ex,{...ex.dose,reps:6},'normal');
+  assert.equal(d.exerciseProgress(ex).confirmed,true);assert.equal(d.suggestedDose(ex).trial,null);
+  const a=app().dev,e=a.EXMAP.bilateral_tiptoe_static;
+  for(const l of logs)a.recordExercise(e.id,l.actualDose,{...comfortable,difficulty:'easy'},l.ts);
+  assert.equal(a.exerciseProgress(e).confirmed,false);assert.equal(a.suggestedDose(e).trial,null);
+});
+test('one shared morning check stores strong fatigue and covers the complete day without blaming each exercise',()=>{
+  const clock=dayStart(Date.now())+10*3600000,{dev:d,get}=app(null,clock),ex=d.EXMAP.bilateral_tiptoe_static;
+  const ts=clock-DAY,l=d.recordExercise(ex.id,ex.dose,comfortable,ts);
+  d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,ts+3600000);
+  d.getState().customActivities.push({id:'walk',ts,load:{calf:5}});
+  const originals=plain(d.getState().logs),day=dayStart(ts);
+  assert.equal(d.pendingMorningDays().length,1);d.renderHome();assert.match(get('pendingChecksWrap').innerHTML,/Одна оценка/);
+  d.openMorning(day);
+  for(const [id,v] of Object.entries({morningResponse:'same',dayResponse:'same',morningSteadiness:'steady',morningPain:'0',morningFatigue:'high'}))get(id).value=v;
+  d.saveMorning(day);
+  assert.equal(d.currentSymptoms().fatigue,'high');assert.deepEqual(plain(d.getState().logs),originals);
+  assert.equal(d.pendingMorningDays().length,0);assert.equal(d.confirmedSafe(l),false);assert.equal(d.testRecommendations().length,0);
+});
+test('morning controls reject same-day checks and do not fabricate missing historical mornings',()=>{
+  const clock=dayStart(Date.now())+10*3600000,{dev:d,get}=app(null,clock),ex=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,clock-3*DAY);
+  for(const [id,v] of Object.entries({morningResponse:'same',dayResponse:'same',morningSteadiness:'steady',morningPain:'0',morningFatigue:'low'}))get(id).value=v;
+  d.saveMorning(dayStart(clock));assert.equal(d.getState().symptomReports.length,0);
+  d.saveMorning(dayStart(l.ts));assert.equal(d.confirmedSafe(l),false);
+});
+test('morning improvement preserves an earlier adverse episode and avoids an immediate return to full dose',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,l=d.recordExercise(ex.id,ex.dose,comfortable,Date.now()-2*DAY);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky'},l.id,l.ts+3600000);
+  morning(d,l,{response:'better',historyWorse:true});
+  assert.equal(d.currentSymptoms().steadiness,'steady');assert.equal(d.exerciseResponse(l).steadiness,'shaky');
+  assert.ok(d.suggestedDose(ex).dose.reps<10);assert.equal(d.confirmedSafe(l),false);
+});
+test('completing an adapted recommendation earns full adherence XP while physical load remains proportional',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(ex.id,{...ex.dose,reps:6},comfortable,Date.now(),{...ex.dose,reps:6});
+  assert.equal(d.getState().xp,10);assert.equal(l.doseFactor,.6);
+  assert.equal(d.allLoadEvents()[0].channels.calf,ex.load_channels.calf*45*.6);
+  const a=app().dev;a.recordExercise(ex.id,ex.dose,{...comfortable,technique:'poor'});assert.equal(a.getState().xp,0);
+});
+test('readiness needs every fresh domain, preserves unknowns and includes current adverse symptoms',()=>{
+  const {dev:d}=app(),ts=Date.now()-DAY;
+  for(const t of d.RDCFG.tests.filter(t=>t.status!=='locked'))d.recordTest(t.id,t.bilateral?{left:20,right:20}:{value:20},ts);
+  d.getState().selfReports.push({ts,trust:10,fear:0,ready:10});
+  assert.equal(d.readinessSummary().score,null);assert.ok(d.readinessSummary().missing.includes('impact_running_capacity'));
+  d.getState().selectedStage='ready_for_impact';
+  for(const t of d.RDCFG.tests.filter(t=>t.status==='locked'))d.recordTest(t.id,t.bilateral?{left:20,right:20}:{value:20},ts);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady'},'unknown');
+  assert.ok(Number.isFinite(d.readinessSummary().score));
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky'},'unknown');assert.equal(d.readinessSummary().score,null);
+  assert.equal(d.readinessSummary(Date.now()+31*DAY).score,null);
+});
+test('dose and append-only reaction history round-trip without modifying legacy logs',()=>{
+  const a=app(),d=a.dev,ex=d.EXMAP.bilateral_tiptoe_static;d.openLog(ex.id);
+  for(const [key,v] of Object.entries({reps:6,hold_sec:5,sets:1}))a.get('dose_'+key).value=String(v);
+  for(const [id,v] of Object.entries({painBefore:'0',painDuring:'0',painAfter:'0',fatigueSel:'medium',techSel:'good',difficultySel:'normal',logSteadiness:'steady',doseReason:'capacity',doseOption:'even',comment:''}))a.get(id).value=v;
+  d.saveLog(ex.id);const l=d.getState().logs[0],before=plain(l);
+  for(const [id,v] of Object.entries({symptomContext:l.id,symptomPain:'0',symptomFatigue:'low',symptomSteadiness:'shaky',symptomResponse:'worse',symptomMinutes:'20',symptomComment:'Позже'}))a.get(id).value=v;
+  d.saveSymptoms();assert.deepEqual(plain(l),before);
+  assert.deepEqual(plain(app(JSON.parse(a.storage.get(KEY))).dev.getState()),plain(d.getState()));
+  a.context.FileReader=class{readAsText(file){this.result=file;this.onload();}};
+  d.importData(JSON.stringify(d.getState()));assert.equal(d.getState().symptomReports.length,1);
+  const legacy={id:'old',exerciseId:ex.id,ts:Date.now()-DAY,painAfter:0,instability:true};
+  const old=app({logs:[legacy]}).dev;assert.deepEqual(plain(old.getState().logs[0]),legacy);assert.equal(old.safetyFlag(),true);
+  assert.equal(old.allLoadEvents()[0].channels.calf,ex.load_channels.calf*45);
+});
+test('sets, seconds and directional repetitions still scale physical load',()=>{
+  const {dev:d}=app();
+  for(const [id,changes,factor] of [
+    ['hemisphere_weight_shift_injured_front',{target_sec:5,sets:2},1/3],
+    ['slider_injured_leg_three_directions',{reps_per_direction:3,sets:1},.3],
+    ['single_leg_calf_raise',{reps:6,sets:1},.3]
+  ]){const ex=d.EXMAP[id],l=d.recordExercise(id,{...ex.dose,...changes},comfortable);assert.equal(l.doseFactor,factor);}
+});
+test('pause does not disappear with time or future observations; invalid volume and variant are rejected',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.single_leg_calf_raise,ts=Date.now();d.getState().exerciseStatuses[ex.id]='active';
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'giving_way'},'unknown',ts);
+  assert.equal(d.scoreExercise(ex,ts+7*DAY).status,'red');
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady'},'unknown',ts+DAY);
+  assert.equal(d.safetyFlag(ts),true);assert.equal(d.safetyFlag(ts+DAY),false);
+  for(const reps of [0,1.5,NaN])assert.throws(()=>d.recordExercise(ex.id,{...ex.dose,reps},comfortable));
+  const e=d.EXMAP.bilateral_tiptoe_static;assert.throws(()=>d.recordExercise(e.id,{...e.dose,weight_distribution:'bad'},comfortable));
+});
+
+
+test('repeating an adverse report cannot open another light session in the same episode',()=>{
+  const {dev:d}=app(),ts=Date.now()-3*3600000,ex=d.EXMAP.bilateral_tiptoe_static;
+  d.recordSymptoms({pain:0,steadiness:'shaky',fatigue:'medium'},'combined',ts);
+  const plan=d.suggestedDose(ex,ts);assert.equal(plan.status,'light');
+  d.recordExercise(ex.id,plan.dose,{...comfortable,doseReason:'daily_load'},ts+60000);
+  d.recordSymptoms({pain:0,steadiness:'shaky',fatigue:'medium'},'combined',ts+3600000);
+  assert.equal(d.dailyLoadPlan(ex,ts+3600000).status,'pause');
+
+});
+test('normal current feedback resolves test restrictions without erasing the recorded reaction',()=>{
+  const {dev:d}=app(),ts=Date.now()-2*DAY,ex=d.EXMAP.bilateral_tiptoe_static;
+  const s=assessmentScenario(d,ts);d.completeAssessment(s,{pain_after:3,same_day_response:'worse',swelling:false,instability:false},ts);
+  const before=plain(s);assert.ok(d.assessmentSymptomModifier(ex,ts)<1);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady',response:'better'},'combined',ts+DAY);
+  assert.equal(d.assessmentSymptomModifier(ex,ts+DAY),1);assert.deepEqual(plain(s),before);
+});
+test('equal weak sides do not receive full capacity or sensorimotor credit',()=>{
+  const {dev:d}=app(),ts=Date.now();
+  d.recordTest('single_leg_calf_raise_test',{left:1,right:1},ts);
+  d.recordTest('hemisphere_hold',{left:1,right:1},ts);
+  const scores=d.readinessSummary(ts).domainScores;
+  assert.ok(scores.ankle_capacity<.1);assert.ok(scores.sensorimotor_control<.1);
+});
+test('an old symptom observation does not count as a current pain measurement',()=>{
+  const {dev:d}=app(),ts=Date.now();
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady'},'combined',ts-8*DAY);
+  assert.equal(d.readinessSummary(ts).domainScores.pain,null);
+});
+
+test('different unconfirmed volumes do not add up to a confirmed working level',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,end=Date.now()-2*DAY;
+  for(const [i,reps] of [6,8,10].entries()){
+    const l=d.recordExercise(ex.id,{...ex.dose,reps},comfortable,end-(2-i)*DAY);morning(d,l);
+  }
+  assert.equal(d.exerciseProgress(ex).confirmed,false);assert.equal(d.exerciseProgress(ex).confirmedDays,1);
+  assert.ok(d.exerciseMastery(ex)<=1/3);
 });

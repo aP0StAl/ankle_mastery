@@ -107,15 +107,16 @@
       <div class="hero">
         <div class="card metric-card">
           <div class="ring" id="masteryRing" style="--c:var(--green)"><strong id="masteryValue">0%</strong></div>
-          <div><div class="metric-title">Освоение тренировок</div><div class="metric-name">Освоение реабилитации</div><div class="muted" id="masteryHint">Начни с коротких сессий</div></div>
+          <div><div class="metric-title">Подтверждённые рабочие уровни</div><div class="metric-name">Тренировочный прогресс</div><div class="muted" id="masteryHint">Начни с коротких сессий</div></div>
         </div>
         <div class="card metric-card">
           <div class="ring" id="readinessRing" style="--c:var(--blue)"><strong id="readinessValue">—</strong></div>
-          <div style="flex:1"><div class="metric-title">Готовность к бегу</div><div class="metric-name" id="stageName">Реабилитация</div><div class="stage-line" id="stageLine"></div><div class="muted" id="readinessHint">Готовность ≠ медицинский допуск</div></div>
+          <div style="flex:1"><div class="metric-title">Измерения для возврата к бегу</div><div class="metric-name" id="stageName">Реабилитация</div><div class="stage-line" id="stageLine"></div><div class="muted" id="readinessHint">Готовность ≠ медицинский допуск</div></div>
         </div>
       </div>
 
       <div id="pendingChecksWrap"></div>
+      <div class="card" style="margin-top:12px"><b>Как лодыжка сейчас?</b><div class="li-meta" id="currentSymptoms">Можно отметить реакцию в любой момент.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.openSymptoms()">Отметить самочувствие</button></div>
 
       <div class="section-title"><h2>Что сделать сейчас?</h2><small id="updatedAt"></small></div>
       <div class="card recommend" id="bestNow"></div>
@@ -147,6 +148,7 @@
         </div>
       </div>
       <div class="section-title"><h2>Тесты</h2><small>правая и левая</small></div>
+      <div id="readinessDomains" class="card" style="margin-bottom:12px"></div>
       <div id="assessmentWrap"></div>
       <div id="selfReportWrap"></div>
       <div class="list" id="testList"></div>
@@ -195,6 +197,7 @@
 <dialog id="assessmentDialog"><div class="modal" id="assessmentModal"></div></dialog>
 <dialog id="selfReportDialog"><div class="modal" id="selfReportModal"></div></dialog>
 <dialog id="postponeDialog"><div class="modal" id="postponeModal"></div></dialog>
+<dialog id="symptomsDialog"><div class="modal" id="symptomsModal"></div></dialog>
 <div class="toast" id="toast"></div>
 
 <script type="application/json" id="appConfigJSON">{"version": 3, "app": {"name": "Ankle Mastery", "locale": "ru", "llm_required": false, "offline_first": true, "timezone_mode": "local_device"}, "core_principles": ["scheduler объяснимый: каждая рекомендация показывает причины", "симптомы и усталость важнее дневных целей", "не фармить XP повторением одного простого упражнения", "load overlap не равен mastery и не равен prescription completion", "run readiness не является медицинским разрешением на бег"], "ui": {"home_screen": {"show": ["training_mastery", "run_readiness", "best_now", "can_do_now", "better_later", "daily_prescription_progress", "skill_balance", "fatigue_channels", "next_recommended_time", "why_this_recommendation"]}, "quick_actions": ["done", "choose_other", "skip", "cannot_do", "log_custom_activity", "log_symptoms", "add_available_exercise"], "skip_reasons": ["нет оборудования", "нет места", "устал", "дискомфорт", "не хочу сейчас", "другое"], "traffic_light": {"green": "можно сейчас", "yellow": "доступно, но есть причина отложить/уменьшить", "red": "не рекомендовать сейчас"}}, "program": {"prescription_groups": {"towel_straight": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "towel_bent": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "tiptoe_static": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "line_walk": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician", "variants_share_credit": true}, "front_back_balance": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "side_lunge": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}}, "clinician_session_defaults": {"recommended_sessions_per_week": 3, "exercises_per_session": [3, 5], "note": "product default only; not clinician-prescribed frequency"}}, "skills": {"mobility": {"weight": 0.08}, "calf_strength_endurance": {"weight": 0.14}, "static_balance": {"weight": 0.12}, "dynamic_balance": {"weight": 0.16}, "lateral_stability": {"weight": 0.14}, "ankle_control": {"weight": 0.12}, "gait_control": {"weight": 0.08}, "reactive_control": {"weight": 0.08}, "multidirectional_control": {"weight": 0.08}}, "fatigue_channels": {"calf": {"decay_half_life_hours": 8, "yellow_from": 35, "red_from": 70}, "ankle_control": {"decay_half_life_hours": 4, "yellow_from": 40, "red_from": 75}, "dynamic_balance": {"decay_half_life_hours": 3, "yellow_from": 45, "red_from": 80}, "lateral": {"decay_half_life_hours": 5, "yellow_from": 40, "red_from": 75}, "impact": {"decay_half_life_hours": 18, "yellow_from": 25, "red_from": 60}}, "scheduler": {"strategy": "deterministic_score_v2", "refresh_on": ["app_open", "exercise_logged", "custom_activity_logged", "symptom_logged", "exercise_status_changed", "clock_tick_15_min"], "score_weights": {"daily_deficit": 0.25, "skill_deficit": 0.2, "freshness": 0.2, "weekly_balance": 0.15, "variety": 0.1, "progression_value": 0.1}, "multipliers": ["fatigue_modifier", "exercise_tolerance_modifier", "symptom_modifier", "context_availability_modifier"], "same_exercise_soft_penalty_minutes": 120, "same_primary_skill_penalty": 0.2, "recommended_list_size": 5, "next_time": {"resolution_minutes": 15, "search_horizon_hours": 24, "green_score_threshold": 0.58}, "explain_recommendation": true, "fatigue_demand_reference": 0.65}, "overlap": {"load_credit_affects_fatigue": true, "load_credit_can_reduce_priority_of_similar_exercises": true, "load_credit_closes_prescription_target": false, "structured_skill_credit_counts_for_weekly_skill_balance": true, "custom_activity_skill_mastery_credit": false, "family_variant_can_close_same_prescription_target": true}, "exercise_tolerance": {"rolling_window_sessions": 5, "positive_sessions_for_progression": 3, "modifiers": {"normal": 1.0, "mild_reaction": 0.85, "moderate_reaction": 0.6, "strong_reaction": 0.3, "safety_lock": 0.0}, "rules": [{"if": "pain_after <= 1 && !next_day_worse && !swelling && !instability", "state": "normal"}, {"if": "pain_after == 2 || fatigue == moderate", "state": "mild_reaction"}, {"if": "pain_after in [3,4] || next_day_worse", "state": "moderate_reaction"}, {"if": "pain_after >= 5", "state": "strong_reaction"}, {"if": "swelling || instability", "state": "safety_lock"}], "note": "all numeric cutoffs are product heuristics, not medical diagnostic thresholds"}, "symptom_checks": {"after_fields": ["pain_during_0_10", "pain_after_0_10", "local_outer_ankle_pain", "fatigue_low_medium_high", "instability", "swelling", "difficulty_easy_normal_hard"], "delayed_fields": ["later_same_day_worse_same_better", "next_morning_worse_same_better"], "light_exercises_can_skip_full_check": true, "always_ask_after": ["tier:S", "tier:FUTURE", "custom_activity_high_load"]}, "progression": {"success_requires": {"target_completed": true, "pain_during_max": 2, "pain_after_max": 2, "next_day_worse": false, "swelling": false, "instability": false, "technique": ["good", "ok"]}, "successful_sessions_required_default": 3, "auto_progress_inside_same_exercise": false, "offer_progression_confirmation": true, "never_auto_unlock_new_exercise": true}, "gamification": {"xp": {"base_per_useful_dose": 10, "same_skill_daily_multipliers": [1.0, 0.65, 0.35, 0.15], "extra_volume_beyond_cap_xp": 0, "no_bonus_for_pain_or_failure": true}, "streak": {"day_counts_if_distinct_skills_at_least": 2, "rest_freezes_per_week": 2, "no_penalty_for_safety_rest": true}, "training_mastery": {"separate_from_run_readiness": true, "formula": {"exercise_mastery": 0.5, "skill_consistency_14d": 0.3, "symptom_stability_7d": 0.2}}}, "exercise_lifecycle": {"states": ["active", "available", "locked", "archived"], "available_to_active": "manual user action only", "locked_to_available": "manual stage transition / explicit unlock rule; never regular scheduler", "archive_preserves_history": true, "show_source_badge": true}, "substitutions": {"enabled": true, "trigger_reasons": ["нет оборудования", "нет места", "не хочу сейчас"], "method": "explicit substitute_ids first; then vector similarity", "minimum_skill_similarity": 0.7, "respect_fatigue_and_symptom_locks": true, "do_not_use_locked_or_archived": true}, "custom_activity_logging": {"enabled": true, "presets": {"sand_tiptoe_fun": {"name": "Носки на песке", "load": {"calf": 60, "ankle_control": 40, "dynamic_balance": 35, "lateral": 15, "impact": 0}}, "long_tiptoe_walk": {"name": "Долгая ходьба на носках", "load": {"calf": 55, "ankle_control": 30, "dynamic_balance": 25, "lateral": 10, "impact": 0}}, "general_walk": {"name": "Обычная прогулка", "load": {"calf": 10, "ankle_control": 10, "dynamic_balance": 5, "lateral": 0, "impact": 0}}}, "manual_fields": ["duration_minutes", "calf_load_low_medium_high", "balance_load_low_medium_high", "lateral_load_low_medium_high", "pain_after_0_10", "fatigue_low_medium_high"], "freeform_requires_llm": false, "mastery_credit": false}, "return_to_running": {"module_enabled": true, "permission_semantics": "readiness estimator only; never medical clearance", "initial_stage": "rehab", "automatic_running_permission": false, "impact_tests_locked_initially": true, "clinician_context": "реабилитолог рекомендовал примерно пару месяцев тренировать ноги/голеностоп до уверенного мастерства", "calendar_hint_days": 56, "calendar_hint_is_approximation": true}, "notifications": {"enabled_by_default": false, "optional": ["next_good_window", "evening_delayed_check", "next_morning_check", "weekly_self_test"]}, "assessment": {"session_gap_minutes": 60, "nominal_load": 45, "load_factor_min": 0.5, "load_factor_max": 1.5, "fatigue_multipliers": {"easy": 0.9, "moderate": 1, "strong": 1.25}, "moderate_pain_from": 3, "safety_pain_from": 5, "reaction_modifier": 0.6}}</script>
@@ -241,14 +244,14 @@ function defaultState(){
   return {
     version:3, createdAt:Date.now(), logs:[], customActivities:[], testLogs:[], selfReports:[],
     assessment_sessions:[], load_events:[], last_self_report_at:null,
-    delayedChecks:[], exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
+    delayedChecks:[], symptomReports:[], exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
   };
 }
 let state = loadState();
 function migrateState(x){
   const base=defaultState();
   const out={...base,...x,version:3,exerciseStatuses:{...base.exerciseStatuses,...(x.exerciseStatuses||{})}};
-  for(const k of ['logs','customActivities','testLogs','selfReports','delayedChecks','assessment_sessions','load_events']){
+  for(const k of ['logs','customActivities','testLogs','selfReports','delayedChecks','symptomReports','assessment_sessions','load_events']){
     if(!Array.isArray(out[k]))throw new Error('Некорректная история');
   }
   out.testLogs=out.testLogs.map(l=>({...l,protocol_id:l.protocol_id||'legacy_'+l.testId}));
@@ -268,6 +271,7 @@ function loadState(){
 function save(){ localStorage.setItem(KEY,JSON.stringify(state)); renderAll(); }
 function now(){ return Date.now(); }
 function startOfDay(ts=now()){ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
+function nextDayStart(ts){const d=new Date(ts);d.setDate(d.getDate()+1);return startOfDay(d.getTime());}
 function daysAgo(n){ return startOfDay()-n*DAY; }
 function fmtTime(ts){ return new Date(ts).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'}); }
@@ -276,19 +280,171 @@ function median(a){ if(!a.length)return null; const b=[...a].sort((x,y)=>x-y),m=
 function pct(v){ return Math.round(clamp(v)*100); }
 function esc(s){ return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-function doseText(ex){
-  const d=ex.dose||{};
+function countWord(n,one,few,many){
+  const mod=n%100;return mod>=11&&mod<=14?many:n%10===1?one:n%10>=2&&n%10<=4?few:many;
+}
+function doseNumbers(ex,d=ex.dose||{}){
   switch(d.type){
     case 'duration': return `${d.target_sec||60} сек`;
     case 'hold_reps': return `${d.reps||1} × ${d.hold_sec||5} сек`;
-    case 'steps': return `${d.target_steps||12} шагов`;
-    case 'cycles': return `${d.cycles||5} циклов`;
+    case 'steps': return `${d.target_steps||12} ${countWord(d.target_steps||12,'шаг','шага','шагов')}`;
+    case 'cycles': return `${d.cycles||5} ${countWord(d.cycles||5,'цикл','цикла','циклов')}`;
     case 'duration_sets': return `${d.sets||1} × ${d.target_sec||30} сек`;
-    case 'directional_rounds': return `${d.rounds||2} круга × ${d.directions||4} направления`;
-    case 'reps_sets': return `${d.sets||2} × ${d.reps||10}`;
+    case 'directional_rounds': return `${d.rounds||2} ${countWord(d.rounds||2,'круг','круга','кругов')} × ${d.directions||4} направления`;
+    case 'reps_sets': return `${d.sets||2} × ${d.reps||10} повт.`;
     case 'directional_reps': return `${d.sets||2} × ${d.reps_per_direction||3} в каждом направлении`;
+    case 'passes': return `${d.passes||3} ${countWord(d.passes||3,'проход','прохода','проходов')}`;
     default: return 'по технике';
   }
+}
+const doseOptions={
+  bilateral_tiptoe_static:{key:'weight_distribution',label:'Распределение веса',values:[['even','Вес поровну'],['right_bias','Больше веса на правой']]},
+  right_leg_balance_left_front_back:{key:'support',label:'Помощь свободной ногой',values:[['usual','Привычная опора'],['light','Лёгкое касание'],['none','Без помощи']]},
+  left_side_lunge_right_leg_straight:{key:'range',label:'Амплитуда',values:[['usual','Привычная амплитуда'],['increased','Чуть больше, с контролем']]}
+};
+function doseText(ex,d=ex.dose||{}){
+  const option=doseOptions[ex.id],value=option&&d[option.key];
+  return doseNumbers(ex,d)+(value?' · '+(option.values.find(x=>x[0]===value)?.[1]||''): '');
+}
+const doseFields={
+  duration:[['target_sec','Секунды']], hold_reps:[['reps','Повторения'],['hold_sec','Удержание, секунд'],['sets','Подходы']],
+  steps:[['target_steps','Шаги']], cycles:[['cycles','Циклы']],
+  duration_sets:[['target_sec','Секунды в подходе'],['sets','Подходы']],
+  directional_rounds:[['rounds','Круги']], reps_sets:[['reps','Повторения в подходе'],['sets','Подходы']],
+  directional_reps:[['reps_per_direction','Повторения в каждом направлении'],['sets','Подходы']], passes:[['passes','Проходы']]
+};
+function doseVolume(d){
+  const sets=d.sets||1;
+  switch(d.type){
+    case 'duration': case 'duration_sets': return d.target_sec*sets;
+    case 'hold_reps': return d.reps*d.hold_sec*sets;
+    case 'steps': return d.target_steps*sets;
+    case 'cycles': return d.cycles*((d.front_hold_sec||0)+(d.back_hold_sec||0)||1)*sets;
+    case 'directional_rounds': return d.rounds*(d.directions||4);
+    case 'reps_sets': return d.reps*sets;
+    case 'directional_reps': return d.reps_per_direction*(d.directions?.length||3)*sets;
+    case 'passes': return d.passes;
+    default: return 1;
+  }
+}
+function observationsFor(l,ts=now()){
+  return state.symptomReports.filter(r=>r.ts<=ts&&r.logId===l.id);
+}
+function morningFor(l,ts=now()){
+  return state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=ts&&r.trainingDay===startOfDay(l.ts)&&startOfDay(r.ts)===nextDayStart(l.ts)).slice(-1)[0];
+}
+function exerciseResponse(l,ts=now()){
+  const reports=observationsFor(l,ts),rank={steady:0,shaky:1,giving_way:2};
+  const immediate=l.steadiness||(l.instability?'giving_way':'steady');
+  const morning=morningFor(l,ts);
+  return {pain:Math.max(l.painDuring||0,l.painAfter||0,...reports.map(r=>r.pain||0)),painBefore:l.painBefore||0,
+    fatigue:l.fatigue,technique:l.technique,difficulty:l.difficulty,phase:'after',
+    steadiness:reports.reduce((v,r)=>(rank[r.steadiness]||0)>rank[v]?r.steadiness:v,immediate),
+    swelling:!!l.swelling||reports.some(r=>r.swelling),
+    worse:l.sameDay==='worse'||l.nextDay==='worse'||reports.some(r=>r.worse),
+    morning:morning?.response||((startOfDay(l.ts)<startOfDay(ts))?l.nextDay:null)};
+}
+function responseLevel(r){
+  if(r.pain>=5||r.swelling||r.steadiness==='giving_way')return 'pause';
+  if(r.pain>=3||r.worse||r.steadiness==='shaky'||r.technique==='poor'||(r.phase!=='after'&&r.fatigue==='high'))return 'reduce';
+  if(r.pain>Math.max(1,r.painBefore||0))return 'mild';
+  return 'normal';
+}
+function confirmedSafe(l,ts=now()){
+  const r=exerciseResponse(l,ts),m=morningFor(l,ts);
+  return !!l.actualDose&&isSuccessful(l,ts)&&!!r.morning&&r.morning!=='worse'&&
+    (!m||(responseLevel(m)==='normal'&&m.historyKnown&&!m.historyWorse))&&
+    !state.symptomReports.some(x=>x.ts>=l.ts&&x.ts<=(m?.ts||l.ts+DAY)&&x.ts<=ts&&responseLevel(x)!=='normal');
+}
+function confirmedEasy(l,ts=now()){
+  return confirmedSafe(l,ts)&&l.difficulty==='easy'&&l.fatigue!=='high'&&l.technique==='good';
+}
+function sameDose(a,b){
+  return a.type===b.type&&(doseFields[a.type]||[]).every(([k])=>a[k]===b[k])&&['support','range','weight_distribution'].every(k=>(a[k]||(k==='weight_distribution'?'even':'usual'))===(b[k]||(k==='weight_distribution'?'even':'usual')));
+}
+function exerciseProgress(ex,ts=now()){
+  const logs=state.logs.filter(l=>l.exerciseId===ex.id&&l.actualDose&&l.ts<=ts).sort((a,b)=>a.ts-b.ts);
+  let working={...ex.dose},confirmed=false,run=[];
+  for(const l of logs){
+    const safe=confirmedSafe(l,ts);
+    if(!confirmed&&l.doseReason!=='time'&&l.doseReason!=='daily_load'&&responseLevel(exerciseResponse(l,ts))==='normal')working={...l.actualDose};
+    if(!safe||l.doseReason==='time'||l.doseReason==='daily_load'){run=[];continue;}
+    if(run.length&&!sameDose(run[0].actualDose,l.actualDose))run=[];
+    if(!run.some(x=>startOfDay(x.ts)===startOfDay(l.ts)))run.push(l);
+    if(run.length>=3){working={...l.actualDose};confirmed=true;}
+  }
+  return {working,confirmed,logs,run,confirmedDays:confirmed?3:Math.min(3,run.length),candidateDays:Math.min(3,run.length)};
+}
+function doseKey(ex){return doseFields[ex.dose?.type]?.[0]?.[0];}
+function doseCeiling(ex,working){
+  const key=doseKey(ex),levels=ex.progression?.levels_sec||ex.mastery_tracking?.levels;
+  return Math.max(working[key]||0,ex.dose?.[key]||0,...(levels||[]));
+}
+function reduceDose(ex,anchor){
+  const dose={...anchor},key=doseKey(ex);if(!key)return dose;
+  // Reduce one parameter, with an explicit change in units rather than a universal percentage.
+  if(dose.sets>1)dose.sets--;
+  else {const step=key==='target_sec'?5:Math.max(1,Math.ceil(dose[key]/4));dose[key]=Math.max(1,dose[key]-step);}
+  return dose;
+}
+function dailyLoadPlan(ex,ts=now()){
+  const demand=Math.max(0,...Object.values(ex.load_channels||{})),current=currentSymptoms(ts);
+  const level=current?responseLevel(current):'normal';
+  const day=allLoadEvents().filter(e=>e.timestamp>=startOfDay(ts)&&e.timestamp<=ts);
+  const totals=Object.fromEntries(Object.keys(APP.fatigue_channels).map(k=>[k,day.reduce((n,e)=>n+(e.channels[k]||0),0)]));
+  const working=ex.id&&ex.dose?exerciseProgress(ex,ts).working:null;
+  const factor=working?doseVolume(working)/doseVolume(ex.dose):1;
+  const projected=Object.keys(totals).some(k=>(ex.load_channels?.[k]||0)>=.25&&totals[k]+(ex.load_channels[k]||0)*45*factor>=APP.fatigue_channels[k].red_from);
+  if(safetyFlag(ts)&&demand>=.5)return {status:'pause',reason:'Выраженная реакция: отдых и повторная оценка самочувствия'};
+  if(demand>=.25&&(projected||relevantFatigue(ex,ts)>=70))return {status:'pause',reason:'На сегодня достаточно похожей нагрузки — дай лодыжке восстановиться'};
+  if(demand>=.25&&(level==='reduce'||level==='pause'||relevantFatigue(ex,ts)>=38)){
+    let episode=null;for(const r of state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts)){if(responseLevel(r)==='normal')episode=null;else if(episode==null)episode=r.ts;}
+    const since=Math.max(episode||startOfDay(ts),startOfDay(ts));
+    const already=state.logs.some(l=>l.ts>=since&&l.ts<=ts&&Math.max(0,...Object.values(EXMAP[l.exerciseId]?.load_channels||{}))>=.25);
+    if(already)return {status:'pause',reason:'Облегчённая нагрузка уже выполнена; теперь отдых и проверка реакции'};
+    return {status:'light',reason:'Сегодня облегчённая нагрузка с учётом общего самочувствия'};
+  }
+  return {status:'normal',reason:''};
+}
+function suggestedDose(ex,ts=now()){
+  const progress=exerciseProgress(ex,ts),working=progress.working,key=doseKey(ex),last=progress.logs.slice(-1)[0];
+  let dose={...working},reason=progress.confirmed?'Рабочий объём подтверждён в разные дни':'Начальный рабочий объём — уточняем переносимость',trial=null;
+  const adverse=progress.logs.filter(l=>responseLevel(exerciseResponse(l,ts))!=='normal').slice(-1)[0];
+  const recovering=adverse&&(!last||!confirmedSafe(last,ts)||progress.run.length<3);
+  if(recovering){
+    const after=progress.logs.filter(l=>l.ts>adverse.ts&&l.doseReason!=='time').slice(-1)[0];
+    dose=after&&responseLevel(exerciseResponse(after,ts))==='normal'?{...after.actualDose}:adverse.doseReason==='trial'?{...working}:reduceDose(ex,adverse.actualDose);
+    reason='Проверяем облегчённый объём после реакции; рабочий уровень пока сохраняется';
+  }
+  if(!recovering&&last?.doseReason==='trial'&&!sameDose(last.actualDose,working)){dose={...last.actualDose};reason=`Проверяем пробный шаг: ${progress.candidateDays}/3 подтверждений в разные дни`;}
+  const plan=dailyLoadPlan(ex,ts);
+  if(plan.status==='light'){if(!recovering)dose=reduceDose(ex,dose);reason=plan.reason;}
+  if(plan.status==='pause')reason=plan.reason;
+  const easy=progress.run.slice(-3);
+  if(key&&progress.confirmed&&easy.length===3&&easy.every(l=>confirmedEasy(l,ts))&&sameDose(dose,working)&&plan.status==='normal'&&!safetyFlag(ts)&&ex.progression?.type!=='none'){
+    const option=doseOptions[ex.id],index=option?option.values.findIndex(v=>v[0]===(dose[option.key]||option.values[0][0])):-1;
+    const ceiling=doseCeiling(ex,working),step=key==='target_sec'?5:1;
+    if(option&&dose[key]>=ex.dose[key]&&index<option.values.length-1){trial={...dose,[option.key]:option.values[index+1][0]};reason='Есть устойчивый запас. Можно отдельно попробовать следующий вариант';}
+    else if(dose[key]<ceiling){
+      trial={...dose,[key]:Math.min(ceiling,dose[key]+step)};
+      reason='Рабочий объём переносится легко. Можно отдельно попробовать следующий шаг';
+    }
+  }
+  return {dose,working,confirmed:progress.confirmed,confirmedDays:progress.confirmedDays,trial,reason,status:plan.status};
+}
+function currentSymptoms(ts=now()){
+  return state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+}
+function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[id],ts).dose){
+  const ex=EXMAP[id],fields=doseFields[ex?.dose?.type]||[];
+  if(!ex||fields.some(([k])=>!Number.isInteger(dose[k])||dose[k]<1||dose[k]>10000))throw new Error('Проверь фактически выполненный объём');
+  const option=doseOptions[id];
+  if(option&&dose[option.key]&&!option.values.some(v=>v[0]===dose[option.key]))throw new Error('Проверь вариант упражнения');
+  const actualDose={...ex.dose,...Object.fromEntries(fields.map(([k])=>[k,dose[k]])),...(option&&dose[option.key]?{[option.key]:dose[option.key]}:{})};
+  const log={id:makeId('l'),exerciseId:id,ts,...response,actualDose,suggestedDose:{...suggested},
+    doseFactor:doseVolume(actualDose)/doseVolume(ex.dose||{}),doseReason:response.doseReason||'capacity',sameDay:null,nextDay:null};
+  state.logs.push(log);addXp(ex,log);maybeAddDelayedCheck(log);
+  return log;
 }
 function activeExercises(){ return EX.filter(x=>state.exerciseStatuses[x.id]==='active'); }
 function logsToday(){ return state.logs.filter(l=>l.ts>=startOfDay()); }
@@ -296,7 +452,7 @@ function customToday(){ return state.customActivities.filter(l=>l.ts>=startOfDay
 function allLoadEvents(){
   const exEvents = state.logs.map(l => {
     const ex=EXMAP[l.exerciseId]; if(!ex)return null;
-    const factor = l.doseFactor || 1;
+    const factor = l.doseFactor ?? 1;
     const load={};
     for(const k of Object.keys(APP.fatigue_channels)) load[k]=(ex.load_channels?.[k]||0)*45*factor;
     return {id:'load_'+l.id,timestamp:l.ts,channels:load,source_type:'exercise',source_id:l.id,exerciseId:l.exerciseId};
@@ -384,81 +540,87 @@ function testAvailable(t){
   if(t.status!=='locked')return true;
   return currentStage().order>=(RDCFG.stages.find(s=>s.id===t.unlock_stage)?.order??Infinity);
 }
-function reactionEntries(){
+function reactionEntries(ts=now()){
   return [
-    ...state.logs.map(l=>({source_type:'exercise',ts:l.reaction_at||l.ts,pain:l.painAfter||0,swelling:l.swelling,instability:l.instability,worse:l.nextDay==='worse'||l.sameDay==='worse',normal:l.nextDay&&l.nextDay!=='worse'&&l.sameDay!=='worse'&&(l.painAfter||0)<=2&&!l.swelling&&!l.instability})),
+    ...state.logs.filter(l=>l.ts<=ts).map(l=>({source_type:'exercise',ts:l.ts,pain:Math.max(l.painDuring||0,l.painAfter||0),swelling:l.swelling,instability:l.instability||l.steadiness==='giving_way',worse:l.sameDay==='worse'||l.nextDay==='worse',normal:!observationsFor(l,ts).length&&l.nextDay&&isSuccessful(l,ts)})),
     ...state.customActivities.map(a=>({ts:a.ts,pain:a.painAfter||0,normal:false})),
+    ...state.symptomReports.map(r=>({...r,source_type:'symptoms',instability:r.steadiness==='giving_way',normal:responseLevel(r)==='normal'})),
     ...state.assessment_sessions.filter(s=>s.pain_after!=null).map(s=>({ts:s.reaction_at||s.completed_at||sessionLastAt(s),pain:s.pain_after,swelling:s.swelling,instability:s.instability,worse:s.same_day_response==='worse'||s.next_day_response==='worse',normal:s.next_day_response&&s.next_day_response!=='worse'&&s.same_day_response!=='worse'&&s.pain_after<=2&&!s.swelling&&!s.instability}))
-  ].sort((a,b)=>a.ts-b.ts);
+  ].filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts);
 }
-function safetyFlag(){
+function safetyFlag(ts=now()){
   let flagged=false;
-  for(const r of reactionEntries()){
+  for(const r of reactionEntries(ts)){
     if(r.pain>=APP.assessment.safety_pain_from||r.swelling||r.instability)flagged=true;
     else if(r.normal)flagged=false;
   }
   return flagged;
 }
-function assessmentSymptomModifier(ex){
+function assessmentSymptomModifier(ex,ts=now()){
   const demand=Math.max(0,...Object.values(ex.load_channels||{}));
-  if(safetyFlag())return demand>=.5?0:.55;
+  if(safetyFlag(ts))return demand>=.5?0:.55;
   // Use the latest reported response per channel. A normal follow-up resolves an older reaction.
   let modifier=1;
   for(const k of Object.keys(APP.fatigue_channels)){
     if((ex.load_channels?.[k]||0)<.25)continue;
-    const s=state.assessment_sessions.filter(s=>s.pain_after!=null&&(s.aggregate_load[k]||0)>0).sort((a,b)=>(a.reaction_at||sessionLastAt(a))-(b.reaction_at||sessionLastAt(b))).slice(-1)[0];
-    if(s&&(s.pain_after>=APP.assessment.moderate_pain_from||s.same_day_response==='worse'||s.next_day_response==='worse'))modifier=Math.min(modifier,APP.assessment.reaction_modifier);
+    const s=state.assessment_sessions.filter(s=>s.pain_after!=null&&(s.reaction_at||sessionLastAt(s))<=ts&&(s.aggregate_load[k]||0)>0).sort((a,b)=>(a.reaction_at||sessionLastAt(a))-(b.reaction_at||sessionLastAt(b))).slice(-1)[0];
+    const followup=currentSymptoms(ts),resolved=followup&&followup.ts>(s?.reaction_at||s?.completed_at||0)&&responseLevel(followup)==='normal';
+    if(s&&!resolved&&(s.pain_after>=APP.assessment.moderate_pain_from||s.same_day_response==='worse'||s.next_day_response==='worse'))modifier=Math.min(modifier,APP.assessment.reaction_modifier);
   }
   return modifier;
 }
-function prescriptionCounts(){
+function prescriptionCounts(ts=now()){
   const counts={};
   for(const [g] of Object.entries(APP.program.prescription_groups)) counts[g]=0;
-  for(const l of logsToday()){
+  for(const l of state.logs.filter(l=>l.ts>=startOfDay(ts)&&l.ts<=ts)){
     const ex=EXMAP[l.exerciseId]; const g=ex?.prescription_credit?.group;
     if(g) counts[g]=(counts[g]||0)+1;
   }
   return counts;
 }
-function dailyDeficit(ex){
+function dailyDeficit(ex,ts=now()){
   const g=ex.prescription_credit?.group; if(!g)return .35;
-  const target=APP.program.prescription_groups[g]?.target_per_day||ex.prescription_credit?.target_per_day||0;
+  const target=dailyTarget(ex,ts);
   if(!target)return .35;
-  const n=prescriptionCounts()[g]||0;
+  const n=prescriptionCounts(ts)[g]||0;
   return clamp((target-n)/target);
 }
-function weeklySkillExposure(){
-  const since=now()-7*DAY, out={};
+function dailyTarget(ex,ts=now()){
+  const target=APP.program.prescription_groups[ex.prescription_credit?.group]?.target_per_day||ex.prescription_credit?.target_per_day||0;
+  const plan=dailyLoadPlan(ex,ts);
+  if(plan.status==='pause')return 0;
+  if(plan.status==='light')return Math.min(target,1);
+  return target;
+}
+function weeklySkillExposure(ts=now()){
+  const since=ts-7*DAY, out={};
   for(const s of Object.keys(APP.skills)) out[s]=0;
-  const valid=state.logs.filter(l=>l.ts>=since);
+  const valid=state.logs.filter(l=>l.ts>=since&&l.ts<=ts);
   for(const l of valid){
     const ex=EXMAP[l.exerciseId]; if(!ex)continue;
-    for(const [s,v] of Object.entries(ex.skill_credit||{})) out[s]=(out[s]||0)+v;
+    for(const [s,v] of Object.entries(ex.skill_credit||{})) out[s]=(out[s]||0)+v*Math.min(1,l.doseFactor??1);
   }
   return out;
 }
-function skillDeficit(ex){
-  const exp=weeklySkillExposure(), skills=Object.entries(ex.skill_credit||{});
+function skillDeficit(ex,ts=now()){
+  const exp=weeklySkillExposure(ts), skills=Object.entries(ex.skill_credit||{});
   if(!skills.length)return .4;
   const vals=skills.map(([s])=>1-clamp((exp[s]||0)/6));
   return vals.reduce((a,b)=>a+b,0)/vals.length;
 }
-function weeklyBalance(ex){ return skillDeficit(ex); }
-function variety(ex){
-  const recent=state.logs.filter(l=>now()-l.ts<120*60000).sort((a,b)=>b.ts-a.ts);
+function weeklyBalance(ex,ts=now()){ return skillDeficit(ex,ts); }
+function variety(ex,ts=now()){
+  const recent=state.logs.filter(l=>l.ts<=ts&&ts-l.ts<120*60000).sort((a,b)=>b.ts-a.ts);
   let v=1;
   if(recent[0]?.exerciseId===ex.id)v-=.5;
   const last2=state.logs.slice(-2).map(l=>EXMAP[l.exerciseId]?.primary_skills?.[0]);
   if(ex.primary_skills?.[0] && last2.includes(ex.primary_skills[0])) v-=.2;
-  if(dailyDeficit(ex)>.7)v+=.2;
+  if(dailyDeficit(ex,ts)>.7)v+=.2;
   return clamp(v);
 }
 function classifyLog(l){
-  if(l.swelling||l.instability)return 'safety_lock';
-  if((l.painAfter??0)>=5)return 'strong_reaction';
-  if((l.painAfter??0)>=3 || l.nextDay==='worse')return 'moderate_reaction';
-  if((l.painAfter??0)===2 || l.fatigue==='medium')return 'mild_reaction';
-  return 'normal';
+  const level=responseLevel(exerciseResponse(l));
+  return {pause:'safety_lock',reduce:'moderate_reaction',mild:'mild_reaction',normal:'normal'}[level];
 }
 function tolerance(ex){
   const ls=state.logs.filter(l=>l.exerciseId===ex.id).slice(-5);
@@ -475,18 +637,29 @@ function progressionValue(ex){
   const good=state.logs.filter(l=>l.exerciseId===ex.id && isSuccessful(l)).slice(-req).length;
   return clamp(good/req);
 }
-function isSuccessful(l){
-  return (l.painDuring??0)<=2 && (l.painAfter??0)<=2 && !l.swelling && !l.instability && l.nextDay!=='worse' && (l.technique||'ok')!=='poor';
+function isSuccessful(l,ts=now()){
+  const r=exerciseResponse(l,ts);
+  return responseLevel(r)==='normal'&&r.morning!=='worse'&&(l.technique||'ok')!=='poor';
 }
-function maxPerDayReached(ex){
+function maxPerDayReached(ex,ts=now()){
   const max=ex.prescription_credit?.max_per_day ?? ex.recommended_frequency?.max_per_day;
   if(max==null)return false;
-  return logsToday().filter(l=>l.exerciseId===ex.id).length>=max;
+  return state.logs.filter(l=>l.exerciseId===ex.id&&l.ts>=startOfDay(ts)&&l.ts<=ts).length>=max;
 }
-function symptomMultiplier(ex){
-  const assessmentModifier=assessmentSymptomModifier(ex),recent=reactionEntries().slice(-1)[0];
+function symptomMultiplier(ex,ts=now()){
+  const assessmentModifier=assessmentSymptomModifier(ex,ts),recent=reactionEntries(ts).slice(-1)[0],current=currentSymptoms(ts);
+  if(current&&responseLevel(current)!=='normal')return Math.min(assessmentModifier,.7);
   if(recent?.source_type==='exercise'&&recent.worse)return Math.min(assessmentModifier,.7);
   return assessmentModifier;
+}
+function abilityDeficit(ex,ts=now()){
+  const scores=readinessSummary(ts).domainScores;
+  const domains=[];
+  if((ex.load_channels?.calf||0)>=.5||(ex.primary_skills||[]).includes('mobility'))domains.push('ankle_capacity');
+  if((ex.load_channels?.ankle_control||0)>=.25)domains.push('sensorimotor_control');
+  if((ex.load_channels?.impact||0)>0)domains.push('impact_running_capacity');
+  const known=domains.map(k=>scores[k]).filter(v=>v!=null);
+  return known.length?1-known.reduce((a,b)=>a+b,0)/known.length:null;
 }
 function fatigueModifier(ex,ts=now()){
   const rf=relevantFatigue(ex,ts);
@@ -498,13 +671,17 @@ function fatigueModifier(ex,ts=now()){
 function scoreExercise(ex,ts=now()){
   const lifecycleStatus=state.exerciseStatuses[ex.id];
   if(lifecycleStatus!=='active')return {score:-1,status:'red',reasons:['не активно']};
-  if(maxPerDayReached(ex))return {score:-1,status:'red',reasons:['достигнут максимум на сегодня']};
+  if(dailyLoadPlan(ex,ts).status==='pause')return {score:-1,status:'red',reasons:[dailyLoadPlan(ex,ts).reason]};
+  if(maxPerDayReached(ex,ts))return {score:-1,status:'red',reasons:['достигнут максимум на сегодня']};
+  const last=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts<=ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+  if(last&&ts-last.ts<(ex.min_rest_minutes||0)*60000)return {score:-1,status:'yellow',reasons:['отдых после предыдущего выполнения']};
 
-  const dd=dailyDeficit(ex), sd=skillDeficit(ex), fresh=clamp(1-relevantFatigue(ex,ts)/100),
-        wb=weeklyBalance(ex), va=variety(ex), pv=progressionValue(ex), tol=tolerance(ex);
+  const dd=dailyDeficit(ex,ts), sd=skillDeficit(ex,ts), fresh=clamp(1-relevantFatigue(ex,ts)/100),
+        wb=weeklyBalance(ex,ts), va=variety(ex,ts), pv=progressionValue(ex), tol=tolerance(ex);
   const w=APP.scheduler.score_weights;
   let base=w.daily_deficit*dd+w.skill_deficit*sd+w.freshness*fresh+w.weekly_balance*wb+w.variety*va+w.progression_value*pv;
-  const fm=fatigueModifier(ex,ts), sm=symptomMultiplier(ex);
+  const fm=fatigueModifier(ex,ts), sm=symptomMultiplier(ex,ts);
+  const deficit=abilityDeficit(ex,ts);if(deficit!=null)base+=.08*deficit;
   let sc=base*fm*tol*sm;
   const rf=relevantFatigue(ex,ts);
   let status='green';
@@ -517,15 +694,17 @@ function scoreExercise(ex,ts=now()){
     const f=fatigueAt(ts),k=Object.keys(f).sort((a,b)=>(f[b]*(ex.load_channels?.[b]||0))-(f[a]*(ex.load_channels?.[a]||0)))[0];
     reasons.push(`${fatigueLabels[k]} уже получили заметную нагрузку`);
   }
-  if(dd>.65)reasons.push('дневная цель ещё не закрыта');
+  if(dd>.65)reasons.push('можно включить в план дня при нормальной реакции');
   if(sd>.65)reasons.push('этот навык недотренирован на неделе');
   if(fresh>.78)reasons.push('нагрузка по этому паттерну свежая');
   if(fresh<.55)reasons.push('есть пересечение с недавней нагрузкой');
   if(va<.7)reasons.push('недавно уже был похожий паттерн');
   if(tol<.85)reasons.push('последняя переносимость снижает приоритет');
+  const dose=suggestedDose(ex,ts);if(dose.reason)reasons.unshift(dose.reason);
+  if(deficit!=null&&deficit>.3)reasons.push('измерения показывают запас для улучшения этого навыка');
   if(pv>.65)reasons.push('близко к следующему уровню мастерства');
   if(!reasons.length)reasons.push('хорошо вписывается в текущий баланс нагрузки');
-  return {score:sc,status,reasons,parts:{dd,sd,fresh,wb,va,pv,tol,rf}};
+  return {score:sc,status,reasons,dose:dose.dose,parts:{dd,sd,fresh,wb,va,pv,tol,rf}};
 }
 function nextGoodWindow(ex){
   const step=(APP.scheduler.next_time.resolution_minutes||15)*60000;
@@ -541,19 +720,21 @@ function scoreExerciseAtTime(ex,ts){
   return scoreExercise(ex,ts);
 }
 function recommendations(ts=now()){
-  return activeExercises().filter(ex=>!postponedUntil('exercise',ex.id,ts)).map(ex=>({ex,...scoreExercise(ex,ts)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score);
+  return activeExercises().filter(ex=>!postponedUntil('exercise',ex.id,ts)).map(ex=>({ex,...scoreExercise(ex,ts)})).filter(x=>x.score>=0&&x.status!=='red').sort((a,b)=>b.score-a.score);
 }
 function testRecommendations(ts=now()){
-  const recent=reactionEntries().slice(-1)[0];
-  if(safetyFlag()||recent?.pain>=APP.assessment.moderate_pain_from||recent?.worse)return [];
+  const recent=reactionEntries(ts).slice(-1)[0];
+  const current=currentSymptoms(ts);
+  if(current&&responseLevel(current)!=='normal')return [];
+  if(safetyFlag(ts)||recent?.pain>=APP.assessment.moderate_pain_from||recent?.worse)return [];
   if(state.assessment_sessions.some(s=>!s.completed_at))return [];
   const fatigue=fatigueAt(ts),covered=new Set(RDCFG.tests.filter(t=>testHistory(t).length).map(t=>t.domain));
   return RDCFG.tests.filter(testAvailable).flatMap(t=>{
-    if(postponedUntil('test',t.id,ts))return [];
+    if(postponedUntil('test',t.id,ts)||dailyLoadPlan({load_channels:t.test_load_vector},ts).status!=='normal')return [];
     const latest=testHistory(t).slice(-1)[0],age=latest?(ts-latest.ts)/DAY:Infinity;
     if(age<TEST_REPEAT_DAYS)return [];
     const load={load_channels:t.test_load_vector},rf=relevantFatigue(load,ts);
-    if(rf>=38||symptomMultiplier(load)<1||Object.entries(t.test_load_vector).some(([k,v])=>v>0&&fatigue[k]>=APP.fatigue_channels[k].red_from))return [];
+    if(rf>=38||symptomMultiplier(load,ts)<1||Object.entries(t.test_load_vector).some(([k,v])=>v>0&&fatigue[k]>=APP.fatigue_channels[k].red_from))return [];
     // Measurement gaps and freshness matter; a low result never asks for an immediate retest.
     const missingDomain=!covered.has(t.domain),overdue=latest?clamp((age-TEST_REPEAT_DAYS)/14):1;
     const score=.7+(missingDomain?.12:0)+(t.status==='active'?.04:0)+.1*clamp(1-rf/100)+.04*overdue;
@@ -607,37 +788,28 @@ function renderPostponed(best){
 }
 function exerciseMastery(ex){
   if(!ex.mastery_tracking?.enabled)return null;
-  const logs=state.logs.filter(l=>l.exerciseId===ex.id);
-  if(!logs.length)return 0;
-  const levels=ex.mastery_tracking.levels||[1,2,3,4,5];
-  const currentGood=logs.filter(isSuccessful).length;
-  const normalizedLevel=clamp(currentGood/(Math.max(3,levels.length*3)));
-  const recent=logs.slice(-5);
-  const quality=recent.reduce((a,l)=>a+(l.technique==='good'?1:(l.technique==='ok'||!l.technique?0.7:0.35)),0)/recent.length;
-  const repeat=clamp(recent.filter(isSuccessful).length/3);
-  const symptom=recent.reduce((a,l)=>a+(classifyLog(l)==='normal'?1:(classifyLog(l)==='mild_reaction'?0.75:0.4)),0)/recent.length;
-  return clamp(.40*normalizedLevel+.25*quality+.20*repeat+.15*symptom);
+  const p=exerciseProgress(ex);
+  if(!p.confirmedDays)return 0;
+  const key=doseKey(ex),goal=doseCeiling(ex,ex.dose||{});
+  const attained=key&&goal?clamp((p.working[key]||0)/goal):0;
+  return clamp(p.confirmedDays/3)*attained;
 }
 function trainingMastery(){
   const vals=activeExercises().map(ex=>exerciseMastery(ex)).filter(v=>v!==null);
-  const exm=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
-  const since=now()-14*DAY;
-  const days=new Set(state.logs.filter(l=>l.ts>=since).map(l=>startOfDay(l.ts))).size;
-  const consistency=clamp(days/10);
-  const recent=state.logs.filter(l=>l.ts>=now()-7*DAY);
-  const stability=recent.length?recent.reduce((a,l)=>a+(classifyLog(l)==='normal'?1:(classifyLog(l)==='mild_reaction'?0.75:0.35)),0)/recent.length:0;
-  return clamp(.5*exm+.3*consistency+.2*stability);
+  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
 }
-function readinessSummary(){
+function readinessSummary(ts=now()){
   const domainScores={pain:null,ankle_capacity:null,confidence:null,sensorimotor_control:null,impact_running_capacity:null};
 
-  const recentLogs=[...state.logs,...state.assessment_sessions.filter(s=>s.pain_after!=null).map(s=>({ts:sessionLastAt(s),painAfter:s.pain_after}))].filter(l=>l.ts>=now()-7*DAY);
+  const recentLogs=[...state.logs,...state.assessment_sessions.filter(s=>s.pain_after!=null).map(s=>({ts:sessionLastAt(s),painAfter:s.pain_after}))].filter(l=>l.ts<=ts&&l.ts>=ts-7*DAY);
   if(recentLogs.length){
     const avgPain=recentLogs.reduce((a,l)=>a+(l.painAfter||0),0)/recentLogs.length;
     domainScores.pain=clamp(1-avgPain/5);
   }
 
-  const sr=state.selfReports.slice(-1)[0];
+  const current=currentSymptoms(ts);
+  if(current&&ts-current.ts<=7*DAY)domainScores.pain=clamp(1-current.pain/5);
+  const sr=state.selfReports.filter(r=>r.ts<=ts&&ts-r.ts<=14*DAY).slice(-1)[0];
   if(sr){
     const trust=(sr.trust??0)/10, fear=1-(sr.fear??0)/10, ready=(sr.ready??0)/10;
     domainScores.confidence=clamp((trust+fear+ready)/3);
@@ -645,12 +817,13 @@ function readinessSummary(){
 
   const testMap={};
   for(const t of RDCFG.tests){
-    const logs=testHistory(t).slice(-3);
+    const logs=testHistory(t).filter(l=>l.ts<=ts&&ts-l.ts<=30*DAY).slice(-3);
     if(!logs.length)continue;
     let values=[];
     for(const l of logs){
       if(t.bilateral && l.right!=null && l.left!=null){
-        values.push(clamp(symmetry(t,l)));
+        const absolute=t.target_injured_side_sec||(['single_leg_calf_raise_test','single_leg_hop_basic','lateral_hop'].includes(t.id)?t.reference_volume:null);
+        values.push(Math.min(clamp(symmetry(t,l)),absolute?clamp(l.right/absolute):1));
       } else if(l.value!=null){
         values.push(clamp(l.value/t.readiness_reference));
       }
@@ -671,8 +844,9 @@ function readinessSummary(){
     const v=domainScores[dom];
     if(v!=null){n+=v*cfg.weight;d+=cfg.weight;}
   }
-  const score=d?Math.min(n/d,domainScores.impact_running_capacity==null?.99:1):null;
-  return {score,domainScores};
+  const missing=Object.keys(domainScores).filter(k=>domainScores[k]==null);
+  const score=!missing.length&&!safetyFlag(ts)&&(!current||responseLevel(current)==='normal')?n/d:null;
+  return {score,domainScores,missing};
 }
 function currentStage(){
   return RDCFG.stages.find(x=>x.id===state.selectedStage)||RDCFG.stages[0];
@@ -689,32 +863,32 @@ function xpAndStreak(){
 }
 function maybeAddDelayedCheck(log){
   const ex=EXMAP[log.exerciseId];
-  if(!ex || ex.symptom_check_policy==='light')return;
+  if(!ex || ex.mastery_tracking?.enabled===false)return;
   state.delayedChecks.push({id:'c'+Math.random().toString(36).slice(2),logId:log.id,exerciseId:log.exerciseId,createdAt:log.ts,sameDay:null,nextMorning:null});
 }
 function pendingChecks(){
   return state.delayedChecks.filter(c=>c.sameDay==null || c.nextMorning==null).filter(c=>now()-c.createdAt>2*3600000);
 }
-function addXp(ex){
-  const skills=Object.keys(ex.skill_credit||{});
-  const today=logsToday();
-  let mult=1;
-  if(skills.length){
-    const count=today.filter(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{}).some(s=>skills.includes(s))).length;
-    mult=APP.gamification.xp.same_skill_daily_multipliers[Math.min(count,APP.gamification.xp.same_skill_daily_multipliers.length-1)]||.15;
-  }
-  state.xp=(state.xp||0)+Math.round(APP.gamification.xp.base_per_useful_dose*mult);
+function addXp(ex,log){
+  if(!isSuccessful(log))return;
+  const skills=Object.keys(ex.skill_credit||{}),today=logsToday().filter(l=>l.id!==log.id&&isSuccessful(l));
+  const count=today.filter(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{}).some(s=>skills.includes(s))).length;
+  const mult=APP.gamification.xp.same_skill_daily_multipliers[Math.min(count,APP.gamification.xp.same_skill_daily_multipliers.length-1)]??.15;
+  const completion=clamp(doseVolume(log.actualDose)/doseVolume(log.suggestedDose||ex.dose));
+  state.xp=(state.xp||0)+Math.round(APP.gamification.xp.base_per_useful_dose*mult*completion);
 }
-
 function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
 function showDialog(id){ document.getElementById(id).showModal(); }
 function closeDialog(id){ document.getElementById(id).close(); }
 
 function renderHome(){
+  const current=currentSymptoms();
+  document.getElementById('currentSymptoms').textContent=current?`${fmtDate(current.ts)} ${fmtTime(current.ts)} · ${steadinessNames[current.steadiness]} · боль ${current.pain}/10${current.fatigue?' · '+fatigueNames[current.fatigue]:''}${current.swelling?' · отёк':''}`:'Можно отметить реакцию в любой момент.';
   const tm=trainingMastery(); setRing('masteryRing','masteryValue',tm);
   document.getElementById('masteryHint').textContent=`${xpAndStreak().streak} дн. серии · ${state.xp||0} очков опыта`;
 
   const rs=readinessSummary(); setRing('readinessRing','readinessValue',rs.score,'—');
+  document.getElementById('readinessHint').textContent=rs.missing.length?`Недостаточно данных: проверено ${5-rs.missing.length}/5 направлений`:'Оценка измерений; переход подтверждается отдельно';
   const stage=currentStage(); document.getElementById('stageName').textContent=stage.name;
   const line=document.getElementById('stageLine'); line.innerHTML='';
   RDCFG.stages.forEach(s=>{const d=document.createElement('i');d.className='stage-dot '+(s.order<stage.order?'done':s.order===stage.order?'current':'');line.appendChild(d)});
@@ -723,11 +897,11 @@ function renderHome(){
   const best=recs[0];
   const bestEl=document.getElementById('bestNow');
   if(best){
-    const when=best.status==='green'?'Можно сейчас':best.status==='yellow'?'Лучше чуть позже':'Пауза';
+    const when=best.status==='green'?'Можно сейчас':best.status==='yellow'?'Облегчённый объём / отдых':'Пауза';
     bestEl.innerHTML=`
       <span class="best-label">⭐ Лучшее сейчас · ${when} · ${best.kind==='test'?'Тест':'Упражнение'}</span>
       <div class="rec-name">${esc(best.kind==='test'?best.test.name:best.ex.name)}</div>
-      <div class="dose">${esc(best.kind==='test'?testDoseText(best.test):doseText(best.ex))}</div>
+      <div class="dose">${esc(best.kind==='test'?testDoseText(best.test):doseText(best.ex,best.dose))}</div>
       ${best.kind==='test'?`<div class="reason">${esc(best.test.what_measures)}${best.latest?'<br>Последний результат: '+esc(resultText(best.test,best.latest)):''}</div>`:`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||s)}</span>`).join('')}</div>`}
       <div class="rec-actions">${actionButtonHTML(best)}</div>
       <div class="reason"><b>Почему:</b> ${esc(best.reasons.slice(0,3).join(' · '))}</div>`;
@@ -740,10 +914,10 @@ function renderHome(){
       list.insertAdjacentHTML('beforeend',`<button type="button" class="list-item" style="color:inherit;text-align:left" onclick="AM.openTest('${r.test.id}')"><span class="status-dot status-green"></span><span class="li-main"><span class="li-title">${esc(r.test.name)}</span><span class="li-meta" style="display:block">${esc(testDoseText(r.test))} · ${esc(r.reasons[0])}</span></span><span class="pill green">Тест</span></button>`);
       return;
     }
-    const next=nextGoodWindow(r.ex); const delay=next&&next-now()>20*60000?`лучше ${fmtTime(next)}`:(r.status==='green'?'можно сейчас':'снизить нагрузку');
+    const next=r.status==='green'?null:nextGoodWindow(r.ex); const delay=next&&next-now()>20*60000?`лучше ${fmtTime(next)}`:(r.status==='green'?'можно сейчас':'снизить нагрузку');
     list.insertAdjacentHTML('beforeend',`
       <div class="list-item" onclick="AM.openExercise('${r.ex.id}')">
-        <span class="status-dot status-${r.status}"></span><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-meta">${esc(doseText(r.ex))} · ${esc(r.reasons[0]||'')}</div></div>
+        <span class="status-dot status-${r.status}"></span><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-meta">${esc(doseText(r.ex,r.dose))} · ${esc(r.reasons[0]||'')}</div></div>
         <span class="pill ${r.status}">${esc(delay)}</span>
       </div>`);
   });
@@ -751,12 +925,14 @@ function renderHome(){
   const counts=prescriptionCounts(), grid=document.getElementById('dailyGrid');grid.innerHTML='';
   let closed=0,total=0;
   for(const [g,cfg] of Object.entries(APP.program.prescription_groups)){
-    total++; const n=counts[g]||0, done=n>=cfg.target_per_day;if(done)closed++;
-    grid.insertAdjacentHTML('beforeend',`<div class="daily-cell ${done?'done':''}"><div class="circle">${n}/${cfg.target_per_day}</div><label>${esc(groupShort[g]||g)}</label></div>`);
+    const ex=activeExercises().find(x=>x.prescription_credit?.group===g);if(!ex)continue;
+    const target=dailyTarget(ex);if(target)total++;
+    const n=counts[g]||0,done=target>0&&n>=target;if(done)closed++;
+    grid.insertAdjacentHTML('beforeend',`<div class="daily-cell ${done?'done':''}"><div class="circle">${target?n+'/'+target:'Пауза'}</div><label>${esc(groupShort[g]||g)}</label></div>`);
   }
-  document.getElementById('dailyCount').textContent=`${closed}/${total} целей`;
+  document.getElementById('dailyCount').textContent=`${closed}/${total} ориентиров`;
   const testsToday=state.testLogs.filter(l=>l.ts>=startOfDay());
-  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей. Тесты добавляют физическую нагрузку.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}</div>`;
+  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей. Выполнение сегодняшнего плана засчитывается полностью. Общая нагрузка может завершить план раньше дневных ориентиров.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}</div>`;
 
   const f=fatigueAt(), fc=document.getElementById('fatigueCard');fc.innerHTML='';
   for(const [k,v] of Object.entries(f)){
@@ -764,14 +940,11 @@ function renderHome(){
   }
   document.getElementById('updatedAt').textContent=`обновлено ${fmtTime(now())}`;
 
-  const p=pendingChecks(), wrap=document.getElementById('pendingChecksWrap'); wrap.innerHTML='';
+  const wrap=document.getElementById('pendingChecksWrap');wrap.innerHTML='';
   const unfinished=state.assessment_sessions.findLast(s=>!s.completed_at);
-  if(unfinished)wrap.innerHTML=`<div class="card notice" style="margin-top:12px">Тест сохранён. Отметь самочувствие после самопроверки, чтобы уточнить следующие рекомендации.<br><button class="btn secondary" style="margin-top:10px" onclick="AM.openAssessment('${unfinished.id}')">Как чувствуются ноги? Завершить</button></div>`;
-  if(p.length){
-    wrap.insertAdjacentHTML('beforeend',`<div class="section-title"><h2>Контроль реакции</h2><small>${p.length}</small></div><div class="card notice">Есть упражнения, после которых пора отметить реакцию позже/на следующее утро. <button class="btn secondary" style="margin-top:10px" onclick="AM.openCheck('${p[0].id}')">Заполнить</button></div>`);
-  }
-  const assessmentChecks=pendingAssessmentChecks();
-  for(const s of assessmentChecks)wrap.insertAdjacentHTML('beforeend',`<div class="card notice" style="margin-top:12px">Реакция после самопроверки ${fmtDate(s.started_at)}<br><button class="btn secondary" style="margin-top:10px" onclick="AM.openAssessmentCheck('${s.id}')">Как лодыжка на следующее утро?</button></div>`);
+  if(unfinished)wrap.innerHTML=`<div class="card notice" style="margin-top:12px">Тест сохранён. Отметь самочувствие после самопроверки.<br><button class="btn secondary" style="margin-top:10px" onclick="AM.openAssessment('${unfinished.id}')">Завершить самопроверку</button></div>`;
+  const days=pendingMorningDays();
+  if(days.length)wrap.insertAdjacentHTML('beforeend',`<div class="card notice" style="margin-top:12px"><b>Утренняя проверка после ${fmtDate(days[0])}</b><div class="li-meta">Одна оценка для всей нагрузки за день.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.openMorning(${days[0]})">Как лодыжка сегодня?</button>${days.length>1?`<details><summary>Предыдущие дни · ${days.length-1}</summary>${days.slice(1).map(day=>`<button class="btn ghost" onclick="AM.openMorning(${day})">${fmtDate(day)}</button>`).join('')}</details>`:''}</div>`);
   if(safetyFlag())wrap.insertAdjacentHTML('beforeend','<div class="notice bad" style="margin-top:12px">Боль, новый отёк или нестабильность: предложения перехода между этапами приостановлены до последующей нормальной реакции. Это продуктовая мера предосторожности, не диагноз.</div>');
 }
 function setRing(id,valId,v,empty='0%'){
@@ -792,15 +965,15 @@ function renderExercises(){
     list.insertAdjacentHTML('beforeend',`
       <div class="list-item exercise-card" onclick="AM.openExercise('${ex.id}')">
         <div class="li-main"><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><div class="li-title">${esc(ex.name)}</div>
-          <div class="li-meta">${esc(doseText(ex))}${st==='active'?' · '+(tr.status==='green'?'можно сейчас':tr.status==='yellow'?'лучше позже':'пауза'):''}</div>
+          <div class="li-meta">${esc(doseText(ex,suggestedDose(ex).dose))}${st==='active'?' · '+(tr.status==='green'?'можно сейчас':tr.status==='yellow'?'облегчённый объём / отдых':'пауза'):''}</div>
           ${postponedUntil('exercise',ex.id)?`<div class="li-meta">Отложено до ${fmtDate(postponedUntil('exercise',ex.id))} ${fmtTime(postponedUntil('exercise',ex.id))}</div>`:''}
-          ${m==null?'':`<div class="progress"><i style="width:${pct(m)}%"></i></div><div class="mastery-label">Освоение ${pct(m)}% · ${masteryLabel(m)}</div>`}
+          ${m==null?'':`<div class="mastery-label">${exerciseProgress(ex).confirmedDays}/3 подтверждений в разные дни</div>`}
         </div><div><span class="tier">${ex.tier==='FUTURE'?'Позже':'Уровень '+esc(ex.tier||'—')}</span><div class="pill" style="margin-top:8px">${esc(statusLabels[st]||'Статус неизвестен')}</div></div>
       </div>`);
   });
   document.getElementById('activeExerciseCount').textContent=`${activeExercises().length} активно`;
 }
-function masteryLabel(v){const p=pct(v);return p<25?'Изучаю':p<50?'Стабильно':p<70?'Уверенно':p<90?'Освоено':'Автоматически';}
+function masteryLabel(v){const p=pct(v);return p<25?'Уточняем уровень':p<100?'Подтверждаем рабочий объём':'Рабочий объём подтверждён';}
 
 function protocolHTML(t){
   return `<details><summary>Как выполнить</summary><ol>${t.protocol.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><div class="notice">Остановись при боли или потере контроля. Пороги и нагрузка — продуктовые эвристики, не медицинские нормативы.</div></details>`;
@@ -822,6 +995,8 @@ function historyHTML(t,logs){
     <table class="history-table"><thead><tr><th>Дата</th>${t.bilateral?`<th>Л, ${esc(t.unit_short)}</th><th>П, ${esc(t.unit_short)}</th><th>Симметрия</th>`:`<th>${esc(t.unit)}</th>`}</tr></thead><tbody>${[...logs].reverse().map(l=>`<tr><td>${fmtDate(l.ts)} ${new Date(l.ts).getFullYear()}</td>${t.bilateral?`<td>${l.left}</td><td>${l.right}</td><td>${pct(symmetry(t,l))}%</td>`:`<td>${l.value}</td>`}</tr>`).join('')}</tbody></table>`;
 }
 function renderTests(){
+  const domains=readinessSummary().domainScores,names={pain:'Боль',ankle_capacity:'Сила и подвижность',confidence:'Уверенность',sensorimotor_control:'Контроль и баланс',impact_running_capacity:'Ударная нагрузка'};
+  document.getElementById('readinessDomains').innerHTML=Object.entries(domains).map(([k,v])=>`<div class="kv"><span>${names[k]}</span><b>${v==null?'Нет актуальных данных':pct(v)+'% по измерениям'}</b></div>`).join('');
   const rs=readinessSummary();setRing('readinessRing2','readinessValue2',rs.score,'—');
   document.getElementById('stageName2').textContent=currentStage().name;
   renderAssessment();renderSelfReport();
@@ -928,13 +1103,14 @@ function renderStats(){
 
   const hist=document.getElementById('historyList');hist.innerHTML='';
   const all=[
-    ...state.logs.map(l=>({ts:l.ts,title:EXMAP[l.exerciseId]?.name||'Упражнение',meta:`боль ${l.painAfter??0}/10 · ${fatigueNames[l.fatigue||'low']||'усталость не указана'}`})),
+    ...state.logs.map(l=>({ts:l.ts,title:EXMAP[l.exerciseId]?.name||'Упражнение',meta:`${l.actualDose?doseText(EXMAP[l.exerciseId]||{},l.actualDose)+' · ':''}боль ${l.painAfter??0}/10 · ${fatigueNames[l.fatigue||'low']||'усталость не указана'}${l.steadiness?' · '+steadinessNames[l.steadiness]:''}`,logId:l.id})),
+    ...state.symptomReports.map(r=>({ts:r.ts,title:r.phase==='morning'?'Утренняя проверка за '+fmtDate(r.trainingDay):'Самочувствие лодыжки',meta:`${steadinessNames[r.steadiness]} · боль ${r.pain}/10 · ${fatigueNames[r.fatigue]||'усталость не указана'}${r.response&&r.response!=='unknown'?' · '+responseNames[r.response]:''}${r.onset_at?' · заметил '+fmtTime(r.onset_at):''} · ${r.logId?'после: '+(EXMAP[state.logs.find(l=>l.id===r.logId)?.exerciseId]?.name||'упражнения'):r.context==='combined'?'после нескольких нагрузок':'причина неизвестна'}`})),
     ...state.customActivities.map(a=>({ts:a.ts,title:a.name,meta:'произвольная активность'})),
     ...state.testLogs.map(l=>{const t=RDCFG.tests.find(t=>t.id===l.testId);return {ts:l.ts,title:'Тест: '+(t?.name||'Самопроверка'),meta:t?resultText(t,l)+(l.protocol_id===t.protocol_id?'':' · прежний / другой протокол'):'измерение'};}),
     ...state.assessment_sessions.map(s=>({ts:s.completed_at||sessionLastAt(s),title:'Самопроверка — '+fmtDate(s.started_at),meta:`${s.test_log_ids.length} тестов · ${s.perceived_fatigue?fatigueNames[s.perceived_fatigue]:'реакция не отмечена'}${s.pain_after!=null?' · боль '+s.pain_after+'/10':''}`,sessionId:s.id}))
   ].sort((a,b)=>b.ts-a.ts).slice(0,20);
   if(!all.length)hist.innerHTML='<div class="empty">История пока пустая.</div>';
-  all.forEach(x=>hist.insertAdjacentHTML('beforeend',`<div class="list-item"><div class="li-main"><div class="li-title">${esc(x.title)}</div><div class="li-meta">${fmtDate(x.ts)} ${fmtTime(x.ts)} · ${esc(x.meta)}</div>${x.sessionId?`<button class="btn ghost" style="margin-top:8px" onclick="AM.openAssessment('${x.sessionId}')">Обновить реакцию</button>`:''}</div></div>`));
+  all.forEach(x=>hist.insertAdjacentHTML('beforeend',`<div class="list-item"><div class="li-main"><div class="li-title">${esc(x.title)}</div><div class="li-meta">${fmtDate(x.ts)} ${fmtTime(x.ts)} · ${esc(x.meta)}</div>${x.sessionId?`<button class="btn ghost" style="margin-top:8px" onclick="AM.openAssessment('${x.sessionId}')">Обновить реакцию</button>`:''}${x.logId?`<button class="btn ghost" style="margin-top:8px" onclick="AM.openSymptoms('${x.logId}')">Обновить реакцию</button>`:''}</div></div>`));
 }
 
 function renderAll(){
@@ -945,47 +1121,108 @@ function renderAll(){
 function openExercise(id){
   const ex=EXMAP[id]; if(!ex)return; const st=state.exerciseStatuses[id],m=exerciseMastery(ex),rec=scoreExercise(ex);
   const until=postponedUntil('exercise',id);
+  const suggested=suggestedDose(ex);
   const statusActions = st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:
                         st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
   document.getElementById('exerciseModal').innerHTML=`
     <div class="modal-head"><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('exerciseDialog')">×</button></div>
-    <div class="notice"><b>${esc(doseText(ex))}</b><br>${esc((ex.primary_skills||[]).map(s=>skillLabels[s]||s).join(' · '))}</div>
+    <div class="notice"><b>Сейчас: ${esc(doseText(ex,suggested.dose))}</b><br>${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}<br><span class="li-meta">Рабочий уровень: ${esc(doseText(ex,suggested.working))} · ${suggested.confirmed?'подтверждён':'уточняется'}</span></div>
     <div style="margin-top:14px">${(ex.instructions||[]).map((x,i)=>`<div class="kv"><span>${i+1}. ${esc(x)}</span></div>`).join('')}</div>
-    ${m==null?'':`<div style="margin-top:14px"><b>Освоение ${pct(m)}% — ${masteryLabel(m)}</b><div class="progress"><i style="width:${pct(m)}%"></i></div></div>`}
+    ${m==null?'':`<div style="margin-top:14px"><b>${suggested.confirmedDays}/3 подтверждений в разные дни</b><div class="li-meta">Учитываем качество и реакцию следующим утром.</div></div>`}
+    ${suggested.trial?`<div class="notice" style="margin-top:12px"><b>Пробный шаг: ${esc(doseText(ex,suggested.trial))}</b><div class="li-meta">${Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)>0?'Изменение объёма: +'+Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)+'%.':'Меняется сложность варианта; численный объём прежний.'} Проверим переносимость после выполнения.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.close('exerciseDialog');AM.openLog('${id}',true)">Попробовать этот шаг</button></div>`:''}
     ${st==='active'?`<div class="reason"><b>Сейчас:</b> ${esc(rec.reasons.join(' · '))}</div>`:''}
     <div class="source-badge">${esc(sourceLabels[ex.source]||ex.source)}</div>
     ${until?`<div class="notice" style="margin-top:12px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:''}
     <div class="modal-actions">${st==='active'?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>`:''}${statusActions}</div>`;
   showDialog('exerciseDialog');
 }
-function openLog(id){
-  const ex=EXMAP[id]; if(!ex)return;
+let suggestedForLog=null;
+const steadinessNames={steady:'Устойчива',shaky:'Менее уверенная / шаткая',giving_way:'Подламывается / подворачивается'};
+function steadinessField(id,value='steady'){
+  return `<div class="field"><label for="${id}">Устойчивость лодыжки</label><select id="${id}">${Object.entries(steadinessNames).map(([k,v])=>`<option value="${k}" ${k===value?'selected':''}>${v}</option>`).join('')}</select></div>`;
+}
+function openLog(id,useTrial=false){
+  const ex=EXMAP[id];if(!ex)return;
+  const plan=suggestedDose(ex),dose=useTrial&&plan.trial?plan.trial:plan.dose;
+  suggestedForLog={id,dose,kind:useTrial||(!sameDose(dose,plan.working)&&exerciseProgress(ex).logs.slice(-1)[0]?.doseReason==='trial')?'trial':plan.status==='light'?'daily_load':sameDose(dose,plan.working)?'capacity':'recovery'};
+  const option=doseOptions[id];
   document.getElementById('logModal').innerHTML=`
-    <div class="modal-head"><div><div class="source">Запись выполнения</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
-    <div class="notice">${esc(doseText(ex))}</div>
-    <div class="field"><label>Боль во время: <span id="pdv">0</span>/10</label><div class="range-row"><input id="painDuring" type="range" min="0" max="10" value="0" oninput="pdv.textContent=this.value"><span class="range-val" id="pdv2">0</span></div></div>
-    <div class="field"><label>Боль после: <span id="pav">0</span>/10</label><div class="range-row"><input id="painAfter" type="range" min="0" max="10" value="0" oninput="pav.textContent=this.value"><span class="range-val" id="pav2">0</span></div></div>
-    <div class="field"><label>Общая усталость</label><select id="fatigueSel"><option value="low">Лёгкая</option><option value="medium">Средняя</option><option value="high">Сильная</option></select></div>
-    <div class="field"><label>Техника</label><select id="techSel"><option value="good">Хорошая</option><option value="ok">Нормальная</option><option value="poor">Развалилась</option></select></div>
-    <div class="split">
-      <label class="notice"><input type="checkbox" id="outerPain"> Локальная боль у наружной лодыжки</label>
-      <label class="notice"><input type="checkbox" id="instability"> Нестабильность / подворачивание</label>
-    </div>
-    <label class="notice" style="display:block;margin-top:10px"><input type="checkbox" id="swelling"> Новый/усилившийся отёк</label>
-    <div class="field"><label>Комментарий</label><textarea id="comment" placeholder="необязательно"></textarea></div>
+    <div class="modal-head"><div><div class="source">${useTrial?'Пробный шаг':'Запись выполнения'}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
+    <div class="notice">Предложено: <b>${esc(doseText(ex,dose))}</b><br>${esc(plan.reason)}</div>
+    <div class="section-title"><h4>Сколько сделал?</h4></div>
+    ${(doseFields[ex.dose?.type]||[]).map(([key,label],i)=>`${i===1?'<details><summary>Уточнить удержание / подходы</summary>':''}<div class="field"><label for="dose_${key}">${label}</label><input id="dose_${key}" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${dose[key]||1}" oninput="AM.doseChanged()"></div>${i>0&&i===doseFields[ex.dose.type].length-1?'</details>':''}`).join('')}
+    ${option?`<div class="field"><label for="doseOption">${option.label}</label><select id="doseOption" onchange="AM.doseChanged()">${option.values.map(([v,n])=>`<option value="${v}" ${v===(dose[option.key]||option.values[0][0])?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
+    <div class="field"><label for="difficultySel">Как дался объём?</label><select id="difficultySel"><option value="normal">Посильно</option><option value="easy">Легко, есть запас</option><option value="hard">Тяжело, без запаса</option></select></div>
+    <div class="field"><label for="techSel">Качество движений</label><select id="techSel"><option value="good">Хорошее</option><option value="ok">Приемлемое</option><option value="poor">Терял контроль</option></select></div>
+      <div class="field" id="volumeReason" style="display:none"><label for="doseReason">Почему выбран такой объём?</label><select id="doseReason">${[['capacity','Подходит моим возможностям'],['daily_load','Меньше из-за общей нагрузки сегодня'],['time','Не хватило времени'],['recovery','Облегчение после реакции'],['trial','Пробую следующий шаг']].map(([v,n])=>`<option value="${v}" ${v===suggestedForLog.kind?'selected':''}>${n}</option>`).join('')}</select></div>
+    <details><summary>Боль, шаткость или другие подробности</summary>
+      <div class="field"><label for="painBefore">Боль до упражнения, 0–10</label><input id="painBefore" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
+      <div class="field"><label for="painDuring">Боль во время, 0–10</label><input id="painDuring" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
+      <div class="field"><label for="painAfter">Боль сразу после, 0–10</label><input id="painAfter" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
+      ${steadinessField('logSteadiness',currentSymptoms()?.steadiness||'steady')}
+      <div class="field"><label for="fatigueSel">Усталость после</label><select id="fatigueSel"><option value="low">Лёгкая</option><option value="medium">Умеренная</option><option value="high">Сильная</option></select></div>
+      <label class="notice"><input type="checkbox" id="outerPain"> Боль у наружной лодыжки</label>
+      <label class="notice" style="display:block;margin-top:10px"><input type="checkbox" id="swelling" ${currentSymptoms()?.swelling?'checked':''}> Новый/усилившийся отёк</label>
+
+      <div class="field"><label for="comment">Комментарий</label><textarea id="comment" placeholder="необязательно"></textarea></div>
+    </details>
     <div class="modal-actions"><button class="btn primary" onclick="AM.saveLog('${id}')">Сохранить</button></div>`;
   showDialog('logDialog');
 }
+function doseChanged(){
+  if(!suggestedForLog)return;
+  const ex=EXMAP[suggestedForLog.id],changed=(doseFields[ex.dose.type]||[]).some(([k])=>Number(document.getElementById('dose_'+k).value)!==suggestedForLog.dose[k]);
+  const option=doseOptions[ex.id],variant=option&&document.getElementById('doseOption').value!==(suggestedForLog.dose[option.key]||option.values[0][0]);
+  document.getElementById('volumeReason').style.display=changed||variant?'block':'none';
+}
 function saveLog(id){
-  const ex=EXMAP[id],log={
-    id:'l'+Math.random().toString(36).slice(2),exerciseId:id,ts:now(),
-    painDuring:+document.getElementById('painDuring').value,painAfter:+document.getElementById('painAfter').value,
+  const ex=EXMAP[id],dose={...ex.dose};
+  for(const [key] of doseFields[ex.dose?.type]||[])dose[key]=Number(document.getElementById('dose_'+key).value);
+  const option=doseOptions[id];if(option)dose[option.key]=document.getElementById('doseOption').value;
+  const steadiness=document.getElementById('logSteadiness').value;
+  const pains=['painBefore','painDuring','painAfter'].map(k=>Number(document.getElementById(k).value));
+  if(pains.some(v=>!Number.isFinite(v)||v<0||v>10))return toast('Укажи боль от 0 до 10');
+  let log;
+  try{log=recordExercise(id,dose,{
+    painBefore:pains[0],painDuring:pains[1],painAfter:pains[2],doseReason:document.getElementById('doseReason').value||suggestedForLog?.kind||'capacity',
     fatigue:document.getElementById('fatigueSel').value,technique:document.getElementById('techSel').value,
-    localOuterAnklePain:document.getElementById('outerPain').checked,instability:document.getElementById('instability').checked,
-    swelling:document.getElementById('swelling').checked,comment:document.getElementById('comment').value.trim(),nextDay:null,sameDay:null
-  };
-  state.logs.push(log);addXp(ex);maybeAddDelayedCheck(log);closeDialog('logDialog');save();
-  toast(log.painAfter>=3?'Записано. Приоритет похожих нагрузок снижен.':'Записано ✓');
+    phase:'after',difficulty:document.getElementById('difficultySel').value,steadiness,instability:steadiness==='giving_way',
+    localOuterAnklePain:document.getElementById('outerPain').checked,
+    swelling:document.getElementById('swelling').checked,comment:document.getElementById('comment').value.trim()
+  },now(),suggestedForLog?.id===id?suggestedForLog.dose:suggestedDose(ex).dose);}catch(e){return toast(e.message);}
+  closeDialog('logDialog');save();
+  toast(responseLevel(exerciseResponse(log))!=='normal'?'Записано. Следующая нагрузка адаптирована.':'Фактический объём записан ✓');
+}
+
+function openSymptoms(logId=null){
+  const l=state.logs.find(x=>x.id===logId),r=l?exerciseResponse(l):state.symptomReports.slice(-1)[0]||{};
+  const recent=state.logs.filter(x=>now()-x.ts<DAY||x.id===logId).sort((a,b)=>b.ts-a.ts);
+  document.getElementById('symptomsModal').innerHTML=`<div class="modal-head"><h3>${l?'Реакция после упражнения':'Как лодыжка сейчас?'}</h3><button class="x" onclick="AM.close('symptomsDialog')">×</button></div>
+    <div class="field"><label for="symptomContext">После чего заметил?</label><select id="symptomContext"><option value="unknown">Не знаю причину</option><option value="combined">После нескольких нагрузок</option>${recent.map(x=>`<option value="${x.id}" ${x.id===logId?'selected':''}>${esc(EXMAP[x.exerciseId]?.name||'Упражнение')} · ${fmtTime(x.ts)}</option>`).join('')}</select></div>
+    <div class="field"><label for="symptomResponse">По сравнению с состоянием до нагрузки</label><select id="symptomResponse"><option value="unknown">Не знаю / просто отмечаю состояние</option><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
+    ${steadinessField('symptomSteadiness',r.steadiness||'steady')}
+    <div class="field"><label for="symptomPain">Боль сейчас, 0–10</label><input id="symptomPain" type="number" min="0" max="10" value="${r.pain||0}"></div>
+    <div class="field"><label for="symptomFatigue">Усталость ног</label><select id="symptomFatigue">${['low','medium','high'].map(k=>`<option value="${k}" ${k===(r.fatigue||'low')?'selected':''}>${fatigueNames[k]}</option>`).join('')}</select></div>
+    <label class="notice"><input id="symptomSwelling" type="checkbox" ${r.swelling?'checked':''}> Новый/усилившийся отёк</label>
+    <div class="field"><label for="symptomMinutes">Сколько минут назад заметил?</label><input id="symptomMinutes" type="number" min="0" max="1440" value="0"></div>
+    <div class="field"><label for="symptomComment">Комментарий</label><textarea id="symptomComment"></textarea></div>
+    <div class="notice">Если причина неизвестна, учтём самочувствие для следующих нагрузок без изменения переносимости отдельного упражнения.</div>
+    <div class="modal-actions"><button class="btn primary" onclick="AM.saveSymptoms()">Сохранить реакцию</button></div>`;
+  showDialog('symptomsDialog');
+}
+function recordSymptoms(response,context='unknown',ts=now()){
+  if(!Number.isFinite(response.pain)||response.pain<0||response.pain>10)throw new Error('Укажи боль от 0 до 10');
+  const l=state.logs.find(x=>x.id===context),r={id:makeId('r'),ts,...response,phase:response.phase||'current',context:l?'exercise':context,logId:l?.id||null};
+  r.worse=response.response==='worse'||response.worse===true;
+  state.symptomReports.push(r);return r;
+}
+function saveSymptoms(){
+  const minutes=Number(document.getElementById('symptomMinutes').value);
+  if(!Number.isFinite(minutes)||minutes<0||minutes>1440)return toast('Проверь время появления');
+  try{recordSymptoms({pain:Number(document.getElementById('symptomPain').value),fatigue:document.getElementById('symptomFatigue').value,
+    steadiness:document.getElementById('symptomSteadiness').value,swelling:document.getElementById('symptomSwelling').checked,
+    response:document.getElementById('symptomResponse').value,painBefore:currentSymptoms()?.pain||0,phase:'current',onset_at:now()-minutes*60000,comment:document.getElementById('symptomComment').value.trim()},document.getElementById('symptomContext').value);}catch(e){return toast(e.message);}
+  closeDialog('symptomsDialog');save();toast('Самочувствие учтено в следующих рекомендациях');
 }
 
 function openActivity(){
@@ -1047,31 +1284,55 @@ function saveTest(id){
   toast('Тест сохранён. Отметь самочувствие');
 }
 function openCheck(id){
-  const c=state.delayedChecks.find(x=>x.id===id);if(!c)return;const ex=EXMAP[c.exerciseId];
-  document.getElementById('checkModal').innerHTML=`
-    <div class="modal-head"><div><div class="source">Отложенная реакция</div><h3>${esc(ex?.name||'Упражнение')}</h3></div><button class="x" onclick="AM.close('checkDialog')">×</button></div>
-    <div class="field"><label>Позже в тот же день</label><select id="sameDay"><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
-    <div class="field"><label>На следующее утро</label><select id="nextMorning"><option value="">Ещё не знаю</option><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
-    <div class="modal-actions"><button class="btn primary" onclick="AM.saveCheck('${id}')">Сохранить</button></div>`;
+  const c=state.delayedChecks.find(x=>x.id===id);if(c)openSymptoms(c.logId);
+}
+function pendingMorningDays(ts=now()){
+  const days=new Set([...state.logs,...state.customActivities,...state.testLogs].filter(l=>l.ts<=ts&&startOfDay(l.ts)<startOfDay(ts)).map(l=>startOfDay(l.ts)));
+  return [...days].filter(day=>!state.symptomReports.some(r=>r.phase==='morning'&&r.trainingDay===day)).sort((a,b)=>b-a);
+}
+function openMorning(day){
+  if(day>=startOfDay())return;
+  const recent=day===startOfDay(new Date(now()).setDate(new Date(now()).getDate()-1));
+  document.getElementById('checkModal').innerHTML=`<div class="modal-head"><h3>${recent?'Как лодыжка после вчерашней нагрузки?':'Самочувствие после '+fmtDate(day)}</h3><button class="x" onclick="AM.close('checkDialog')">×</button></div>
+    <div class="notice">Одна проверка для упражнений, тестов и других активностей за день.${recent?'':' Прошлая утренняя реакция уже неизвестна: эта запись уточнит только текущее состояние.'}</div>
+    <div class="field"><label for="morningResponse">Сегодня по сравнению с состоянием до нагрузки</label><select id="morningResponse"><option value="">Выбери</option><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
+    <div class="field"><label for="dayResponse">Было ли ухудшение позже в тот день?</label><select id="dayResponse"><option value="unknown">Не знаю</option><option value="same">Ухудшения не было</option><option value="worse">Да, было</option></select></div>
+    ${steadinessField('morningSteadiness',currentSymptoms()?.steadiness||'steady')}
+    <div class="field"><label for="morningPain">Боль сейчас, 0–10</label><input id="morningPain" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
+    <div class="field"><label for="morningFatigue">Усталость сейчас</label><select id="morningFatigue"><option value="low">Лёгкая</option><option value="medium">Умеренная</option><option value="high">Сильная, не восстановился</option></select></div>
+    <label class="notice"><input id="morningSwelling" type="checkbox" ${currentSymptoms()?.swelling?'checked':''}> Новый/усилившийся отёк</label>
+    <div class="modal-actions"><button class="btn primary" onclick="AM.saveMorning(${day})">Сохранить общую проверку</button></div>`;
   showDialog('checkDialog');
 }
+function saveMorning(day){
+  const response=document.getElementById('morningResponse').value,history=document.getElementById('dayResponse').value;
+  if(!response)return toast('Отметь утреннее состояние');
+  if(day>=startOfDay())return toast('Утреннюю проверку можно заполнить следующим днём');
+  try{recordSymptoms({phase:'morning',trainingDay:day,response,historyWorse:history==='worse',historyKnown:history!=='unknown',
+    pain:Number(document.getElementById('morningPain').value),steadiness:document.getElementById('morningSteadiness').value,
+    fatigue:document.getElementById('morningFatigue').value,swelling:document.getElementById('morningSwelling').checked},'combined');}catch(e){return toast(e.message);}
+  closeDialog('checkDialog');save();toast('Общая реакция сохранена');
+}
 function saveCheck(id){
-  const c=state.delayedChecks.find(x=>x.id===id),l=state.logs.find(x=>x.id===c.logId);
-  c.sameDay=document.getElementById('sameDay').value;c.nextMorning=document.getElementById('nextMorning').value||null;
-  if(l){l.sameDay=c.sameDay;l.nextDay=c.nextMorning;l.reaction_at=now();}
-  closeDialog('checkDialog');save();toast(c.nextMorning==='worse'?'Учтено: прогрессия временно понижена':'Реакция сохранена');
+  const c=state.delayedChecks.find(x=>x.id===id);if(c)openMorning(startOfDay(c.createdAt));
 }
 function activateExercise(id){state.exerciseStatuses[id]='active';closeDialog('exerciseDialog');save();toast('Упражнение добавлено в программу');}
 function archiveExercise(id){state.exerciseStatuses[id]='archived';closeDialog('exerciseDialog');save();toast('Упражнение убрано из активных');}
 
 function suggestStage(id){
-  const target=RDCFG.stages.find(x=>x.id===id),rs=readinessSummary();
+  const target=RDCFG.stages.find(x=>x.id===id),rs=readinessSummary();if(!target)return;
   let reasons=[];
   const latest=reactionEntries().slice(-1)[0];
   if(safetyFlag())reasons.push('нужна последующая нормальная реакция после боли, отёка или нестабильности');
   if(latest?.worse)reasons.push('есть ухудшение после нагрузки');
   if((latest?.pain||0)>1)reasons.push(`есть недавняя боль до ${latest.pain}/10`);
   if(!safetyFlag()&&EX.some(ex=>assessmentSymptomModifier(ex)<1))reasons.push('похожая нагрузка после самопроверки пока ограничена');
+  if(rs.domainScores.pain==null)reasons.push('нет актуальной оценки боли');
+  if(rs.domainScores.ankle_capacity==null)reasons.push('не проверены сила и подвижность');
+  else if(rs.domainScores.ankle_capacity<.9)reasons.push('сила и подвижность ниже продуктового ориентира');
+  if(target?.order>=2&&rs.domainScores.impact_running_capacity==null)reasons.push('не проверена ударная нагрузка');
+  const morning=state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=now()&&now()-r.ts<=7*DAY&&nextDayStart(r.trainingDay)===startOfDay(r.ts)).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+  if(!morning||responseLevel(morning)!=='normal'||morning.historyWorse||!morning.historyKnown)reasons.push('нужна нормальная реакция следующим утром после нагрузки');
   if((rs.domainScores.sensorimotor_control??0)<.85)reasons.push('сенсомоторный контроль ниже продуктового ориентира');
   if((rs.domainScores.confidence??0)<.8)reasons.push('нет достаточной записи уверенности');
   if(reasons.length)toast('Пока рано: '+reasons.slice(0,2).join(' · '));
@@ -1109,6 +1370,7 @@ document.getElementById('resetBtn').onclick=resetData;
 setupTabs();
 
 window.AM={
+  openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,
   openPostpone,postponeAction,resumeAction,
   openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,openCheck,saveCheck,
   activateExercise,archiveExercise,suggestStage,openAssessment,saveAssessment,chooseFatigue,openAssessmentCheck,saveAssessmentCheck,openSelfReport,saveSelfReport,close:closeDialog,
