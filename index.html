@@ -188,6 +188,7 @@
       <div class="section-title"><h2>Настройки и данные</h2></div>
       <div class="card">
         <div class="setting-row"><div><b>Хранение</b><div class="muted">Только в памяти этого браузера</div></div><span class="pill green">На устройстве</span></div>
+        <div class="setting-row"><div><b>Тренировочный день</b><div class="muted">С 05:00 до 04:59 по времени устройства</div></div><span class="pill">05:00</span></div>
         <div class="setting-row"><div><b>Сервер и искусственный интеллект</b><div class="muted">Не используются</div></div><span class="pill">Нет</span></div>
         <div class="setting-row"><div><b>Экспорт</b><div class="muted">Резервная копия в JSON</div></div><button class="btn secondary" id="exportBtn">Скачать</button></div>
         <div class="setting-row"><div><b>Импорт</b><div class="muted">Восстановить резервную копию</div></div><button class="btn secondary" id="importBtn">Выбрать</button></div>
@@ -289,9 +290,12 @@ function loadState(){
 }
 function save(){ localStorage.setItem(KEY,JSON.stringify(state)); renderAll(); }
 function now(){ return Date.now(); }
-function startOfDay(ts=now()){ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
-function nextDayStart(ts){const d=new Date(ts);d.setDate(d.getDate()+1);return startOfDay(d.getTime());}
-function daysAgo(n){ return startOfDay()-n*DAY; }
+function startOfDay(ts=now(),hour=5){
+  const d=new Date(ts);if(d.getHours()<hour)d.setDate(d.getDate()-1);
+  d.setHours(hour,0,0,0);return d.getTime();
+}
+function nextDayStart(ts,hour=5){const d=new Date(startOfDay(ts,hour));d.setDate(d.getDate()+1);return d.getTime();}
+function daysAgo(n){const d=new Date(startOfDay());d.setDate(d.getDate()-n);return d.getTime();}
 function fmtTime(ts){ return new Date(ts).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'}); }
 function clamp(v,a=0,b=1){ return Math.max(a,Math.min(b,v)); }
@@ -349,8 +353,12 @@ function doseVolume(d){
 function observationsFor(l,ts=now()){
   return state.symptomReports.filter(r=>r.ts<=ts&&r.logId===l.id);
 }
+// Older morning reports used midnight as the stored day key. Keep their original associations.
+function morningDayHour(r){return new Date(r.trainingDay).getHours()===0?0:5;}
+function morningMatches(r,activityTs){return r.phase==='morning'&&r.trainingDay===startOfDay(activityTs,morningDayHour(r));}
+function validMorningDay(r){const hour=morningDayHour(r);return nextDayStart(r.trainingDay,hour)===startOfDay(r.ts,hour);}
 function morningFor(l,ts=now()){
-  return state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=ts&&r.trainingDay===startOfDay(l.ts)&&startOfDay(r.ts)===nextDayStart(l.ts)).slice(-1)[0];
+  return state.symptomReports.filter(r=>r.ts<=ts&&morningMatches(r,l.ts)&&validMorningDay(r)).slice(-1)[0];
 }
 function exerciseResponse(l,ts=now()){
   const reports=observationsFor(l,ts),rank={steady:0,shaky:1,giving_way:2};
@@ -784,8 +792,7 @@ function openPostpone(kind,id){
   showDialog('postponeDialog');
 }
 function postponeAction(kind,id,period,ts=now()){
-  const tomorrow=new Date(ts);tomorrow.setDate(tomorrow.getDate()+1);tomorrow.setHours(0,0,0,0);
-  const until=period==='hour'?ts+3600000:period==='tomorrow'?tomorrow.getTime():ts+7*DAY;
+  const until=period==='hour'?ts+3600000:period==='tomorrow'?nextDayStart(ts):ts+7*DAY;
   state.postponedActions[kind+':'+id]=until;
   lastPostponed={kind,id,until};
   closeDialog('postponeDialog');save();
@@ -876,7 +883,7 @@ function xpAndStreak(){
   for(let i=0;i<60;i++){
     const logs=state.logs.filter(l=>startOfDay(l.ts)===cursor);
     const skills=new Set(logs.flatMap(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{})));
-    if(skills.size>=2){streak++;cursor-=DAY;}else if(i===0){cursor-=DAY;}else break;
+    if(skills.size>=2){streak++;cursor=daysAgo(i+1);}else if(i===0){cursor=daysAgo(1);}else break;
   }
   return {xp,streak};
 }
@@ -931,17 +938,20 @@ function noRecommendationHTML(ts=now()){
     reasons.push(...waiting.slice(0,2).map(r=>{
       const last=state.logs.filter(l=>l.exerciseId===r.ex.id&&l.ts<=ts).sort((a,b)=>b.ts-a.ts)[0];
       const until=last.ts+r.ex.min_rest_minutes*60000;
-      return `${r.ex.name}: перерыв ${r.ex.min_rest_minutes} мин после выполнения — не раньше ${fmtTime(until)}${startOfDay(until)!==startOfDay(ts)?' '+fmtDate(until):''}.`;
+      return `${r.ex.name}: перерыв ${r.ex.min_rest_minutes} мин после выполнения — не раньше ${fmtTime(until)}${startOfDay(until,0)!==startOfDay(ts,0)?' '+fmtDate(until):''}.`;
     }));
     reasons.push('После перерыва предложение зависит от самочувствия и общей нагрузки.');
   }
   if(!reasons.length)reasons.push(active.length?'Сейчас нет подходящих действий. Отдохни и отметь реакцию после нагрузки.':'Добавь доступное упражнение в программу через каталог.');
   const next=waiting.map(r=>({...r,until:Math.max(...state.logs.filter(l=>l.exerciseId===r.ex.id&&l.ts<=ts).map(l=>l.ts))+r.ex.min_rest_minutes*60000})).sort((a,b)=>a.until-b.until)[0];
   const summary=pauses[0]||(adverse?reasons[0]:waiting.length?'Выдерживаем перерыв между выполнениями.':reasons[0]);
-  return `<span class="best-label">Пауза в плане</span><div class="rec-name">${active.length?'Сейчас восстановление':'Нет активных упражнений'}</div><div class="reason">${esc(summary)}</div>${next?`<div class="next-window"><span>Ближайший повтор — не раньше</span><strong>${fmtTime(next.until)}${startOfDay(next.until)!==startOfDay(ts)?' '+fmtDate(next.until):''}</strong><div class="li-meta">${esc(next.ex.name)}</div></div>`:''}<div class="rec-actions"><button class="btn secondary" onclick="AM.openSymptoms()">Отметить самочувствие</button></div><details class="recommend-details"><summary>Почему пауза?</summary>${reasons.map(r=>`<div class="reason">${esc(r)}</div>`).join('')}</details>`;
+  return `<span class="best-label">Пауза в плане</span><div class="rec-name">${active.length?'Сейчас восстановление':'Нет активных упражнений'}</div><div class="reason">${esc(summary)}</div>${next?`<div class="next-window"><span>Ближайший повтор — не раньше</span><strong>${fmtTime(next.until)}${startOfDay(next.until,0)!==startOfDay(ts,0)?' '+fmtDate(next.until):''}</strong><div class="li-meta">${esc(next.ex.name)}</div></div>`:''}<div class="rec-actions"><button class="btn secondary" onclick="AM.openSymptoms()">Отметить самочувствие</button></div><details class="recommend-details"><summary>Почему пауза?</summary>${reasons.map(r=>`<div class="reason">${esc(r)}</div>`).join('')}</details>`;
 }
 
+let dayBoundaryTimer=null;
 function renderHome(){
+  document.getElementById('todayLabel').textContent=new Date(startOfDay()).toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  clearTimeout(dayBoundaryTimer);dayBoundaryTimer=setTimeout(renderAll,nextDayStart(now())-now());
   const current=currentSymptoms();
   document.getElementById('currentSymptoms').textContent=current?`${fmtDate(current.ts)} ${fmtTime(current.ts)} · ${steadinessNames[current.steadiness]} · боль ${current.pain}/10${current.fatigue?' · '+fatigueNames[current.fatigue]:''}${current.swelling?' · отёк':''}`:'Можно отметить реакцию в любой момент.';
   const tm=trainingMastery(); setRing('masteryRing','masteryValue',tm);
@@ -1126,7 +1136,7 @@ function pendingAssessmentChecks(){
 }
 function openAssessmentCheck(id){
   const s=state.assessment_sessions.find(s=>s.id===id);if(!s||startOfDay(sessionLastAt(s))>=startOfDay())return;
-  const yesterday=startOfDay(sessionLastAt(s))===startOfDay()-DAY;
+  const yesterday=startOfDay(sessionLastAt(s))===daysAgo(1);
   document.getElementById('checkModal').innerHTML=`<div class="modal-head"><h3>Как чувствует себя правая лодыжка после ${yesterday?'вчерашней самопроверки':'самопроверки '+fmtDate(s.started_at)}?</h3><button class="x" onclick="AM.close('checkDialog')">×</button></div>
     <div class="field"><label for="assessmentSameDay">Позже в день самопроверки</label><select id="assessmentSameDay"><option value="">Выбери реакцию</option>${[['better','Лучше'],['same','Так же'],['worse','Хуже']].map(([v,n])=>`<option value="${v}" ${s.same_day_response===v?'selected':''}>${n}</option>`).join('')}</select></div>
     <div class="field"><label for="assessmentNextDay">На следующее утро</label><select id="assessmentNextDay"><option value="">Выбери реакцию</option><option value="better">Лучше</option><option value="same">Так же</option><option value="worse">Хуже</option></select></div>
@@ -1177,7 +1187,6 @@ function renderStats(){
 }
 
 function renderAll(){
-  document.getElementById('todayLabel').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   renderHome();renderExercises();renderTests();renderStats();
 }
 
@@ -1350,12 +1359,13 @@ function openCheck(id){
   const c=state.delayedChecks.find(x=>x.id===id);if(c)openSymptoms(c.logId);
 }
 function pendingMorningDays(ts=now()){
-  const days=new Set([...state.logs,...state.customActivities,...state.testLogs].filter(l=>l.ts<=ts&&startOfDay(l.ts)<startOfDay(ts)).map(l=>startOfDay(l.ts)));
-  return [...days].filter(day=>!state.symptomReports.some(r=>r.phase==='morning'&&r.trainingDay===day)).sort((a,b)=>b-a);
+  const activities=[...state.logs,...state.customActivities,...state.testLogs].filter(l=>l.ts<=ts&&startOfDay(l.ts)<startOfDay(ts));
+  const unchecked=activities.filter(l=>!state.symptomReports.some(r=>r.ts<=ts&&morningMatches(r,l.ts)));
+  return [...new Set(unchecked.map(l=>startOfDay(l.ts)))].sort((a,b)=>b-a);
 }
 function openMorning(day){
   if(day>=startOfDay())return;
-  const recent=day===startOfDay(new Date(now()).setDate(new Date(now()).getDate()-1));
+  const recent=day===daysAgo(1);
   document.getElementById('checkModal').innerHTML=`<div class="modal-head"><h3>${recent?'Как лодыжка после вчерашней нагрузки?':'Самочувствие после '+fmtDate(day)}</h3><button class="x" onclick="AM.close('checkDialog')">×</button></div>
     <div class="notice">Одна проверка для упражнений, тестов и других активностей за день.${recent?'':' Прошлая утренняя реакция уже неизвестна: эта запись уточнит только текущее состояние.'}</div>
     <div class="field"><label for="morningResponse">Сегодня по сравнению с состоянием до нагрузки</label><select id="morningResponse"><option value="">Выбери</option><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
@@ -1394,7 +1404,7 @@ function suggestStage(id){
   if(rs.domainScores.ankle_capacity==null)reasons.push('не проверены сила и подвижность');
   else if(rs.domainScores.ankle_capacity<.9)reasons.push('сила и подвижность ниже продуктового ориентира');
   if(target?.order>=2&&rs.domainScores.impact_running_capacity==null)reasons.push('не проверена ударная нагрузка');
-  const morning=state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=now()&&now()-r.ts<=7*DAY&&nextDayStart(r.trainingDay)===startOfDay(r.ts)).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+  const morning=state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=now()&&now()-r.ts<=7*DAY&&validMorningDay(r)).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
   if(!morning||responseLevel(morning)!=='normal'||morning.historyWorse||!morning.historyKnown)reasons.push('нужна нормальная реакция следующим утром после нагрузки');
   if((rs.domainScores.sensorimotor_control??0)<.85)reasons.push('сенсомоторный контроль ниже продуктового ориентира');
   if((rs.domainScores.confidence??0)<.8)reasons.push('нет достаточной записи уверенности');

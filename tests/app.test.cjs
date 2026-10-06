@@ -21,7 +21,7 @@ function app(saved,clock=null){
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -208,10 +208,10 @@ test('postponing replaces the recommendation without changing history, load, mas
   d.resumeAction('test',first);
   assert.ok(d.testRecommendations(ts).some(r=>r.test.id===first));
 });
-test('until tomorrow uses the next local calendar day and postponements survive reload and import',()=>{
+test('until tomorrow uses the next local training day and postponements survive reload and import',()=>{
   const {dev:d,storage,context}=app(),ts=new Date(2026,9,6,23,45).getTime(),id='hemisphere_hold';
   d.postponeAction('test',id,'tomorrow',ts);
-  const tomorrow=new Date(2026,9,7,0,0).getTime();
+  const tomorrow=new Date(2026,9,7,5,0).getTime();
   assert.equal(d.postponedUntil('test',id,ts),tomorrow);
   const saved=JSON.parse(storage.get(KEY)),restored=app(saved).dev;
   assert.equal(restored.postponedUntil('test',id,ts),tomorrow);
@@ -242,7 +242,7 @@ const DAY=86400000;
 function dayStart(ts){const d=new Date(ts);d.setHours(0,0,0,0);return +d;}
 function morningAt(ts){const d=new Date(ts);d.setDate(d.getDate()+1);d.setHours(8,0,0,0);return +d;}
 function morning(d,l,response={}){
-  return d.recordSymptoms({phase:'morning',trainingDay:dayStart(l.ts),response:'same',historyKnown:true,historyWorse:false,pain:0,fatigue:'low',steadiness:'steady',swelling:false,...response},'combined',morningAt(l.ts));
+  return d.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(l.ts),response:'same',historyKnown:true,historyWorse:false,pain:0,fatigue:'low',steadiness:'steady',swelling:false,...response},'combined',morningAt(d.startOfDay(l.ts)));
 }
 function confirmedDose(d,ex,dose,effort='easy',end=Date.now()-2*DAY){
   const logs=[];
@@ -308,7 +308,7 @@ test('unknown cumulative reaction leaves individual evidence intact and allows o
   assert.equal(d.testRecommendations().length,0);
   assert.ok(d.recommendations().every(r=>Math.max(...Object.values(r.ex.load_channels))<.25));
 });
-test('daily budget includes activities, tests and exercises and resets by calendar day',()=>{
+test('daily budget includes activities, tests and exercises and resets by training day',()=>{
   const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,ts=Date.now();
   d.getState().customActivities.push({id:'walk',ts,load:{calf:65,ankle_control:70},painAfter:0});
   assert.equal(d.dailyLoadPlan(ex,ts).status,'pause');assert.ok(!d.recommendations(ts).some(r=>r.ex.id===ex.id));
@@ -368,7 +368,7 @@ test('one shared morning check stores strong fatigue and covers the complete day
   const ts=clock-DAY,l=d.recordExercise(ex.id,ex.dose,comfortable,ts);
   d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,ts+3600000);
   d.getState().customActivities.push({id:'walk',ts,load:{calf:5}});
-  const originals=plain(d.getState().logs),day=dayStart(ts);
+  const originals=plain(d.getState().logs),day=d.startOfDay(ts);
   assert.equal(d.pendingMorningDays().length,1);d.renderHome();assert.match(get('pendingChecksWrap').innerHTML,/Одна оценка/);
   d.openMorning(day);
   for(const [id,v] of Object.entries({morningResponse:'same',dayResponse:'same',morningSteadiness:'steady',morningPain:'0',morningFatigue:'high'}))get(id).value=v;
@@ -380,8 +380,8 @@ test('morning controls reject same-day checks and do not fabricate missing histo
   const clock=dayStart(Date.now())+10*3600000,{dev:d,get}=app(null,clock),ex=d.EXMAP.bilateral_tiptoe_static;
   const l=d.recordExercise(ex.id,ex.dose,comfortable,clock-3*DAY);
   for(const [id,v] of Object.entries({morningResponse:'same',dayResponse:'same',morningSteadiness:'steady',morningPain:'0',morningFatigue:'low'}))get(id).value=v;
-  d.saveMorning(dayStart(clock));assert.equal(d.getState().symptomReports.length,0);
-  d.saveMorning(dayStart(l.ts));assert.equal(d.confirmedSafe(l),false);
+  d.saveMorning(d.startOfDay(clock));assert.equal(d.getState().symptomReports.length,0);
+  d.saveMorning(d.startOfDay(l.ts));assert.equal(d.confirmedSafe(l),false);
 });
 test('morning improvement preserves an earlier adverse episode and avoids an immediate return to full dose',()=>{
   const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,l=d.recordExercise(ex.id,ex.dose,comfortable,Date.now()-2*DAY);
@@ -521,7 +521,71 @@ test('a daily maximum is explained even when an unrelated test is postponed',()=
   const clock=Date.now(),{dev:d}=app(null,clock),ex=d.EXMAP.towel_stretch_straight_knee;
   for(const id of Object.keys(d.getState().exerciseStatuses))d.getState().exerciseStatuses[id]='archived';
   d.getState().exerciseStatuses[ex.id]='active';
-  for(let i=0;i<ex.prescription_credit.max_per_day;i++)d.getState().logs.push({id:'max'+i,exerciseId:ex.id,ts:dayStart(clock)+i*60000,painAfter:0});
+  for(let i=0;i<ex.prescription_credit.max_per_day;i++)d.getState().logs.push({id:'max'+i,exerciseId:ex.id,ts:d.startOfDay(clock)+i*60000,painAfter:0});
   d.getState().postponedActions['test:knee_to_wall']=clock+DAY;
   const card=d.noRecommendationHTML(clock);assert.match(card,/достигнут максимум на сегодня/);assert.doesNotMatch(card,/Есть отложенные действия/);
+});
+
+
+test('training day changes exactly at local 05:00, including next-day and month boundaries',()=>{
+  const at=(day,hour,minute=0)=>new Date(2026,9,day,hour,minute).getTime();
+  const d=app().dev;
+  for(const ts of [at(6,23,59),at(7,0),at(7,4,59)]){
+    assert.equal(d.startOfDay(ts),at(6,5));assert.equal(d.nextDayStart(ts),at(7,5));
+  }
+  assert.equal(d.startOfDay(at(7,5)),at(7,5));assert.equal(d.nextDayStart(at(7,5)),at(8,5));
+  assert.equal(d.startOfDay(new Date(2026,10,1,2).getTime()),new Date(2026,9,31,5).getTime());
+});
+test('late-night exercise counts, streak and chart share one day and keep original timestamps',()=>{
+  const clock=new Date(2026,9,7,0,30).getTime(),{dev:d,get}=app(null,clock);
+  const evening=clock-3600000,ex=d.EXMAP.towel_stretch_straight_knee;
+  d.recordExercise(ex.id,ex.dose,comfortable,evening);
+  d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,clock);
+  const before=plain(d.getState());
+  assert.equal(d.prescriptionCounts().towel_straight,1);assert.equal(d.prescriptionCounts().line_walk,1);
+  assert.equal(d.xpAndStreak().streak,1);d.renderAll();
+  assert.match(get('todayLabel').textContent,/6 октября/);
+  assert.match(get('dailyActivity').innerHTML,/2 выполнений упражнений/);
+  const chart=get('activityChart').innerHTML;
+  assert.equal([...chart.matchAll(/height:3%/g)].length,13);
+  assert.equal(d.prescriptionCounts(new Date(2026,9,7,5).getTime()).towel_straight,0);
+  assert.deepEqual(plain(d.getState()),before);
+});
+test('daily load stays limited across midnight and resets at 05:00 while fatigue remains',()=>{
+  const evening=new Date(2026,9,6,23).getTime(),d=app().dev,ex={load_channels:{ankle_control:.5}};
+  d.getState().customActivities.push({id:'late-walk',ts:evening,load:{ankle_control:75},painAfter:0});
+  for(const ts of [new Date(2026,9,7,0).getTime(),new Date(2026,9,7,4,59).getTime()])assert.equal(d.dailyLoadPlan(ex,ts).status,'pause');
+  const boundary=new Date(2026,9,7,5).getTime();
+  assert.equal(d.dailyLoadPlan(ex,boundary).status,'normal');assert.ok(d.fatigueAt(boundary).ankle_control>0);
+});
+test('tomorrow after midnight means the upcoming 05:00 and existing postponements are preserved',()=>{
+  const clock=new Date(2026,9,7,1).getTime(),{dev:d}=app(null,clock);
+  d.postponeAction('test','hemisphere_hold','tomorrow',clock);
+  assert.equal(d.postponedUntil('test','hemisphere_hold',clock),new Date(2026,9,7,5).getTime());
+  const saved=plain(d.getState());assert.deepEqual(plain(app(saved,clock).dev.getState()),saved);
+});
+test('test sessions stay together across midnight and split across 05:00',()=>{
+  for(const [hour,expectedSame] of [[0,true],[5,false]]){
+    const d=app().dev,boundary=new Date(2026,9,7,hour).getTime();
+    const first=d.recordTest('hemisphere_hold',{left:30,right:15},boundary-10*60000);
+    const second=d.recordTest('tandem_tiptoe_clean_steps',{value:100},boundary+10*60000);
+    assert.equal(first.id===second.id,expectedSame);
+  }
+});
+test('one morning check after 05:00 covers exercises before and after midnight',()=>{
+  const boundary=new Date(2026,9,7,5).getTime(),{dev:d}=app(null,boundary),ex=d.EXMAP.bilateral_tiptoe_static;
+  const first=d.recordExercise(ex.id,ex.dose,comfortable,boundary-6*3600000);
+  const second=d.recordExercise(ex.id,ex.dose,comfortable,boundary-4*3600000);
+  assert.equal(d.pendingMorningDays(boundary-1).length,0);assert.equal(d.pendingMorningDays(boundary).length,1);
+  d.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(first.ts),response:'same',historyKnown:true,historyWorse:false,pain:0,fatigue:'low',steadiness:'steady'},'combined',boundary);
+  assert.equal(d.pendingMorningDays().length,0);assert.equal(d.confirmedSafe(first),true);assert.equal(d.confirmedSafe(second),true);
+  assert.equal(d.exerciseProgress(ex).confirmedDays,1);
+});
+test('legacy midnight morning keys retain confirmation and are not rewritten on reload',()=>{
+  const clock=new Date(2026,9,7,10).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,clock-DAY);
+  d.recordSymptoms({phase:'morning',trainingDay:dayStart(l.ts),response:'same',historyKnown:true,historyWorse:false,pain:0,fatigue:'low',steadiness:'steady'},'combined',clock);
+  const saved=plain(d.getState()),restored=app(saved,clock).dev;
+  assert.deepEqual(plain(restored.getState()),saved);assert.equal(restored.confirmedSafe(restored.getState().logs[0]),true);
+  assert.equal(restored.pendingMorningDays().length,0);
 });
