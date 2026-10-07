@@ -8,6 +8,52 @@ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const KEY='ankle_mastery_static_v2';
 const plain=x=>JSON.parse(JSON.stringify(x));
 const comfortable={painDuring:0,painAfter:0,fatigue:'low',technique:'good',steadiness:'steady',instability:false,swelling:false,difficulty:'normal'};
+test('balance cards name the front leg, both raised heels and the actual equipment',()=>{
+  const {dev:d,get}=app();
+  for(const [equipment,label] of [['balance_board','Балансборд'],['hemisphere','Полусфера']]){
+    for(const [side,front,rear] of [['right','Правая','Левая'],['left','Левая','Правая']]){
+      const ex=d.EXMAP[`${equipment}_both_tiptoe_${side}_front`];
+      assert.ok(ex);
+      assert.match(ex.name,new RegExp(label));
+      d.openExercise(ex.id);
+      const card=get('exerciseModal').innerHTML;
+      assert.match(card,new RegExp(`${front} нога впереди`));
+      assert.match(card,new RegExp(`${rear} нога сзади, на полу`));
+      assert.match(card,/Обе пятки подняты/);
+      assert.match(card,/нескольких подходов поменять ноги местами/);
+      assert.doesNotMatch(card,/рабочую ногу|Как в базовом варианте/);
+      assert.equal(d.getState().exerciseStatuses[ex.id],equipment==='balance_board'?'active':'available');
+      assert.equal(ex.prerequisites,undefined);
+      assert.equal(ex.progression.next_variant,undefined);
+    }
+  }
+  // The existing full-foot assessment is a distinct protocol, not this exercise.
+  assert.equal(d.RDCFG.tests[0].protocol_id,'balance_board_dome_down_front_full_foot_rear_toe');
+  assert.match(d.RDCFG.tests[0].protocol.join(' '),/Вся стопа/);
+});
+test('corrected balance keeps legacy records and separates progress by equipment and front leg',()=>{
+  const {dev:d}=app();
+  const old=d.EXMAP.hemisphere_weight_shift_rear_heel_up;
+  confirmedDose(d,old,{...old.dose,target_sec:30});
+  d.getState().exerciseStatuses[old.id]='active';
+  const backup=plain(d.getState()),restored=app(backup).dev;
+  assert.deepEqual(plain(restored.getState().logs),backup.logs);
+  assert.equal(restored.getState().xp,backup.xp);
+  for(const id of ['hemisphere_weight_shift_injured_front','hemisphere_weight_shift_rear_heel_up'])
+    assert.equal(restored.getState().exerciseStatuses[id],'archived');
+  const right=restored.EXMAP.balance_board_both_tiptoe_right_front;
+  assert.equal(restored.exerciseProgress(right).confirmedDays,0);
+  assert.equal(restored.exerciseProgress(right).working.target_sec,10);
+  confirmedDose(restored,right,{...right.dose,target_sec:20});
+  assert.equal(restored.exerciseProgress(right).confirmed,true);
+  for(const id of ['balance_board_both_tiptoe_left_front','hemisphere_both_tiptoe_right_front','hemisphere_both_tiptoe_left_front']){
+    const progress=restored.exerciseProgress(restored.EXMAP[id]);
+    assert.equal(progress.confirmedDays,0);
+    assert.equal(progress.working.target_sec,10);
+  }
+  const saved=plain(restored.getState());
+  assert.deepEqual(plain(app(saved).dev.getState()),saved);
+});
 test('heron starts at 20 steps and records the actual step count',()=>{
   const {dev:d,get}=app(),ex=d.EXMAP.obstacle_high_knee_heel_to_toe;
   d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Сейчас: 20 шагов/);
