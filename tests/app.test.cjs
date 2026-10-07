@@ -8,6 +8,31 @@ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const KEY='ankle_mastery_static_v2';
 const plain=x=>JSON.parse(JSON.stringify(x));
 const comfortable={painDuring:0,painAfter:0,fatigue:'low',technique:'good',steadiness:'steady',instability:false,swelling:false,difficulty:'normal'};
+test('heron starts at 20 steps and records the actual step count',()=>{
+  const {dev:d,get}=app(),ex=d.EXMAP.obstacle_high_knee_heel_to_toe;
+  d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Сейчас: 20 шагов/);
+  d.openLog(ex.id);assert.match(get('logModal').innerHTML,/Предложено: <b>20 шагов/);
+  assert.match(get('logModal').innerHTML,/id="dose_target_steps"[^>]*value="20"/);
+  assert.doesNotMatch(get('logModal').innerHTML,/Проходы|dose_passes/);
+  const log=d.recordExercise(ex.id,{...ex.dose,target_steps:20},comfortable);
+  assert.equal(log.actualDose.type,'steps');assert.equal(log.actualDose.target_steps,20);assert.equal(log.doseFactor,1);
+  assert.equal(d.suggestedDose(ex).dose.target_steps,20);
+});
+test('legacy heron passes stay in history without setting the working step count',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.obstacle_high_knee_heel_to_toe,ts=Date.now()-5*86400000;
+  for(let i=0;i<3;i++){
+    const log={id:'passes'+i,exerciseId:ex.id,ts:ts+i*86400000,...comfortable,
+      actualDose:{type:'passes',passes:3},suggestedDose:{type:'passes',passes:3},doseFactor:1,doseReason:'capacity'};
+    d.getState().logs.push(log);morning(d,log);
+  }
+  const saved=plain(d.getState()),restored=app(saved).dev,progress=restored.exerciseProgress(ex);
+  assert.deepEqual(plain(restored.getState()),saved);
+  assert.equal(progress.working.type,'steps');assert.equal(progress.working.target_steps,20);
+  assert.equal(progress.confirmed,false);assert.equal(progress.confirmedDays,0);
+  assert.equal(restored.suggestedDose(ex).dose.target_steps,20);
+  restored.recordExercise(ex.id,{...ex.dose,target_steps:18},comfortable);
+  assert.equal(restored.suggestedDose(ex).dose.target_steps,18);
+});
 function app(saved,clock=null){
   const storage=new Map(saved?[[KEY,JSON.stringify(saved)]]:[]),elements=new Map();
   const get=id=>{
