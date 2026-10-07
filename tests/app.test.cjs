@@ -46,7 +46,7 @@ function app(saved,clock=null){
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -69,7 +69,7 @@ test('requested assessment increases fatigue and lowers overlap without training
   assert.ok(heavy.score<initial.score*.65);
   assert.notEqual(d.recommendations()[0].ex.id,'tiptoe_square_corner_lunges');
   assert.equal(d.scoreExercise(d.EXMAP.towel_stretch_straight_knee,ts).status,'green');
-  assert.equal(d.scoreExercise(d.EXMAP.slider_injured_leg_three_directions,ts).status,'red'); // Shared control load has filled the daily budget.
+  assert.notEqual(d.scoreExercise(d.EXMAP.slider_injured_leg_three_directions,ts).status,'red'); // Estimated overlap affects ranking, not a daily lock.
   assert.deepEqual(plain(d.prescriptionCounts()),before.counts);
   assert.deepEqual(plain(Object.fromEntries(Object.entries(d.EXMAP).map(([k,x])=>[k,d.exerciseMastery(x)]))),before.mastery);
   assert.equal(d.trainingMastery(),before.tm);
@@ -97,11 +97,11 @@ test('volume caps, explicit zero, invalid inputs, and zero-error symmetry',()=>{
   const {dev:d}=app();
   d.recordTest('tandem_tiptoe_clean_steps',{value:200});assert.equal(d.getState().testLogs[0].value,100);
   d.recordTest('hemisphere_hold',{left:50,right:40});assert.equal(d.getState().testLogs[1].right,30);
-  d.recordTest('single_leg_balance_errors',{left:0,right:0});assert.equal(d.symmetry(d.RDCFG.tests[5],{left:0,right:0}),1);
+  d.recordTest('single_leg_balance_errors',{left:0,right:0});assert.equal(d.symmetry(d.RDCFG.tests.find(t=>t.id==='single_leg_balance_errors'),{left:0,right:0}),1);
   d.recordTest('multidirectional_control_clean_rounds',{value:0});
   for(const value of [-1,NaN,Infinity,1.5])assert.throws(()=>d.recordTest('tandem_tiptoe_clean_steps',{value}));
   assert.throws(()=>d.recordTest('pogo_bilateral',{value:10}));
-  const t=d.RDCFG.tests[2];assert.equal(d.testLoad(t,{value:10000}).calf,d.APP.assessment.nominal_load*t.test_load_vector.calf*1.5);
+  const t=d.RDCFG.tests.find(t=>t.id==='multidirectional_control_clean_rounds');assert.equal(d.testLoad(t,{value:10000}).calf,d.APP.assessment.nominal_load*t.test_load_vector.calf*1.5);
 });
 test('one session per series, multiplier applied once, and one next-morning check',()=>{
   const {dev:d}=app(),ts=Date.now()-86400000;
@@ -143,18 +143,18 @@ test('UI includes units and protocols, no native prompt or Chinese characters',(
   const {dev:d}=app();
   for(const t of d.RDCFG.tests){assert.ok(t.unit);assert.ok(t.protocol.length);assert.ok(t.test_load_vector);}
 });
-test('home recommends an available baseline test alongside exercises, across all available tests',()=>{
+test('home prioritizes prescribed exercises while retaining an available test alternative',()=>{
   const {dev:d,get}=app();
   const actions=d.actionRecommendations();
-  assert.equal(actions[0].kind,'test');
+  assert.equal(actions[0].kind,'exercise');assert.equal(actions[0].ex.source,'clinician_home');
   assert.equal(actions.filter(r=>r.kind==='test').length,1);
   assert.ok(actions.some(r=>r.kind==='exercise'));
-  assert.equal(d.testRecommendations().length,6);
+  assert.equal(d.testRecommendations().length,7);
   assert.ok(!actions.some(r=>r.test?.status==='locked'));
   d.getState().selectedStage='ready_for_impact';
-  assert.equal(d.testRecommendations().length,9);
+  assert.equal(d.testRecommendations().length,10);
   d.renderHome();
-  assert.match(get('bestNow').innerHTML,/Пройти тест/);
+  assert.match(get('bestNow').innerHTML,/Выполнить/);
 });
 test('repeat is due after seven days, regardless of low results; invalid and old protocols do not postpone a baseline',()=>{
   const {dev:d}=app(),ts=Date.now();
@@ -224,7 +224,7 @@ test('postponing replaces the recommendation without changing history, load, mas
   const after=plain(d.getState());
   delete before.postponedActions;delete after.postponedActions;
   assert.deepEqual(after,before);
-  const first=d.actionRecommendations(ts)[0].test.id;
+  const first=d.testRecommendations(ts)[0].test.id;
   d.postponeAction('test',first,'week',ts);
   assert.ok(!d.testRecommendations(ts).some(r=>r.test.id===first));
   assert.notEqual(d.actionRecommendations(ts)[0].test?.id,first);
@@ -281,7 +281,7 @@ test('moderate effort and fatigue without worsening retain dose over repeated da
   for(let i=0;i<7;i++){
     const ts=Date.now()-(9-i)*DAY,dose=d.suggestedDose(ex,ts).dose;
     assert.equal(dose.reps,10);
-    const l=d.recordExercise(ex.id,dose,{...comfortable,fatigue:'medium',difficulty:'hard'},ts);morning(d,l);
+    const l=d.recordExercise(ex.id,dose,{...comfortable,fatigue:'medium',difficulty:'normal'},ts);morning(d,l);
   }
   assert.equal(d.suggestedDose(ex).dose.reps,10);assert.equal(d.suggestedDose(ex).trial,null);
 });
@@ -333,13 +333,13 @@ test('unknown cumulative reaction leaves individual evidence intact and allows o
   assert.equal(d.testRecommendations().length,0);
   assert.ok(d.recommendations().every(r=>Math.max(...Object.values(r.ex.load_channels))<.25));
 });
-test('daily budget includes activities, tests and exercises and resets by training day',()=>{
+test('estimated accumulated load lowers priority without cancelling daily goals',()=>{
   const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,ts=Date.now();
   d.getState().customActivities.push({id:'walk',ts,load:{calf:65,ankle_control:70},painAfter:0});
-  assert.equal(d.dailyLoadPlan(ex,ts).status,'pause');assert.ok(!d.recommendations(ts).some(r=>r.ex.id===ex.id));
+  assert.equal(d.dailyLoadPlan(ex,ts).status,'normal');assert.ok(d.recommendations(ts).some(r=>r.ex.id===ex.id));assert.equal(d.dailyTarget(ex,ts),3);
   assert.equal(d.dailyLoadPlan(ex,ts+2*DAY).status,'normal');
   const other=app().dev;assessmentScenario(other,ts);
-  assert.equal(other.dailyLoadPlan(other.EXMAP.slider_injured_leg_three_directions,ts).status,'pause');
+  assert.equal(other.dailyLoadPlan(other.EXMAP.slider_injured_leg_three_directions,ts).status,'normal');
 });
 test('same-day sessions and invented same-day morning feedback cannot confirm or progress a level',()=>{
   const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static,day=dayStart(Date.now()-2*DAY);
@@ -506,28 +506,25 @@ test('different unconfirmed volumes do not add up to a confirmed working level',
 });
 
 
-test('a single postponed test does not hide load limits and the exact rest windows',()=>{
+test('rest explanation shows exact windows while a reported adverse episode remains distinct',()=>{
   const today=dayStart(Date.now()),clock=today+(22*60+9)*60000+30000;
-  const {dev:d,get}=app(null,clock);assessmentScenario(d,today+16*3600000);
-  const staticEx=d.EXMAP.bilateral_tiptoe_static;
-  const l=d.recordExercise(staticEx.id,staticEx.dose,comfortable,today+19*3600000);
+  const {dev:d,get}=app(null,clock);
+  const ex=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,today+19*3600000);
   d.recordSymptoms({pain:2,steadiness:'shaky',fatigue:'low',response:'worse'},l.id,today+22*3600000);
+  // One light non-mobility execution in this episode requires renewed feedback.
+  d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,{...comfortable,doseReason:'daily_load'},today+(22*60+1)*60000);
   for(const [id,minutes] of [['towel_stretch_straight_knee',5],['towel_stretch_bent_knee',9]]){
-    const ex=d.EXMAP[id];d.recordExercise(id,ex.dose,comfortable,today+(22*60+minutes)*60000);
+    d.recordExercise(id,d.EXMAP[id].dose,comfortable,today+(22*60+minutes)*60000);
   }
   d.getState().postponedActions['test:knee_to_wall']=today+DAY;
   assert.equal(d.actionRecommendations(clock).length,0);d.renderHome();
   const card=get('bestNow').innerHTML;
-  assert.match(card,/Сейчас восстановление/);assert.match(card,/шаткая, боль 2/);assert.match(card,/На сегодня достаточно похожей нагрузки/);
-  assert.match(card,/перерыв 90 мин/);assert.match(card,/23:35/);assert.match(card,/23:39/);
-  assert.doesNotMatch(card,/Есть отложенные действия/);assert.ok(get('bestNow').classList.contains('rest'));
-  assert.ok(d.recommendations(today+(23*60+35)*60000).some(r=>r.ex.id==='towel_stretch_straight_knee'));
-  assert.ok(!d.recommendations(clock).some(r=>r.ex.id===staticEx.id));
-  const load=plain(d.fatigueAt(clock));
+  assert.match(card,/Сейчас восстановление/);assert.match(card,/шаткая, боль 2/);
+  assert.match(card,/оцени самочувствие/);assert.match(card,/23:35/);assert.match(card,/23:39/);
+  assert.equal(d.dailyTarget(ex),3);assert.match(get('dailyGrid').innerHTML,/1\/3/);
   d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',response:'better'},'unknown',clock);
-  assert.equal(d.actionRecommendations(clock).length,0);assert.deepEqual(plain(d.fatigueAt(clock)),load);
-  d.renderHome();assert.match(get('bestNow').innerHTML,/Последняя отметка: устойчива, боль 0/);
-  assert.match(get('bestNow').innerHTML,/23:35/);assert.doesNotMatch(get('bestNow').innerHTML,/Тесты ждут нормальной реакции/);
+  assert.ok(d.actionRecommendations(clock).length>0);
   assert.ok(d.recommendations(today+(23*60+35)*60000).some(r=>r.ex.id==='towel_stretch_straight_knee'));
 });
 test('dialogs keep the page locked through nested dialogs and restore scroll after all close',()=>{
@@ -576,10 +573,10 @@ test('late-night exercise counts, streak and chart share one day and keep origin
   assert.equal(d.prescriptionCounts(new Date(2026,9,7,5).getTime()).towel_straight,0);
   assert.deepEqual(plain(d.getState()),before);
 });
-test('daily load stays limited across midnight and resets at 05:00 while fatigue remains',()=>{
+test('estimated load decays continuously without a permission reset at 05:00',()=>{
   const evening=new Date(2026,9,6,23).getTime(),d=app().dev,ex={load_channels:{ankle_control:.5}};
   d.getState().customActivities.push({id:'late-walk',ts:evening,load:{ankle_control:75},painAfter:0});
-  for(const ts of [new Date(2026,9,7,0).getTime(),new Date(2026,9,7,4,59).getTime()])assert.equal(d.dailyLoadPlan(ex,ts).status,'pause');
+  for(const ts of [new Date(2026,9,7,0).getTime(),new Date(2026,9,7,4,59).getTime()])assert.equal(d.dailyLoadPlan(ex,ts).status,'normal');
   const boundary=new Date(2026,9,7,5).getTime();
   assert.equal(d.dailyLoadPlan(ex,boundary).status,'normal');assert.ok(d.fatigueAt(boundary).ankle_control>0);
 });
@@ -613,4 +610,149 @@ test('legacy midnight morning keys retain confirmation and are not rewritten on 
   const saved=plain(d.getState()),restored=app(saved,clock).dev;
   assert.deepEqual(plain(restored.getState()),saved);assert.equal(restored.confirmedSafe(restored.getState().logs[0]),true);
   assert.equal(restored.pendingMorningDays().length,0);
+});
+
+test('a matching 100-step test offers an explicit bounded probe, not an automatic daily prescription',()=>{
+  const ts=Date.now(),{dev:d,get}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
+  const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'unknown',stop_reason:'unknown'},ts-DAY);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'moderate'},ts-DAY);
+  const plan=d.suggestedDose(ex);
+  assert.equal(plan.dose.target_steps,16);assert.equal(plan.calibration.target_steps,32);
+  assert.equal(plan.evidence.capacity,100);assert.equal(d.nextVariant(ex),null);
+  assert.equal(d.suggestedDose(d.EXMAP.tandem_walk_tiptoe).calibration,null);
+  d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Тест этого варианта: 100/);
+  assert.match(get('exerciseModal').innerHTML,/не установленная/); // Keep the product heuristic visible.
+  d.openLog(ex.id,'calibration');assert.match(get('logModal').innerHTML,/value="32"/);
+  const l=d.recordExercise(ex.id,plan.calibration,{...comfortable,doseReason:'calibration'},ts,plan.calibration);
+  const after=d.suggestedDose(ex);
+  assert.equal(after.working.target_steps,16);assert.equal(after.dose.target_steps,32);
+  assert.equal(after.calibration,null);assert.equal(after.confirmed,false);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky',response:'worse'},l.id,ts+1000);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady',response:'better'},'unknown',ts+2000);
+  assert.equal(d.suggestedDose(ex,ts+2000).dose.target_steps,16);
+});
+
+test('a lower matching test reduces the next dose; stale, future and different protocols do not calibrate',()=>{
+  const ts=Date.now(),{dev:d}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
+  d.recordTest('tandem_flat_clean_steps',{value:10},ts-3600000);
+  assert.equal(d.suggestedDose(ex).dose.target_steps,5);
+  const l=d.getState().testLogs[0];l.protocol_id='legacy_tandem_flat_clean_steps';
+  assert.equal(d.suggestedDose(ex).dose.target_steps,16);
+  l.protocol_id=d.RDCFG.tests.find(t=>t.id===l.testId).protocol_id;l.value=100;l.ts=ts-31*DAY;
+  assert.equal(d.suggestedDose(ex).evidence,null);
+  l.ts=ts+DAY;assert.equal(d.suggestedDose(ex).evidence,null);
+});
+
+test('the same movement and step count have the same estimated load in a test and an exercise',()=>{
+  const {dev:d}=app(),ex=d.EXMAP.tandem_walk_tiptoe,t=d.RDCFG.tests.find(t=>t.dose_exercise_id===ex.id);
+  const log=d.recordExercise(ex.id,{...ex.dose,target_steps:100},comfortable);
+  const load=d.allLoadEvents().find(e=>e.source_id===log.id).channels;
+  for(const k of Object.keys(load))assert.ok(Math.abs(d.testLoad(t,{value:100})[k]-load[k])<1e-9);
+  const flat=d.RDCFG.tests.find(t=>t.id==='tandem_flat_clean_steps');
+  assert.ok(d.testLoad(flat,{value:100}).calf<d.testLoad(t,{value:100}).calf);
+  assert.equal(d.testLoad(flat,{value:0}).calf,0);
+  const rom=d.RDCFG.tests.find(t=>t.id==='knee_to_wall');
+  assert.deepEqual(plain(d.testLoad(rom,{left:5,right:5})),plain(d.testLoad(rom,{left:15,right:15})));
+});
+
+test('clean flat walking unlocks a suggested harder test after rest without transferring results',()=>{
+  const ts=Date.now(),{dev:d}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
+  const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'normal',stop_reason:'cap',pain_after:0},ts);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},ts);
+  const next=d.nextVariant(ex,ts);
+  assert.equal(next.ex.id,'tandem_walk_tiptoe');assert.equal(next.test.id,'tandem_tiptoe_clean_steps');
+  assert.equal(next.after,ts+180*60000);
+  assert.equal(d.testHistory(next.test).length,0);
+  assert.equal(d.suggestedDose(next.ex).dose.target_steps,12);
+  assert.equal(d.scoreExercise(next.ex,ts).score,-1);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky',response:'worse'},'combined',ts+1000);
+  assert.equal(d.nextVariant(ex,ts+1000),null);
+});
+
+test('three spaced home rounds remain possible with comfortable execution and stable goals',()=>{
+  const clock=new Date(2026,9,7,21).getTime(),{dev:d}=app(null,clock);
+  const ids=['towel_stretch_straight_knee','towel_stretch_bent_knee','bilateral_tiptoe_static','tandem_walk_flat','right_leg_balance_left_front_back','left_side_lunge_right_leg_straight'];
+  for(const hour of [9,13,17])for(const [i,id] of ids.entries()){
+    const ts=new Date(2026,9,7,hour,i*3).getTime(),ex=d.EXMAP[id];
+    assert.equal(d.dailyTarget(ex,ts),3);assert.notEqual(d.scoreExercise(ex,ts).status,'red');
+    assert.ok(d.scoreExercise(ex,ts).score>=0,id);
+    d.recordExercise(id,d.suggestedDose(ex,ts).dose,comfortable,ts);
+  }
+  assert.ok(Object.values(d.prescriptionCounts(clock)).every(n=>n===3));
+});
+
+test('hard execution reduces volume while moderate effort alone preserves it and daily frequency',()=>{
+  const ts=Date.now(),{dev:d}=app(null,ts),ex=d.EXMAP.bilateral_tiptoe_static;
+  d.recordExercise(ex.id,ex.dose,{...comfortable,difficulty:'hard'},ts-3*3600000);
+  const plan=d.suggestedDose(ex);
+  assert.ok(plan.dose.reps<10);assert.equal(plan.working.reps,10);assert.equal(d.dailyTarget(ex),3);
+  assert.equal(d.suggestedDose(d.EXMAP.tandem_walk_flat).dose.target_steps,16);
+});
+
+test('morning history reduces the day volume without falsely blaming every exercise',()=>{
+  const ts=new Date(2026,9,7,10).getTime(),{dev:d}=app(null,ts),ex=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,ts-DAY);
+  d.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(l.ts),pain:0,steadiness:'steady',fatigue:'low',response:'same',historyKnown:true,historyWorse:true},'combined',ts-3600000);
+  assert.equal(d.classifyLog(l),'normal');assert.equal(d.dailyLoadPlan(ex).status,'light');
+  const dose=d.suggestedDose(ex).dose;assert.ok(dose.reps<10);
+  d.recordExercise(ex.id,dose,{...comfortable,doseReason:'daily_load'},ts);
+  assert.equal(d.suggestedDose(ex).dose.reps,dose.reps);assert.equal(d.dailyTarget(ex),3);
+});
+
+test('general fatigue affects today without becoming a local adverse reaction',()=>{
+  const ts=Date.now(),{dev:d}=app(null,ts),ex=d.EXMAP.bilateral_tiptoe_static;
+  const l=d.recordExercise(ex.id,ex.dose,comfortable,ts-3*3600000);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',generalFatigue:'high',response:'same'},'combined',ts);
+  assert.equal(d.dailyLoadPlan(ex).status,'light');assert.equal(d.classifyLog(l),'normal');
+  assert.equal(d.testRecommendations().length,0);assert.equal(d.safetyFlag(),false);
+});
+
+test('test editing corrects the variant and its load without duplicating execution or XP',()=>{
+  const ts=Date.now(),{dev:d}=app(null,ts);
+  const session=d.recordTest('tandem_tiptoe_clean_steps',{value:100},ts-3600000);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},ts-3600000);
+  const log=d.getState().testLogs[0],before=plain(log),oldLoad=d.fatigueAt(ts).calf;
+  d.editTest(log.id,'tandem_flat_clean_steps',{value:100,difficulty:'unknown',stop_reason:'unknown',pain_after:null});
+  assert.equal(d.getState().testLogs.length,1);assert.equal(log.ts,before.ts);
+  assert.equal(d.getState().load_events.length,1);assert.equal(d.getState().xp,0);
+  assert.ok(d.fatigueAt(ts).calf<oldLoad);assert.deepEqual(plain(d.getState().testCorrections[0].original),before);
+  assert.equal(d.testHistory(d.RDCFG.tests.find(t=>t.id==='tandem_tiptoe_clean_steps')).length,0);
+  assert.deepEqual(plain(app(plain(d.getState()),ts).dev.getState()),plain(d.getState()));
+});
+
+test('test form requires protocol confirmation and a second save cannot duplicate a result',()=>{
+  const {dev:d,get}=app(),id='tandem_flat_clean_steps';
+  d.openTest(id);get('testValue').value='100';get('testDifficulty').value='easy';get('testStop').value='cap';get('testPain').value='0';
+  d.saveTest(id);assert.equal(d.getState().testLogs.length,0);
+  get('testProtocolConfirmed').checked=true;d.saveTest(id);d.saveTest(id);
+  assert.equal(d.getState().testLogs.length,1);
+  d.openTest(id);assert.match(get('testModal').innerHTML,/Уже записано/);assert.match(get('testModal').innerHTML,/Исправить эту запись/);
+});
+
+test('deleting an accidental test removes only its event and keeps the other measurements',()=>{
+  const {dev:d,context}=app();
+  const session=d.recordTest('hemisphere_hold',{left:30,right:15});
+  d.recordTest('tandem_flat_clean_steps',{value:100});
+  const deleted=d.getState().testLogs[1].id;context.confirm=()=>true;
+  d.deleteTest(deleted);
+  assert.equal(d.getState().testLogs.length,1);assert.equal(d.getState().load_events.length,1);
+  assert.equal(session.test_log_ids.length,1);assert.equal(d.getState().testCorrections.length,1);
+});
+
+test('a legacy adverse exercise still reduces its dose without inventing historical volume',()=>{
+  const ts=Date.now(),exId='bilateral_tiptoe_static',legacy={id:'legacy',exerciseId:exId,ts:ts-DAY,painDuring:0,painAfter:0,fatigue:'low',technique:'ok'};
+  const {dev:d}=app({logs:[legacy]},ts);
+  d.recordSymptoms({pain:2,fatigue:'low',steadiness:'shaky',response:'worse'},legacy.id,ts-DAY+3600000);
+  d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady',response:'better'},'unknown',ts-DAY+7200000);
+  assert.ok(d.suggestedDose(d.EXMAP[exId]).dose.reps<10);
+  assert.deepEqual(plain(d.getState().logs[0]),legacy);
+});
+
+test('zero capacity defers only that movement until a corrected test or successful execution',()=>{
+  const ts=Date.now(),{dev:d}=app(null,ts),ex=d.EXMAP.tandem_walk_tiptoe;
+  d.recordTest('tandem_tiptoe_clean_steps',{value:0},ts-4*3600000);
+  assert.equal(d.dailyLoadPlan(ex).status,'pause');assert.equal(d.dailyTarget(ex),3);
+  assert.equal(d.dailyLoadPlan(d.EXMAP.tandem_walk_flat).status,'normal');
+  d.recordExercise(ex.id,{...ex.dose,target_steps:3},comfortable,ts);
+  assert.equal(d.dailyLoadPlan(ex).status,'normal');
 });
