@@ -412,7 +412,7 @@ function exerciseProgress(ex,ts=now()){
   let working={...ex.dose},confirmed=false,run=[];
   for(const l of logs){
     const safe=confirmedSafe(l,ts);
-    if(!confirmed&&!['time','daily_load','trial','calibration'].includes(l.doseReason)&&responseLevel(exerciseResponse(l,ts))==='normal')working={...l.actualDose};
+    if(!confirmed&&!['time','daily_load','trial','calibration','test'].includes(l.doseReason)&&responseLevel(exerciseResponse(l,ts))==='normal')working={...l.actualDose};
     if(!safe||l.doseReason==='time'||l.doseReason==='daily_load'){run=[];continue;}
     if(run.length&&!sameDose(run[0].actualDose,l.actualDose))run=[];
     if(!run.some(x=>startOfDay(x.ts)===startOfDay(l.ts)))run.push(l);
@@ -447,7 +447,7 @@ function dailyLoadPlan(ex,ts=now()){
       if(responseLevel(r)==='normal')episode=null;else if(episode==null)episode=r.ts;
     }
     const already=state.logs.some(l=>l.ts>(episode??current.ts)&&l.ts<=ts&&Math.max(0,...Object.values(EXMAP[l.exerciseId]?.load_channels||{}))>=.25);
-    if(already)return {status:'pause',reason:'После облегчённого выполнения оцени самочувствие перед следующим'};
+    if(already)return {status:'pause',reason:'После облегчённого выполнения оцени самочувствие перед следующим',needsFeedback:true};
     return {status:'light',reason:'Уменьшаем объём из-за отмеченного самочувствия; частота пока сохраняется'};
   }
   const morning=state.symptomReports.filter(r=>r.phase==='morning'&&validMorningDay(r)&&r.ts<=ts&&startOfDay(r.ts)===startOfDay(ts)).slice(-1)[0];
@@ -490,10 +490,10 @@ function suggestedDose(ex,ts=now()){
   const recovering=adverse&&(!last||!confirmedSafe(last,ts)||progress.run.length<3||last.difficulty==='hard'||last.fatigue==='high');
   if(recovering){
     const after=progress.logs.filter(l=>l.ts>adverse.ts&&l.doseReason!=='time').slice(-1)[0];
-    dose=after&&responseLevel(exerciseResponse(after,ts))==='normal'?{...after.actualDose}:['trial','calibration'].includes(adverse.doseReason)?{...working}:reduceDose(ex,adverse.actualDose||working);
+    dose=after&&responseLevel(exerciseResponse(after,ts))==='normal'?{...after.actualDose}:['trial','calibration','test'].includes(adverse.doseReason)?{...working}:reduceDose(ex,adverse.actualDose||working);
     reason='Проверяем меньший объём после реакции или выполнения без запаса; частота сохраняется';
   }
-  if(!recovering&&['trial','calibration'].includes(last?.doseReason)&&!sameDose(last.actualDose,working)){dose={...last.actualDose};reason=`Проверяем пробный шаг: ${progress.candidateDays}/3 подтверждений в разные дни`;}
+  if(!recovering&&['trial','calibration','test'].includes(last?.doseReason)&&!sameDose(last.actualDose,working)){dose={...last.actualDose};reason=`Объём уточняется по выполнениям и утреннему самочувствию: ${progress.candidateDays}/3 подтверждений в разные дни`;}
   const plan=dailyLoadPlan(ex,ts);
   if(plan.status==='light'){if(!recovering)dose=reduceDose(ex,dose);reason=plan.reason;}
   if(plan.status==='pause')reason=plan.reason;
@@ -508,22 +508,32 @@ function suggestedDose(ex,ts=now()){
     }
   }
   const evidence=testDoseEvidence(ex,ts);
-  let calibration=null;
+  let doseFromTest=false;
   if(evidence&&key&&evidence.capacity>0){
     const {log,capacity}=evidence;
-    const testedAfter=progress.logs.some(l=>l.ts>=log.ts&&l.doseReason==='calibration');
-    // A bounded, user-selected probe, not a measured safe fraction or an automatic prescription.
-    const candidate=Math.max(1,Math.floor(Math.min(capacity*.5,working[key]*2)));
     const session=state.assessment_sessions.find(s=>s.test_log_ids.includes(log.id));
     const adverseTest=log.stop_reason==='symptoms'||log.pain_after>=3||session&&(session.pain_after>=3||session.swelling||session.instability||session.same_day_response==='worse'||session.next_day_response==='worse');
+    const pain=log.pain_after??session?.pain_after;
+    const completeTest=['easy','normal'].includes(log.difficulty)&&['cap','planned'].includes(log.stop_reason)&&pain!=null&&pain<=1;
+    // Estimate a starting dose, then adapt it through ordinary execution feedback.
+    // Anchor the growth limit before the test so repeated opens cannot compound it.
+    const beforeTest=exerciseProgress(ex,log.ts).working;
+    const candidate=Math.max(1,Math.floor(Math.min(capacity*.5,beforeTest[key]*2)));
     if(capacity<dose[key]&&!progress.logs.some(l=>l.ts>log.ts&&confirmedSafe(l,ts))){
       dose={...dose,[key]:Math.max(1,Math.floor(capacity*.5))};
       reason='Результат теста ниже рабочего объёма: начинаем с меньшей дозы и проверяем реакцию';
       trial=null;
+      doseFromTest=true;
     }
-    if(candidate>dose[key]&&!testedAfter&&!recovering&&!adverseTest&&plan.status==='normal'&&!safetyFlag(ts))calibration={...dose,[key]:candidate};
+    if(candidate>dose[key]&&completeTest&&!recovering&&!adverseTest&&plan.status==='normal'&&!safetyFlag(ts)){
+      dose={...dose,[key]:candidate};
+      reason='Начальный объём уточнён по тесту; дальше учитываем качество, усилие и реакцию следующим утром';
+      trial=null;
+      doseFromTest=true;
+    }
   }
-  return {dose,working,confirmed:progress.confirmed,confirmedDays:progress.confirmedDays,trial,calibration,evidence,reason,status:plan.status};
+  const confirmedDays=sameDose(dose,working)?progress.confirmedDays:Math.min(3,progress.run.filter(l=>sameDose(l.actualDose,dose)).length);
+  return {dose,working,confirmed:progress.confirmed,confirmedDays,trial,doseFromTest,evidence,reason,status:plan.status};
 }
 function currentSymptoms(ts=now()){
   const explicit=state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
@@ -804,7 +814,6 @@ function scoreExercise(ex,ts=now()){
   if(va<.7)reasons.push('недавно уже был похожий паттерн');
   if(tol<.85)reasons.push('последняя переносимость снижает приоритет');
   const dose=suggestedDose(ex,ts);if(dose.reason)reasons.unshift(dose.reason);
-  if(dose.calibration)reasons.unshift(`Тест: ${dose.evidence.capacity} ${dose.evidence.test.unit_short}. Доступна отдельная проба: ${doseText(ex,dose.calibration)}`);
   if(deficit!=null&&deficit>.3)reasons.push('измерения показывают запас для улучшения этого навыка');
   if(pv>.65)reasons.push('близко к следующему уровню мастерства');
   if(!reasons.length)reasons.push('хорошо вписывается в текущий баланс нагрузки');
@@ -845,16 +854,35 @@ function testRecommendations(ts=now()){
     return [{kind:'test',test:t,latest,score,status:'green',reasons}];
   }).sort((a,b)=>b.score-a.score);
 }
+function feedbackRecommendation(ts=now()){
+  const unfinished=state.assessment_sessions.findLast(s=>!s.completed_at&&sessionLastAt(s)<=ts&&startOfDay(sessionLastAt(s))===startOfDay(ts));
+  if(unfinished)return {kind:'feedback',mode:'assessment',id:unfinished.id,name:'Оценить самочувствие после тестов',detail:'Одна оценка для всей серии тестов',status:'green',score:1,reasons:['Тесты уже записаны; не хватает оценки реакции на эту серию.']};
+  const day=pendingMorningDays(ts).find(day=>nextDayStart(day)===startOfDay(ts));
+  if(day!=null)return {kind:'feedback',mode:'morning',id:day,name:'Оценить восстановление после вчерашней нагрузки',detail:'Одна общая оценка за день',status:'green',score:1,reasons:['Оценки сразу после упражнений известны; нужна отложенная реакция для выбора сегодняшнего объёма.']};
+  const current=currentSymptoms(ts);
+  const session=state.assessment_sessions.findLast(s=>s.reaction_at<=ts&&startOfDay(s.reaction_at)===startOfDay(ts)&&s.pain_after!=null);
+  if(activeExercises().some(ex=>dailyLoadPlan(ex,ts).needsFeedback))return {kind:'feedback',mode:'current',id:'current',name:'Оценить самочувствие после нагрузки',detail:'Как лодыжка в целом после комплекса',status:'green',score:1,reasons:['После облегчённого выполнения нужна общая оценка восстановления перед следующей нагрузкой.']};
+  if((!current||startOfDay(current.ts)<startOfDay(ts))&&!session)return {kind:'feedback',mode:'current',id:'current',name:'Оценить самочувствие перед нагрузкой',detail:'Боль, устойчивость и усталость сейчас',status:'green',score:1,reasons:['Сегодня ещё нет оценки самочувствия. Оценка после выполнения упражнения тоже подойдёт.']};
+  return null;
+}
+function openFeedback(mode,id){
+  if(mode==='morning')openMorning(Number(id));
+  else if(mode==='assessment')openAssessment(id);
+  else openSymptoms();
+}
 function actionRecommendations(ts=now()){
   const order={green:0,yellow:1,red:2};
   const priority=r=>r.kind==='exercise'&&r.ex.source==='clinician_home'&&dailyDeficit(r.ex,ts)>0?0:r.kind==='exercise'?1:2;
-  return [...recommendations(ts).map(r=>({...r,kind:'exercise'})),...testRecommendations(ts).slice(0,1)]
+  const actions=[...recommendations(ts).map(r=>({...r,kind:'exercise'})),...testRecommendations(ts).slice(0,1)]
     .sort((a,b)=>priority(a)-priority(b)||order[a.status]-order[b.status]||b.score-a.score);
+  const feedback=feedbackRecommendation(ts);
+  return feedback?[feedback,...actions]:actions;
 }
 function testDoseText(t){
   return `${t.bilateral?'Левая и правая нога':'Один тест'}${testCap(t)?' · до '+testCap(t)+' '+t.unit_short:t.metric==='errors_per_30s'?' · 30 секунд на сторону':''}`;
 }
 function actionButtonHTML(r){
+  if(r.kind==='feedback')return `<button class="btn primary" onclick="AM.openFeedback('${r.mode}','${r.id}')">Оценить самочувствие</button>`;
   const buttons=r.kind==='test'?`<button class="btn primary" onclick="AM.openTest('${r.test.id}')">Пройти тест</button>`:`<button class="btn primary" onclick="AM.openExercise('${r.ex.id}')">Выполнить</button><button class="btn secondary" onclick="AM.openLog('${r.ex.id}')">Записать</button>`;
   return buttons+`<button class="btn ghost" onclick="AM.openPostpone('${r.kind}','${r.kind==='test'?r.test.id:r.ex.id}')">Отложить</button>`;
 }
@@ -1047,13 +1075,13 @@ function renderHome(){
   if(best){
     const when=best.status==='green'?'Можно сейчас':best.status==='yellow'?'С учётом самочувствия':'Пауза';
     bestEl.innerHTML=`
-      <span class="best-label">⭐ Лучшее сейчас · ${when} · ${best.kind==='test'?'Тест':'Упражнение'}</span>
-      <div class="rec-name">${esc(best.kind==='test'?best.test.name:best.ex.name)}</div>
-      <div class="dose">${esc(best.kind==='test'?testDoseText(best.test):doseText(best.ex,best.dose))}</div>
+      <span class="best-label">⭐ Лучшее сейчас · ${when} · ${best.kind==='feedback'?'Самочувствие':best.kind==='test'?'Тест':'Упражнение'}</span>
+      <div class="rec-name">${esc(best.kind==='feedback'?best.name:best.kind==='test'?best.test.name:best.ex.name)}</div>
+      <div class="dose">${esc(best.kind==='feedback'?best.detail:best.kind==='test'?testDoseText(best.test):doseText(best.ex,best.dose))}</div>
       ${best.kind==='test'?`<div class="li-meta">${esc(best.test.what_measures)}</div>`:''}
       <div class="rec-actions ${best.kind==='exercise'?'exercise-actions':''}">${actionButtonHTML(best)}</div>
       <div class="reason"><b>Почему:</b> ${esc(best.reasons[0])}</div>
-      <details class="recommend-details"><summary>Подробнее о рекомендации</summary>${best.reasons.slice(1).map(r=>`<div class="reason">${esc(r)}</div>`).join('')}${best.kind==='test'?best.latest?'<div class="li-meta">Последний результат: '+esc(resultText(best.test,best.latest))+'</div>':'':`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||fatigueLabels[s]||s)}</span>`).join('')}</div>`}</details>`;
+      ${best.kind==='feedback'?'':`<details class="recommend-details"><summary>Подробнее о рекомендации</summary>${best.reasons.slice(1).map(r=>`<div class="reason">${esc(r)}</div>`).join('')}${best.kind==='test'?best.latest?'<div class="li-meta">Последний результат: '+esc(resultText(best.test,best.latest))+'</div>':'':`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||fatigueLabels[s]||s)}</span>`).join('')}</div>`}</details>`}`;
   }else bestEl.innerHTML=noRecommendationHTML();
   renderPostponed(best);
 
@@ -1091,10 +1119,8 @@ function renderHome(){
   document.getElementById('updatedAt').textContent=`обновлено ${fmtTime(now())}`;
 
   const wrap=document.getElementById('pendingChecksWrap');wrap.innerHTML='';
-  const unfinished=state.assessment_sessions.findLast(s=>!s.completed_at);
-  if(unfinished)wrap.innerHTML=`<div class="card notice" style="margin-top:12px">Тест сохранён. Отметь самочувствие после самопроверки.<br><button class="btn secondary" style="margin-top:10px" onclick="AM.openAssessment('${unfinished.id}')">Завершить самопроверку</button></div>`;
-  const days=pendingMorningDays();
-  if(days.length)wrap.insertAdjacentHTML('beforeend',`<div class="card notice" style="margin-top:12px"><b>Утренняя проверка после ${fmtDate(days[0])}</b><div class="li-meta">Одна оценка для всей нагрузки за день.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.openMorning(${days[0]})">Как лодыжка сегодня?</button>${days.length>1?`<details><summary>Предыдущие дни · ${days.length-1}</summary>${days.slice(1).map(day=>`<button class="btn ghost" onclick="AM.openMorning(${day})">${fmtDate(day)}</button>`).join('')}</details>`:''}</div>`);
+  const days=pendingMorningDays().filter(day=>nextDayStart(day)!==startOfDay());
+  if(days.length)wrap.insertAdjacentHTML('beforeend',`<details style="margin-top:12px"><summary>Предыдущие дни без проверки · ${days.length}</summary><div class="li-meta">Прошлую утреннюю реакцию не восстанавливаем предположениями.</div>${days.map(day=>`<button class="btn ghost" onclick="AM.openMorning(${day})">${fmtDate(day)}</button>`).join('')}</details>`);
   if(safetyFlag())wrap.insertAdjacentHTML('beforeend','<div class="notice bad" style="margin-top:12px">Боль, новый отёк или нестабильность: предложения перехода между этапами приостановлены до последующей нормальной реакции. Это продуктовая мера предосторожности, не диагноз.</div>');
 }
 function setRing(id,valId,v,empty='0%'){
@@ -1175,7 +1201,7 @@ function loadSummaryHTML(channels){
 }
 function nextActionHTML(){
   const best=actionRecommendations().find(r=>r.status==='green');
-  if(best)return `<div class="notice" style="margin-top:12px"><b>Следующее лучшее действие: ${esc(best.kind==='test'?best.test.name:best.ex.name)}</b><div class="rec-actions">${actionButtonHTML(best)}</div><details><summary>Почему?</summary>${esc(best.reasons.join(' · '))}</details></div>`;
+  if(best)return `<div class="notice" style="margin-top:12px"><b>Следующее лучшее действие: ${esc(best.kind==='feedback'?best.name:best.kind==='test'?best.test.name:best.ex.name)}</b><div class="rec-actions">${actionButtonHTML(best)}</div><details><summary>Почему?</summary>${esc(best.reasons.join(' · '))}</details></div>`;
   const windows=recommendations().map(r=>nextGoodWindow(r.ex)).filter(t=>t!=null);
   return `<div class="notice" style="margin-top:12px"><b>${windows.length?'Отдохнуть ~'+Math.max(15,Math.ceil((Math.min(...windows)-now())/60000))+' минут':'Отдых и контроль реакции'}</b><details><summary>Почему?</summary>Сейчас нет подходящего упражнения без ограничений. Нагрузка затухает со временем; симптомы требуют последующей нормальной реакции.</details></div>`;
 }
@@ -1275,11 +1301,11 @@ function openExercise(id){
                         st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
   document.getElementById('exerciseModal').innerHTML=`
     <div class="modal-head"><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('exerciseDialog')">×</button></div>
-    <div class="notice"><b>Сейчас: ${esc(doseText(ex,suggested.dose))}</b><br>${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}<br><span class="li-meta">Рабочий уровень: ${esc(doseText(ex,suggested.working))} · ${suggested.confirmed?'подтверждён':'уточняется'}</span></div>
+    <div class="notice"><b>Сейчас: ${esc(doseText(ex,suggested.dose))}</b><br>${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}</div>
     <div style="margin-top:14px">${(ex.instructions||[]).map((x,i)=>`<div class="kv"><span>${i+1}. ${esc(x)}</span></div>`).join('')}</div>
     ${m==null?'':`<div style="margin-top:14px"><b>${suggested.confirmedDays}/3 подтверждений в разные дни</b><div class="li-meta">Учитываем качество и реакцию следующим утром.</div></div>`}
     ${variant?`<div class="notice" style="margin-top:12px"><b>Следующий вариант: ${esc(variant.ex.name)}</b><p>Базовый вариант освоен по качеству. Объём нового варианта уточняется отдельно; оба варианта делят дневную цель.</p>${variant.after>now()?`<div>Перерыв перед проверкой — не раньше ${fmtTime(variant.after)}.</div>`:variant.test?`<button class="btn secondary" onclick="AM.close('exerciseDialog');AM.openTest('${variant.test.id}')">Проверить следующий вариант</button>`:''}</div>`:''}
-    ${suggested.evidence?`<div class="notice" style="margin-top:12px"><b>Тест этого варианта: ${suggested.evidence.capacity} ${esc(suggested.evidence.test.unit_short)}</b> · ${fmtDate(suggested.evidence.log.ts)}<div class="li-meta">${suggested.evidence.capacity===testCap(suggested.evidence.test)?'Достигнута граница теста; максимум неизвестен. ':''}Трудность: ${esc({easy:'легко',normal:'посильно',hard:'тяжело',unknown:'не отмечена'}[suggested.evidence.log.difficulty||'unknown'])}. Один тест не подтверждает переносимость нескольких выполнений за день.</div>${suggested.calibration?`<p>Пробный объём: ${esc(doseText(ex,suggested.calibration))}. После него оцени качество и реакцию; проверка следующим утром уточнит переносимость.</p><details><summary>Как выбран объём?</summary>Начальная проба ограничена половиной результата теста и удвоением рабочего объёма. Это осторожное правило приложения, а не установленная безопасная доля.</details><button class="btn secondary" onclick="AM.close('exerciseDialog');AM.openLog('${id}','calibration')">Записать пробу по тесту</button>`:''}</div>`:''}
+    ${suggested.evidence?`<div class="notice" style="margin-top:12px"><b>Тест этого варианта: ${suggested.evidence.capacity} ${esc(suggested.evidence.test.unit_short)}</b> · ${fmtDate(suggested.evidence.log.ts)}<div class="li-meta">${suggested.evidence.capacity===testCap(suggested.evidence.test)?'Достигнута граница теста; максимум неизвестен. ':''}Трудность: ${esc({easy:'легко',normal:'посильно',hard:'тяжело',unknown:'не отмечена'}[suggested.evidence.log.difficulty||'unknown'])}.</div>${suggested.evidence.log.difficulty==null||suggested.evidence.log.difficulty==='unknown'||suggested.evidence.log.stop_reason==null||suggested.evidence.log.stop_reason==='unknown'?'<p>Для повышения объёма или перехода к следующему варианту уточни, как дался уже выполненный тест и почему ты его завершил. Повторять тест для исправления записи не нужно.</p>':''}${suggested.doseFromTest?'<p>Результат учтён в объёме «Сейчас». Дальше отмечай качество, усилие и реакцию после обычных выполнений.</p><details><summary>Как выбран объём?</summary>Начальная оценка ограничена половиной результата теста и удвоением объёма до теста. Это эвристика приложения, а не научно установленная безопасная доза для нескольких выполнений в день.</details>':''}<button class="btn ghost" onclick="AM.close('exerciseDialog');AM.openTest('${suggested.evidence.test.id}','${suggested.evidence.log.id}')">Уточнить запись теста</button></div>`:''}
     ${suggested.trial?`<div class="notice" style="margin-top:12px"><b>Пробный шаг: ${esc(doseText(ex,suggested.trial))}</b><div class="li-meta">${Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)>0?'Изменение объёма: +'+Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)+'%.':'Меняется сложность варианта; численный объём прежний.'} Проверим переносимость после выполнения.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.close('exerciseDialog');AM.openLog('${id}',true)">Попробовать этот шаг</button></div>`:''}
     ${st==='active'?`<div class="reason"><b>Сейчас:</b> ${esc(rec.reasons.join(' · '))}</div>`:''}
     <div class="source-badge">${esc(sourceLabels[ex.source]||ex.source)}</div>
@@ -1294,19 +1320,19 @@ function steadinessField(id,value='steady'){
 }
 function openLog(id,useTrial=false){
   const ex=EXMAP[id];if(!ex)return;
-  const plan=suggestedDose(ex),dose=useTrial==='calibration'&&plan.calibration?plan.calibration:useTrial===true&&plan.trial?plan.trial:plan.dose;
+  const plan=suggestedDose(ex),dose=useTrial===true&&plan.trial?plan.trial:plan.dose;
   const previous=exerciseProgress(ex).logs.slice(-1)[0]?.doseReason;
-  suggestedForLog={id,dose,kind:useTrial==='calibration'&&plan.calibration?'calibration':useTrial===true&&plan.trial?'trial':!sameDose(dose,plan.working)&&['trial','calibration'].includes(previous)?previous:plan.status==='light'?'daily_load':sameDose(dose,plan.working)?'capacity':'recovery'};
+  suggestedForLog={id,dose,kind:useTrial===true&&plan.trial?'trial':plan.status==='light'?'daily_load':plan.doseFromTest?'test':!sameDose(dose,plan.working)&&['trial','calibration','test'].includes(previous)?previous:sameDose(dose,plan.working)?'capacity':'recovery'};
   const option=doseOptions[id];
   document.getElementById('logModal').innerHTML=`
-    <div class="modal-head"><div><div class="source">${useTrial?'Пробный шаг':'Запись выполнения'}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
+    <div class="modal-head"><div><div class="source">${useTrial===true?'Пробный шаг':'Запись выполнения'}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
     <div class="notice">Предложено: <b>${esc(doseText(ex,dose))}</b><br>${esc(plan.reason)}</div>
     <div class="section-title"><h4>Сколько сделал?</h4></div>
     ${(doseFields[ex.dose?.type]||[]).map(([key,label],i)=>`${i===1?'<details><summary>Уточнить удержание / подходы</summary>':''}<div class="field"><label for="dose_${key}">${label}</label><input id="dose_${key}" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${dose[key]||1}" oninput="AM.doseChanged()"></div>${i>0&&i===doseFields[ex.dose.type].length-1?'</details>':''}`).join('')}
     ${option?`<div class="field"><label for="doseOption">${option.label}</label><select id="doseOption" onchange="AM.doseChanged()">${option.values.map(([v,n])=>`<option value="${v}" ${v===(dose[option.key]||option.values[0][0])?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
     <div class="field"><label for="difficultySel">Как дался объём?</label><select id="difficultySel"><option value="">Выбери</option><option value="normal">Посильно</option><option value="easy">Легко, есть запас</option><option value="hard">Тяжело, без запаса</option></select></div>
     <div class="field"><label for="techSel">Качество движений</label><select id="techSel"><option value="">Выбери</option><option value="good">Хорошее</option><option value="ok">Приемлемое</option><option value="poor">Терял контроль</option></select></div>
-      <div class="field" id="volumeReason" style="display:none"><label for="doseReason">Почему выбран такой объём?</label><select id="doseReason">${[['capacity','Подходит моим возможностям'],['daily_load','Меньше из-за общей нагрузки сегодня'],['time','Не хватило времени'],['recovery','Облегчение после реакции'],['trial','Пробую следующий шаг'],['calibration','Проба объёма по тесту']].map(([v,n])=>`<option value="${v}" ${v===suggestedForLog.kind?'selected':''}>${n}</option>`).join('')}</select></div>
+      <div class="field" id="volumeReason" style="display:none"><label for="doseReason">Почему выбран такой объём?</label><select id="doseReason">${[['capacity','Подходит моим возможностям'],['daily_load','Меньше из-за общей нагрузки сегодня'],['time','Не хватило времени'],['recovery','Облегчение после реакции'],['trial','Пробую следующий шаг'],['test','Объём по результату теста'],...(suggestedForLog.kind==='calibration'?[['calibration','Объём по результату теста']]:[])].map(([v,n])=>`<option value="${v}" ${v===suggestedForLog.kind?'selected':''}>${n}</option>`).join('')}</select></div>
     <details open><summary>Самочувствие после выполнения</summary>
       <div class="field"><label for="painBefore">Боль до упражнения, 0–10</label><input id="painBefore" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
       <div class="field"><label for="painDuring">Боль во время, 0–10</label><input id="painDuring" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
@@ -1351,7 +1377,7 @@ function generalFatigueField(id){
   return `<div class="field"><label for="${id}">Общая усталость / недосып</label><select id="${id}"><option value="unknown">Не отмечаю</option><option value="low">Небольшая</option><option value="medium">Умеренная</option><option value="high">Сильная</option></select></div>`;
 }
 function openSymptoms(logId=null){
-  const l=state.logs.find(x=>x.id===logId),r=l?exerciseResponse(l):state.symptomReports.slice(-1)[0]||{};
+  const l=state.logs.find(x=>x.id===logId),r=l?exerciseResponse(l):currentSymptoms()||{};
   const recent=state.logs.filter(x=>now()-x.ts<DAY||x.id===logId).sort((a,b)=>b.ts-a.ts);
   document.getElementById('symptomsModal').innerHTML=`<div class="modal-head"><h3>${l?'Реакция после упражнения':'Как лодыжка сейчас?'}</h3><button class="x" onclick="AM.close('symptomsDialog')">×</button></div>
     <div class="field"><label for="symptomContext">После чего заметил?</label><select id="symptomContext"><option value="unknown">Не знаю причину</option><option value="combined">После нескольких нагрузок</option>${recent.map(x=>`<option value="${x.id}" ${x.id===logId?'selected':''}>${esc(EXMAP[x.exerciseId]?.name||'Упражнение')} · ${fmtTime(x.ts)}</option>`).join('')}</select></div>
@@ -1428,7 +1454,7 @@ function openTest(id,logId=null){
     <div class="field"><label for="testStop">Почему завершил?</label><select id="testStop">${[['unknown','Не знаю / не помню'],...(cap?[['cap','Достиг границы теста, техника сохранялась']]:[]),['quality','Начало ухудшаться качество'],['symptoms','Боль или другие симптомы'],['planned','Завершил раньше, оставался запас']].map(([v,n])=>`<option value="${v}" ${v===(editing?.stop_reason||'unknown')?'selected':''}>${n}</option>`).join('')}</select></div>
     <div class="field"><label for="testPain">Боль сразу после теста, 0–10 (пусто, если не помнишь)</label><input id="testPain" type="number" min="0" max="10" value="${editing?.pain_after??''}"></div>
     <label class="notice"><input type="checkbox" id="testProtocolConfirmed"> Проверил описание: выполнен именно этот вариант</label>
-    <div class="notice" style="margin-top:12px">${t.dose_exercise_id?'Результат уточняет объём соответствующего упражнения. Проба объёма выбирается отдельно.':'Этот тест оценивает отдельную способность; прямого пересчёта в объём других упражнений нет.'} Фактическая нагрузка учитывается один раз; дневные выполнения и XP за тест не начисляются.</div>
+    <div class="notice" style="margin-top:12px">${t.dose_exercise_id?'Результат, трудность и причина остановки уточняют объём соответствующего упражнения и готовность к следующему варианту. Затем объём адаптируется по обычным выполнениям и самочувствию.':'Этот тест оценивает отдельную способность; прямого пересчёта в объём других упражнений нет.'} Фактическая нагрузка учитывается один раз; дневные выполнения и XP за тест не начисляются.</div>
     <div class="modal-actions"><button class="btn primary" onclick="AM.saveTest('${id}')">${editing?'Сохранить исправление':'Сохранить тест'}</button></div>`;
   const protocol=document.querySelector('#testModal details');if(protocol)protocol.open=true;
   showDialog('testDialog');
@@ -1477,9 +1503,8 @@ function saveTest(id){
   if(!editing){
     document.querySelector('.tab[data-screen="home"]')?.click();
     document.getElementById('bestNow').scrollIntoView?.({block:'start'});
-    openAssessment(session.id);
   }
-  toast(editing?'Результат исправлен без нового выполнения':'Тест сохранён. Отметь самочувствие');
+  toast(editing?'Результат исправлен без нового выполнения':'Тест сохранён. Следующее действие — на главной');
 }
 function openCheck(id){
   const c=state.delayedChecks.find(x=>x.id===id);if(c)openSymptoms(c.logId);
@@ -1492,10 +1517,11 @@ function pendingMorningDays(ts=now()){
 function openMorning(day){
   if(day>=startOfDay())return;
   const recent=day===daysAgo(1);
+  const knownWorse=state.symptomReports.some(r=>startOfDay(r.ts)===day&&r.phase!=='morning'&&r.worse)||state.logs.some(l=>startOfDay(l.ts)===day&&l.sameDay==='worse')||state.assessment_sessions.some(s=>startOfDay(sessionLastAt(s))===day&&s.same_day_response==='worse');
   document.getElementById('checkModal').innerHTML=`<div class="modal-head"><h3>${recent?'Как лодыжка после вчерашней нагрузки?':'Самочувствие после '+fmtDate(day)}</h3><button class="x" onclick="AM.close('checkDialog')">×</button></div>
     <div class="notice">Одна проверка для упражнений, тестов и других активностей за день.${recent?'':' Прошлая утренняя реакция уже неизвестна: эта запись уточнит только текущее состояние.'}</div>
     <div class="field"><label for="morningResponse">Сегодня по сравнению с состоянием до нагрузки</label><select id="morningResponse"><option value="">Выбери</option><option value="same">Так же</option><option value="better">Лучше</option><option value="worse">Хуже</option></select></div>
-    <div class="field"><label for="dayResponse">Было ли ухудшение позже в тот день?</label><select id="dayResponse"><option value="unknown">Не знаю</option><option value="same">Ухудшения не было</option><option value="worse">Да, было</option></select></div>
+    <div class="field"><label for="dayResponse">Было ли ухудшение позже в тот день?</label><select id="dayResponse"><option value="unknown">Не знаю</option><option value="same">Ухудшения не было</option><option value="worse" ${knownWorse?'selected':''}>Да, было</option></select>${knownWorse?'<div class="li-meta">Ухудшение уже отмечено в истории за этот день.</div>':''}</div>
     ${steadinessField('morningSteadiness',currentSymptoms()?.steadiness||'steady')}
     <div class="field"><label for="morningPain">Боль сейчас, 0–10</label><input id="morningPain" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
     <div class="field"><label for="morningFatigue">Остаточная усталость голеностопа / икр</label><select id="morningFatigue"><option value="low">Лёгкая</option><option value="medium">Умеренная</option><option value="high">Сильная, не восстановился</option></select></div>
@@ -1571,7 +1597,7 @@ setupTabs();
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',restorePageScroll));
 
 window.AM={
-  openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,
+  openFeedback,openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,
   openPostpone,postponeAction,resumeAction,
   openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,deleteTest,openCheck,saveCheck,
   activateExercise,archiveExercise,suggestStage,openAssessment,saveAssessment,chooseFatigue,openAssessmentCheck,saveAssessmentCheck,openSelfReport,saveSelfReport,close:closeDialog,

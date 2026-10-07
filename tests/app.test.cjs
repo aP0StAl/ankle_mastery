@@ -46,7 +46,7 @@ function app(saved,clock=null){
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -145,6 +145,7 @@ test('UI includes units and protocols, no native prompt or Chinese characters',(
 });
 test('home prioritizes prescribed exercises while retaining an available test alternative',()=>{
   const {dev:d,get}=app();
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',response:'same'});
   const actions=d.actionRecommendations();
   assert.equal(actions[0].kind,'exercise');assert.equal(actions[0].ex.source,'clinician_home');
   assert.equal(actions.filter(r=>r.kind==='test').length,1);
@@ -251,6 +252,7 @@ test('until tomorrow uses the next local training day and postponements survive 
 });
 test('all postponed actions leave an explanation and can be restored from the home screen',()=>{
   const {dev:d,get}=app(),ts=Date.now();
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',response:'same'},'unknown',ts);
   for(const ex of Object.values(d.EXMAP).filter(ex=>d.getState().exerciseStatuses[ex.id]==='active'))d.getState().postponedActions['exercise:'+ex.id]=ts+7*86400000;
   for(const t of d.RDCFG.tests)d.getState().postponedActions['test:'+t.id]=ts+7*86400000;
   assert.equal(d.actionRecommendations(ts).length,0);
@@ -394,7 +396,8 @@ test('one shared morning check stores strong fatigue and covers the complete day
   d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,ts+3600000);
   d.getState().customActivities.push({id:'walk',ts,load:{calf:5}});
   const originals=plain(d.getState().logs),day=d.startOfDay(ts);
-  assert.equal(d.pendingMorningDays().length,1);d.renderHome();assert.match(get('pendingChecksWrap').innerHTML,/Одна оценка/);
+  assert.equal(d.pendingMorningDays().length,1);d.renderHome();assert.match(get('bestNow').innerHTML,/Одна общая оценка/);
+  assert.equal(d.actionRecommendations()[0].mode,'morning');assert.equal(get('pendingChecksWrap').innerHTML,'');
   d.openMorning(day);
   for(const [id,v] of Object.entries({morningResponse:'same',dayResponse:'same',morningSteadiness:'steady',morningPain:'0',morningFatigue:'high'}))get(id).value=v;
   d.saveMorning(day);
@@ -518,8 +521,9 @@ test('rest explanation shows exact windows while a reported adverse episode rema
     d.recordExercise(id,d.EXMAP[id].dose,comfortable,today+(22*60+minutes)*60000);
   }
   d.getState().postponedActions['test:knee_to_wall']=today+DAY;
-  assert.equal(d.actionRecommendations(clock).length,0);d.renderHome();
-  const card=get('bestNow').innerHTML;
+  assert.equal(d.actionRecommendations(clock)[0].kind,'feedback');d.renderHome();
+  assert.match(get('bestNow').innerHTML,/Оценить самочувствие после нагрузки/);
+  const card=d.noRecommendationHTML(clock);
   assert.match(card,/Сейчас восстановление/);assert.match(card,/шаткая, боль 2/);
   assert.match(card,/оцени самочувствие/);assert.match(card,/23:35/);assert.match(card,/23:39/);
   assert.equal(d.dailyTarget(ex),3);assert.match(get('dailyGrid').innerHTML,/1\/3/);
@@ -612,24 +616,40 @@ test('legacy midnight morning keys retain confirmation and are not rewritten on 
   assert.equal(restored.pendingMorningDays().length,0);
 });
 
-test('a matching 100-step test offers an explicit bounded probe, not an automatic daily prescription',()=>{
+test('a complete matching test updates the ordinary dose without a separate probe or compounding',()=>{
   const ts=Date.now(),{dev:d,get}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
-  const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'unknown',stop_reason:'unknown'},ts-DAY);
+  const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'easy',stop_reason:'cap',pain_after:0},ts-DAY);
   d.completeAssessment(session,{pain_after:0,perceived_fatigue:'moderate'},ts-DAY);
   const plan=d.suggestedDose(ex);
-  assert.equal(plan.dose.target_steps,16);assert.equal(plan.calibration.target_steps,32);
-  assert.equal(plan.evidence.capacity,100);assert.equal(d.nextVariant(ex),null);
-  assert.equal(d.suggestedDose(d.EXMAP.tandem_walk_tiptoe).calibration,null);
+  assert.equal(plan.dose.target_steps,32);assert.equal(plan.working.target_steps,16);
+  assert.equal(plan.evidence.capacity,100);assert.equal(plan.doseFromTest,true);
+  assert.equal(d.suggestedDose(d.EXMAP.tandem_walk_tiptoe).dose.target_steps,12);
   d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Тест этого варианта: 100/);
-  assert.match(get('exerciseModal').innerHTML,/не установленная/); // Keep the product heuristic visible.
-  d.openLog(ex.id,'calibration');assert.match(get('logModal').innerHTML,/value="32"/);
-  const l=d.recordExercise(ex.id,plan.calibration,{...comfortable,doseReason:'calibration'},ts,plan.calibration);
+  assert.match(get('exerciseModal').innerHTML,/Сейчас: 32 шага/);
+  assert.doesNotMatch(get('exerciseModal').innerHTML,/Записать проб|Рабочий уровень: 16/);
+  d.openLog(ex.id);assert.match(get('logModal').innerHTML,/value="32"/);
+  const l=d.recordExercise(ex.id,plan.dose,{...comfortable,doseReason:'test'},ts,plan.dose);
   const after=d.suggestedDose(ex);
   assert.equal(after.working.target_steps,16);assert.equal(after.dose.target_steps,32);
-  assert.equal(after.calibration,null);assert.equal(after.confirmed,false);
+  assert.equal(after.confirmed,false);
+  // A user-entered comfortable volume must not double the estimate again.
+  l.doseReason='capacity';assert.equal(d.suggestedDose(ex).dose.target_steps,32);l.doseReason='test';
   d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky',response:'worse'},l.id,ts+1000);
   d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady',response:'better'},'unknown',ts+2000);
   assert.equal(d.suggestedDose(ex,ts+2000).dose.target_steps,16);
+});
+
+test('an incomplete or adverse matching test cannot increase the routine dose',()=>{
+  const ts=Date.now(),{dev:d,get}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
+  const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'unknown',stop_reason:'unknown'},ts-DAY);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'moderate'},ts-DAY);
+  assert.equal(d.suggestedDose(ex).dose.target_steps,16);
+  d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Уточнить запись теста/);
+  assert.doesNotMatch(get('exerciseModal').innerHTML,/32|Записать проб/);
+  const log=d.getState().testLogs[0];
+  for(const values of [{difficulty:'hard',stop_reason:'cap',pain_after:0},{difficulty:'easy',stop_reason:'quality',pain_after:0},{difficulty:'easy',stop_reason:'cap',pain_after:3}]){
+    Object.assign(log,values);assert.equal(d.suggestedDose(ex).dose.target_steps,16);
+  }
 });
 
 test('a lower matching test reduces the next dose; stale, future and different protocols do not calibrate',()=>{
@@ -755,4 +775,34 @@ test('zero capacity defers only that movement until a corrected test or successf
   assert.equal(d.dailyLoadPlan(d.EXMAP.tandem_walk_flat).status,'normal');
   d.recordExercise(ex.id,{...ex.dose,target_steps:3},comfortable,ts);
   assert.equal(d.dailyLoadPlan(ex).status,'normal');
+});
+
+test('fresh exercise feedback satisfies the current recommendation without a repeated questionnaire',()=>{
+  const clock=new Date(2026,9,7,12).getTime(),{dev:d,get}=app(null,clock);
+  assert.equal(d.actionRecommendations()[0].kind,'feedback');
+  d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,clock-60000);
+  assert.ok(d.actionRecommendations().every(r=>r.kind!=='feedback'));
+  d.renderHome();assert.doesNotMatch(get('bestNow').innerHTML,/Оценить самочувствие/);
+  d.getState().logs[0].painAfter=1;d.openSymptoms();assert.match(get('symptomsModal').innerHTML,/id="symptomPain"[^>]*value="1"/);
+  d.closeDialog('symptomsDialog');
+  d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'normal',stop_reason:'cap',pain_after:0},clock);
+  const feedback=d.actionRecommendations()[0];assert.equal(feedback.mode,'assessment');
+  d.openFeedback(feedback.mode,feedback.id);assert.equal(get('assessmentDialog').open,true);
+  d.completeAssessment(d.getState().assessment_sessions[0],{pain_after:0,perceived_fatigue:'moderate'},clock);
+  assert.ok(d.actionRecommendations().every(r=>r.kind!=='feedback'));
+});
+
+test('one recommended morning check covers yesterday without duplicating the pending card',()=>{
+  const clock=new Date(2026,9,7,10).getTime(),{dev:d,get}=app(null,clock);
+  const l=d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,clock-DAY);
+  const session=d.recordTest('tandem_flat_clean_steps',{value:100},clock-DAY);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'moderate'},clock-DAY);
+  const feedback=d.actionRecommendations()[0];assert.equal(feedback.kind,'feedback');assert.equal(feedback.mode,'morning');
+  d.openFeedback(feedback.mode,feedback.id);assert.equal(get('checkDialog').open,true);
+  d.renderAll();assert.match(get('bestNow').innerHTML,/вчерашней нагрузки/);assert.equal(get('pendingChecksWrap').innerHTML,'');
+  assert.match(get('assessmentWrap').innerHTML,/Оценить восстановление/);
+  morning(d,l,'same',clock);
+  assert.ok(d.actionRecommendations().every(r=>r.kind!=='feedback'));
+  d.recordSymptoms({pain:2,steadiness:'shaky',fatigue:'low',response:'worse'},l.id,clock-DAY+3600000);
+  d.openMorning(feedback.id);assert.match(get('checkModal').innerHTML,/value="worse" selected/);
 });
