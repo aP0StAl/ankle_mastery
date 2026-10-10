@@ -431,7 +431,7 @@ test('unmeasured tests lead overdue repeats while feedback, postponement and sym
   d.postponeAction('test',missing,'tomorrow');
   assert.equal(d.actionRecommendations()[0].kind,'exercise');
   const repeat=d.actionRecommendations().findIndex(r=>r.kind==='test');assert.ok(repeat>=0&&repeat<6);
-  d.renderHome();assert.match(get('recommendations').innerHTML,/pill green">Тест/);
+  d.renderHome();assert.match(get('recommendations').innerHTML+get('moreRecommendationsList').innerHTML,/pill green">Тест/);
   d.resumeAction('test',missing);
   assert.equal(d.actionRecommendations()[0].test.id,missing);
   d.recordSymptoms({pain:3,steadiness:'steady',fatigue:'low'},'combined',clock+1);

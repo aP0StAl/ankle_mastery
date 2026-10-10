@@ -104,6 +104,9 @@
     details{margin-top:10px;font-size:13px;line-height:1.5} summary{cursor:pointer;color:var(--blue)}
     .history-table{width:100%;font-size:12px;border-collapse:collapse;margin-top:10px}
     .history-table td,.history-table th{padding:7px 3px;text-align:left;border-bottom:1px solid var(--line)}
+    .history-table .history-result td{border-bottom:0}
+    .history-table .history-actions td{padding-top:0}
+    .history-table .history-actions .btn{font-size:12px;padding:10px 12px}
     .test-chart{width:100%;height:100px;margin-top:10px}
     dialog{max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
     input[type="range"]{min-height:36px;accent-color:var(--green)}
@@ -129,13 +132,14 @@
       <div id="otherOptions">
         <div class="section-title"><h2>Другие варианты</h2><small>с учётом нагрузки</small></div>
         <div class="list" id="recommendations"></div>
+        <details id="moreRecommendations" hidden><summary>Ещё варианты</summary><div class="list" id="moreRecommendationsList" style="margin-top:10px"></div></details>
       </div>
 
       <div class="section-title"><h2>Сегодня</h2><small id="dailyCount"></small></div>
       <div class="daily-grid" id="dailyGrid"></div>
       <div id="dailyActivity"></div>
 
-      <details class="home-progress"><summary>Прогресс и измерения</summary>
+      <details class="home-progress"><summary>Прогресс, измерения и нагрузка</summary>
         <div class="hero">
           <div class="card metric-card">
             <div class="ring" id="masteryRing" style="--c:var(--green)"><strong id="masteryValue">0%</strong></div>
@@ -146,10 +150,9 @@
             <div style="flex:1"><div class="metric-title">Измерения для возврата к бегу</div><div class="metric-name" id="stageName">Реабилитация</div><div class="stage-line" id="stageLine"></div><div class="muted" id="readinessHint">Готовность ≠ медицинский допуск</div></div>
           </div>
         </div>
+        <div class="section-title"><h2>Расчёт похожей нагрузки</h2><small>условные баллы, не измерение усталости</small></div>
+        <div class="card" id="fatigueCard"></div>
       </details>
-
-      <div class="section-title"><h2>Расчёт похожей нагрузки</h2><small>условные баллы, не измерение усталости</small></div>
-      <div class="card" id="fatigueCard"></div>
     </section>
 
     <section id="screen-exercises" class="screen">
@@ -1241,13 +1244,16 @@ function renderHome(){
 
   document.getElementById('otherOptions').hidden=recs.length<2;
   const list=document.getElementById('recommendations'); list.innerHTML='';
-  recs.slice(1,6).forEach(r=>{
+  const more=document.getElementById('moreRecommendations'),moreList=document.getElementById('moreRecommendationsList');moreList.innerHTML='';
+  more.hidden=recs.length<=3;
+  recs.slice(1,6).forEach((r,i)=>{
+    const target=i<2?list:moreList;
     if(r.kind==='test'){
-      list.insertAdjacentHTML('beforeend',`<button type="button" class="list-item" style="color:inherit;text-align:left" onclick="AM.openTest('${r.test.id}')"><span class="status-dot status-green"></span><span class="li-main"><span class="li-title">${esc(r.test.name)}</span><span class="li-meta" style="display:block">${esc(testDoseText(r.test))} · ${esc(r.reasons[0])}</span></span><span class="pill green">Тест</span></button>`);
+      target.insertAdjacentHTML('beforeend',`<button type="button" class="list-item" style="color:inherit;text-align:left" onclick="AM.openTest('${r.test.id}')"><span class="status-dot status-green"></span><span class="li-main"><span class="li-title">${esc(r.test.name)}</span><span class="li-meta" style="display:block">${esc(testDoseText(r.test))} · ${esc(r.reasons[0])}</span></span><span class="pill green">Тест</span></button>`);
       return;
     }
     const next=r.status==='green'?null:nextGoodWindow(r.ex); const delay=next&&next-now()>20*60000?`лучше ${fmtTime(next)}`:(r.status==='green'?'можно сейчас':'проверь самочувствие');
-    list.insertAdjacentHTML('beforeend',`
+    target.insertAdjacentHTML('beforeend',`
       <div class="list-item" onclick="AM.openExercise('${r.ex.id}')">
         <span class="status-dot status-${r.status}"></span><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-meta">${r.extraRound?'✓ Цель группы выполнена · дополнительное выполнение<br>':''}${esc(doseText(r.ex,r.dose))} · ${esc(r.reasons[0]||'')}</div></div>
         <span class="pill ${r.status}">${esc(delay)}</span>
@@ -1265,7 +1271,7 @@ function renderHome(){
   document.getElementById('dailyCount').textContent=`${closed}/${total} ориентиров`;
   const adherence=progressionAdherence();
   const testsToday=state.testLogs.filter(l=>l.ts>=startOfDay());
-  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей. Домашнее назначение — 3–4 раза в день: три зачтённых выполнения закрывают минимум, четвёртое можно выполнить дополнительно по переносимости. Четвёртое не требуется для регулярности 5 из 7 дней. В план входят полные выполнения предложенного объёма с приемлемой техникой и перерывами; сокращённый из-за самочувствия объём тоже учитывается. Цели дня сохраняются при паузе, наверстывать их через боль не нужно.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}<p><b>Регулярность: ${adherence.completedDays}/7 полных дней с выполненным планом.</b><br>${adherence.allowed?'Условие 5 из 7 для повышения выполнено; дальше учитываем качество и восстановление.':'Для повышения нагрузки нужно выполнить дневной план хотя бы в 5 из последних 7 полных дней.'}<span class="li-meta" style="display:block">День засчитывается по сохранённым целям этого дня. Сегодняшний день пока не учитывается. Реакцию следующим утром проверяем отдельно.</span></p></div>`;
+  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}<p><b>Регулярность: ${adherence.completedDays}/7 полных дней с выполненным планом.</b>${adherence.allowed?'<br>Условие 5 из 7 для повышения выполнено.':''}</p><details><summary>Как считается план</summary><p>Домашнее назначение — 3–4 раза в день: три зачтённых выполнения закрывают минимум, четвёртое можно выполнить дополнительно по переносимости. Четвёртое не требуется для регулярности 5 из 7 дней.</p><p>В план входят полные выполнения предложенного объёма с приемлемой техникой и перерывами; сокращённый из-за самочувствия объём тоже учитывается. Цели дня сохраняются при паузе, наверстывать их через боль не нужно.</p><p>Для повышения нагрузки нужно выполнить дневной план хотя бы в 5 из последних 7 полных дней; дальше учитываем качество и восстановление. День засчитывается по сохранённым целям этого дня. Сегодняшний день пока не учитывается. Реакцию следующим утром проверяем отдельно.</p></details></div>`;
 
   const f=fatigueAt(), fc=document.getElementById('fatigueCard');fc.innerHTML='';
   for(const [k,v] of Object.entries(f)){
@@ -1316,6 +1322,7 @@ function resultText(t,l){
 }
 function historyHTML(t,logs){
   if(!logs.length)return '<div class="muted">Измерений этого протокола пока нет.</div>';
+  const editable=logs[0].protocol_id===t.protocol_id;
   const baseline=logs[0],latest=logs[logs.length-1],first=t.bilateral?baseline.right:baseline.value,last=t.bilateral?latest.right:latest.value;
   const delta=+(last-first).toFixed(2),relative=first?` / ${delta>0?'+':''}${Math.round(delta/first*100)}%`:'';
   const points=logs.slice(-12),max=Math.max(1,...points.map(l=>t.bilateral?l.right:l.value));
@@ -1323,7 +1330,7 @@ function historyHTML(t,logs){
   return `<div class="notice" style="margin-top:10px">Первое измерение${t.bilateral?' справа':''}: ${first} ${t.unit_short} · Сейчас: ${last} ${t.unit_short}<br>Изменение: ${delta>0?'+':''}${delta} ${t.unit_short}${relative}${t.bilateral?`<br>Симметрия: ${pct(symmetry(t,baseline))}% → ${pct(symmetry(t,latest))}%`:''}<br>Динамика измерения, а не процент выздоровления.</div>
     <svg class="test-chart" viewBox="0 0 300 100" role="img" aria-label="Динамика ${t.bilateral?'правой стороны и симметрии':'результата'}"><path d="M10 85 H290" stroke="#294359"/><polyline points="${points.map((l,i)=>coord(l,i)).join(' ')}" fill="none" stroke="#66b9ff" stroke-width="2"/>${points.map((l,i)=>`<circle cx="${coord(l,i).split(',')[0]}" cy="${coord(l,i).split(',')[1]}" r="3" fill="#66b9ff"/>`).join('')}${t.bilateral?`<polyline points="${points.map((l,i)=>coord(l,i,true)).join(' ')}" fill="none" stroke="#55e6a5" stroke-width="2"/>${points.map((l,i)=>`<circle cx="${coord(l,i,true).split(',')[0]}" cy="${coord(l,i,true).split(',')[1]}" r="3" fill="#55e6a5"/>`).join('')}`:''}</svg>
     <div class="muted" style="font-size:11px">Синий: ${t.bilateral?'правая сторона':'результат'} (0–${max} ${t.unit_short})${t.bilateral?' · Зелёный: симметрия (0–100%)':''} · ${fmtDate(points[0].ts)} — ${fmtDate(latest.ts)}</div>
-    <table class="history-table"><thead><tr><th>Дата</th>${t.bilateral?`<th>Л, ${esc(t.unit_short)}</th><th>П, ${esc(t.unit_short)}</th><th>Симметрия</th>`:`<th>${esc(t.unit)}</th>`}</tr></thead><tbody>${[...logs].reverse().map(l=>`<tr><td>${fmtDate(l.ts)} ${new Date(l.ts).getFullYear()}</td>${t.bilateral?`<td>${l.left}</td><td>${l.right}</td><td>${pct(symmetry(t,l))}%</td>`:`<td>${l.value}</td>`}</tr>`).join('')}</tbody></table>`;
+    <table class="history-table"><thead><tr><th>Дата</th>${t.bilateral?`<th>Л, ${esc(t.unit_short)}</th><th>П, ${esc(t.unit_short)}</th><th>Симметрия</th>`:`<th>${esc(t.unit)}</th>`}</tr></thead><tbody>${[...logs].reverse().map(l=>`<tr${editable?' class="history-result"':''}><td>${fmtDate(l.ts)} ${new Date(l.ts).getFullYear()}${editable?`<br><span class="muted">${fmtTime(l.ts)}</span>`:''}</td>${t.bilateral?`<td>${l.left}</td><td>${l.right}</td><td>${pct(symmetry(t,l))}%</td>`:`<td>${l.value}</td>`}</tr>${editable?`<tr class="history-actions"><td colspan="${t.bilateral?4:2}"><button class="btn ghost" aria-label="Исправить измерение за ${fmtDate(l.ts)} ${fmtTime(l.ts)}" onclick="AM.openTest('${t.id}','${l.id}')">Исправить</button> <button class="btn ghost" aria-label="Удалить измерение за ${fmtDate(l.ts)} ${fmtTime(l.ts)}" onclick="AM.deleteTest('${l.id}')">Удалить</button></td></tr>`:''}`).join('')}</tbody></table>`;
 }
 function renderTests(){
   const domains=readinessSummary().domainScores,names={pain:'Боль',ankle_capacity:'Сила и подвижность',confidence:'Уверенность',sensorimotor_control:'Контроль и баланс',impact_running_capacity:'Ударная нагрузка'};
@@ -1338,7 +1345,7 @@ function renderTests(){
     const schedule=available?nextCheck?(now()<nextCheck?`Следующая проверка — примерно ${fmtDate(nextCheck)}`:'Пора обновить измерение · с учётом нагрузки и самочувствия'):'Можно пройти первое измерение':'';
     const until=postponedUntil('test',t.id);
     const protocols=[...new Set(state.testLogs.filter(l=>l.testId===t.id&&l.protocol_id!==t.protocol_id).map(l=>l.protocol_id))];
-    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${schedule?`<div class="li-meta">${esc(schedule)}</div>`:''}${until?`<div class="notice" style="margin-top:10px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('test','${t.id}')">Вернуть в рекомендации</button></div>`:''}${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?(latest?'Повторить тест':'Пройти тест'):'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${logs.slice().reverse().map(l=>`<div class="kv"><span>${fmtDate(l.ts)} ${fmtTime(l.ts)} · ${esc(resultText(t,l))}</span><button class="btn ghost" onclick="AM.openTest('${t.id}','${l.id}')">Исправить</button><button class="btn ghost" onclick="AM.deleteTest('${l.id}')">Удалить</button></div>`).join('')}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
+    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${schedule?`<div class="li-meta">${esc(schedule)}</div>`:''}${until?`<div class="notice" style="margin-top:10px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('test','${t.id}')">Вернуть в рекомендации</button></div>`:''}${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?(latest?'Повторить тест':'Пройти тест'):'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
   });
   const road=document.getElementById('roadmap');road.innerHTML='';
   const cur=currentStage();
