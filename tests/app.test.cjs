@@ -424,7 +424,7 @@ test('unmeasured tests lead overdue repeats while feedback, postponement and sym
   }
   assert.equal(d.actionRecommendations()[0].kind,'feedback');
   assert.equal(d.measurementPlan().test.id,missing);
-  d.renderHome();assert.ok(get('testPlanWrap').innerHTML.includes('Одноногий баланс'));
+  d.renderHome();assert.match(get('bestNow').innerHTML,/Оценить самочувствие/);
   d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
   assert.equal(d.actionRecommendations()[0].test.id,missing);
   d.renderHome();assert.ok(get('bestNow').innerHTML.includes('Одноногий баланс'));

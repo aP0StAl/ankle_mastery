@@ -125,7 +125,6 @@
 
       <div id="pendingChecksWrap"></div>
       <div id="postponedWrap"></div>
-      <div id="testPlanWrap"></div>
 
       <div id="otherOptions">
         <div class="section-title"><h2>Другие варианты</h2><small>с учётом нагрузки</small></div>
@@ -1015,15 +1014,6 @@ function actionRecommendations(ts=now()){
   const feedback=feedbackRecommendation(ts);
   return feedback?[feedback,...actions]:actions;
 }
-function renderTestPlan(best){
-  const wrap=document.getElementById('testPlanWrap'),planned=measurementPlan()||testPlans()[0];
-  if(!planned||best?.kind==='test'&&best.test.id===planned.test.id){wrap.innerHTML='';return;}
-  const feedback=feedbackRecommendation();
-  const button=planned.status==='ready'?actionButtonHTML({...planned,status:'green'}):
-    ['feedback','recovery'].includes(planned.status)?feedback?actionButtonHTML(feedback):'<button class="btn secondary" onclick="AM.openSymptoms()">Оценить восстановление</button>':
-    `<button class="btn ghost" onclick="AM.openPostpone('test','${planned.test.id}')">Отложить измерение</button>`;
-  wrap.innerHTML=`<div class="notice" style="margin:12px 0"><b>Измерение в плане: ${esc(planned.test.name)}</b><p>${esc(planned.reasons[0])}</p>${planned.status==='waiting'?'<div class="li-meta">При нормальном самочувствии дневной план остаётся доступен. Если похожая тренировка сдвигает измерение, пройди тест перед первой такой тренировкой следующего дня. Дополнительную похожую нагрузку пока не предлагаем. Ориентир времени не подтверждает восстановление.</div>':''}<div class="li-meta">Тест учитывается как нагрузка и требует перерыва, но не заменяет домашнее назначение.</div><div class="rec-actions">${button}</div></div>`;
-}
 function testDoseText(t){
   return `${t.bilateral?'Левая и правая нога':'Один тест'}${testCap(t)?' · до '+testCap(t)+' '+t.unit_short:t.metric==='errors_per_30s'?' · 30 секунд на сторону':''}`;
 }
@@ -1248,7 +1238,6 @@ function renderHome(){
       ${best.kind==='feedback'?'':`<details class="recommend-details"><summary>Подробнее о рекомендации</summary>${best.reasons.slice(1).map(r=>`<div class="reason">${esc(r)}</div>`).join('')}${best.kind==='test'?best.latest?'<div class="li-meta">Последний результат: '+esc(resultText(best.test,best.latest))+'</div>':'':`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||fatigueLabels[s]||s)}</span>`).join('')}</div>`}</details>`}`;
   }else bestEl.innerHTML=noRecommendationHTML();
   renderPostponed(best);
-  renderTestPlan(best);
 
   document.getElementById('otherOptions').hidden=recs.length<2;
   const list=document.getElementById('recommendations'); list.innerHTML='';
