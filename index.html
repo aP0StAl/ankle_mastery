@@ -472,6 +472,7 @@ function lastRelatedExecution(ex,ts=now()){
 function nextVariant(ex,ts=now()){
   const next=EXMAP[ex.progression?.next_exercise_id];
   if(!next||!['active','available'].includes(state.exerciseStatuses[next.id]))return null;
+  if(!progressionAdherence(ts).allowed)return null;
   const evidence=testDoseEvidence(ex,ts),log=evidence?.log;
   const testPassed=log&&evidence.capacity>=testCap(evidence.test)&&['easy','normal'].includes(log.difficulty)&&log.pain_after===0&&log.stop_reason==='cap';
   const progress=exerciseProgress(ex,ts);
@@ -486,6 +487,7 @@ function nextVariant(ex,ts=now()){
 
 function suggestedDose(ex,ts=now()){
   const progress=exerciseProgress(ex,ts),working=progress.working,key=doseKey(ex),last=progress.logs.slice(-1)[0];
+  const adherence=progressionAdherence(ts);
   let dose={...working},reason=progress.confirmed?'Рабочий объём подтверждён в разные дни':'Начальный рабочий объём — уточняем переносимость',trial=null;
   const responseLogs=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts<=ts&&(!l.actualDose||l.actualDose.type===ex.dose.type)).sort((a,b)=>a.ts-b.ts);
   const adverse=responseLogs.filter(l=>responseLevel(exerciseResponse(l,ts))!=='normal'||l.difficulty==='hard'||l.fatigue==='high').slice(-1)[0];
@@ -508,6 +510,7 @@ function suggestedDose(ex,ts=now()){
       trial={...dose,[key]:Math.min(ceiling,dose[key]+step)};
       reason='Рабочий объём переносится легко. Можно отдельно попробовать следующий шаг';
     }
+    if(trial&&!adherence.allowed){trial=null;reason=adherence.reason;}
   }
   const evidence=testDoseEvidence(ex,ts);
   let doseFromTest=false;
@@ -528,10 +531,12 @@ function suggestedDose(ex,ts=now()){
       doseFromTest=true;
     }
     if(candidate>dose[key]&&completeTest&&!recovering&&!adverseTest&&plan.status==='normal'&&!safetyFlag(ts)){
-      dose={...dose,[key]:candidate};
-      reason='Начальный объём уточнён по тесту; дальше учитываем качество, усилие и реакцию следующим утром';
-      trial=null;
-      doseFromTest=true;
+      if(adherence.allowed){
+        dose={...dose,[key]:candidate};
+        reason='Начальный объём уточнён по тесту; дальше учитываем качество, усилие и реакцию следующим утром';
+        trial=null;
+        doseFromTest=true;
+      }else reason=adherence.reason;
     }
   }
   const confirmedDays=sameDose(dose,working)?progress.confirmedDays:Math.min(3,progress.run.filter(l=>sameDose(l.actualDose,dose)).length);
@@ -705,6 +710,16 @@ function dailyDeficit(ex,ts=now()){
 function dailyTarget(ex,ts=now()){
   return APP.program.prescription_groups[ex.prescription_credit?.group]?.target_per_day||ex.prescription_credit?.target_per_day||0;
 }
+function progressionAdherence(ts=now()){
+  const groups=[...new Set(activeExercises().map(ex=>ex.prescription_credit?.group).filter(g=>APP.program.prescription_groups[g]?.target_per_day>0))];
+  let completedDays=0;
+  for(let i=1;i<=7;i++){
+    const day=new Date(startOfDay(ts));day.setDate(day.getDate()-i);
+    const counts=prescriptionCounts(nextDayStart(+day)-1);
+    if(groups.length&&groups.every(g=>counts[g]>=APP.program.prescription_groups[g].target_per_day))completedDays++;
+  }
+  return {completedDays,allowed:completedDays>=5,reason:`Повышение ждёт регулярности: дневной план выполнен в ${completedDays} из последних 7 полных дней; нужно хотя бы 5.`};
+}
 
 function weeklySkillExposure(ts=now()){
   const since=ts-7*DAY, out={};
@@ -854,7 +869,7 @@ function testRecommendations(ts=now()){
     const score=.7+(missingDomain?.12:0)+(t.status==='active'?.04:0)+.1*clamp(1-rf/100)+.04*overdue;
     const reasons=[latest?`пора обновить измерение от ${fmtDate(latest.ts)}`:'ещё нет исходного измерения',missingDomain?'это направление ещё не проверено':'поможет отслеживать изменения','текущая нагрузка позволяет провести тест'];
     return [{kind:'test',test:t,latest,score,status:'green',reasons}];
-  }).sort((a,b)=>b.score-a.score);
+  }).sort((a,b)=>Number(!b.latest)-Number(!a.latest)||b.score-a.score);
 }
 function feedbackRecommendation(ts=now()){
   const unfinished=state.assessment_sessions.findLast(s=>!s.completed_at&&sessionLastAt(s)<=ts&&startOfDay(sessionLastAt(s))===startOfDay(ts));
@@ -877,6 +892,11 @@ function actionRecommendations(ts=now()){
   const priority=r=>r.kind==='exercise'&&r.ex.source==='clinician_home'&&dailyDeficit(r.ex,ts)>0?0:r.kind==='exercise'?1:2;
   const actions=[...recommendations(ts).map(r=>({...r,kind:'exercise'})),...testRecommendations(ts).slice(0,1)]
     .sort((a,b)=>priority(a)-priority(b)||order[a.status]-order[b.status]||b.score-a.score);
+  const testIndex=actions.findIndex(r=>r.kind==='test');
+  if(testIndex>=0){
+    const [test]=actions.splice(testIndex,1);
+    actions.splice(test.latest?Math.min(4,actions.length):0,0,test);
+  }
   const feedback=feedbackRecommendation(ts);
   return feedback?[feedback,...actions]:actions;
 }
@@ -1111,8 +1131,9 @@ function renderHome(){
     grid.insertAdjacentHTML('beforeend',`<div class="daily-cell ${done?'done':''}"><div class="circle">${n+'/'+target}</div>${plan.status==='pause'?'<small>Пауза</small>':plan.status==='light'?'<small>Меньший объём</small>':''}<label>${esc(groupShort[g]||g)}</label></div>`);
   }
   document.getElementById('dailyCount').textContent=`${closed}/${total} ориентиров`;
+  const adherence=progressionAdherence();
   const testsToday=state.testLogs.filter(l=>l.ts>=startOfDay());
-  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей. Выполнение сегодняшнего плана засчитывается полностью. Цель сохраняется при паузе. Объём уточняется по выполнению и восстановлению, без обязательного наверстывания.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}</div>`;
+  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей. Выполнение сегодняшнего плана засчитывается полностью. Цель сохраняется при паузе. Объём уточняется по выполнению и восстановлению, без обязательного наверстывания.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}<p><b>Регулярность: ${adherence.completedDays}/7 полных дней с выполненным планом.</b><br>${adherence.allowed?'Условие 5 из 7 для повышения выполнено; дальше учитываем качество и восстановление.':'Для повышения нагрузки нужно выполнить дневной план хотя бы в 5 из последних 7 полных дней.'}<span class="li-meta" style="display:block">День засчитывается, когда закрыты все активные дневные цели. Сегодняшний день пока не учитывается.</span></p></div>`;
 
   const f=fatigueAt(), fc=document.getElementById('fatigueCard');fc.innerHTML='';
   for(const [k,v] of Object.entries(f)){
