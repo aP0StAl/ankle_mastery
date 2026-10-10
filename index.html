@@ -35,9 +35,6 @@
     .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;margin-top:4px}
     .card{background:linear-gradient(180deg,var(--card),#0d1c29);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
     .home-action-title{margin-top:10px;gap:10px}.home-action-title small{white-space:nowrap}
-    .symptom-summary{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px}
-    .symptom-summary>div{flex:1;min-width:0}.symptom-summary b{font-size:13px}
-    .symptom-summary .btn{font-size:14px;padding:10px 12px;min-height:44px}
     .home-progress{margin-top:18px}.home-progress>.hero{margin-top:12px}
     .metric-card{display:flex;align-items:center;gap:14px}
     .ring{--v:0;--c:var(--green);width:88px;height:88px;border-radius:50%;display:grid;place-items:center;
@@ -74,6 +71,7 @@
     .pill.green{color:#b8f9d8;background:#123c30}.pill.yellow{color:#ffe3a0;background:#46391d}.pill.red{color:#ffc0c9;background:#49202b}
     .daily-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
     .daily-cell{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:10px 6px;text-align:center}.daily-cell .circle{width:34px;height:34px;margin:0 auto 6px;border-radius:50%;border:3px solid #2c4659;display:grid;place-items:center;font-weight:800;font-size:12px}.daily-cell.done .circle{border-color:var(--green);color:var(--green)}
+    .daily-cell.extra .circle{border-color:var(--green2);color:var(--green2)}
     .daily-cell label{display:block;font-size:10px;color:#aab8c3;line-height:1.15}
     .fatigue-row{display:grid;grid-template-columns:90px 1fr 36px;gap:10px;align-items:center;margin:10px 0;font-size:12px}
     .bar{height:8px;border-radius:99px;background:#213544;overflow:hidden}.bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#54e3aa,#67b8ff)}
@@ -125,7 +123,6 @@
       <div class="section-title home-action-title"><h2>Что сделать сейчас?</h2><small id="updatedAt"></small></div>
       <div class="card recommend" id="bestNow"></div>
 
-      <div class="card symptom-summary"><div><b>Как лодыжка сейчас?</b><div class="li-meta" id="currentSymptoms">Можно отметить реакцию в любой момент.</div></div><button class="btn secondary" onclick="AM.openSymptoms()">Обновить</button></div>
       <div id="pendingChecksWrap"></div>
       <div id="postponedWrap"></div>
       <div id="testPlanWrap"></div>
@@ -1225,8 +1222,6 @@ function renderHome(){
   if(!state.dailyPlans[dayKey]){ensureDailyPlan();localStorage.setItem(KEY,JSON.stringify(state));}
   document.getElementById('todayLabel').textContent=new Date(startOfDay()).toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   clearTimeout(dayBoundaryTimer);dayBoundaryTimer=setTimeout(renderAll,nextDayStart(now())-now());
-  const current=currentSymptoms();
-  document.getElementById('currentSymptoms').textContent=current?`${fmtDate(current.ts)} ${fmtTime(current.ts)} · ${steadinessNames[current.steadiness]} · боль ${current.pain}/10${current.fatigue?' · '+fatigueNames[current.fatigue]:''}${current.swelling?' · отёк':''}`:'Можно отметить реакцию в любой момент.';
   const tm=trainingMastery(); setRing('masteryRing','masteryValue',tm);
   document.getElementById('masteryHint').textContent=`${xpAndStreak().streak} дн. серии · ${state.xp||0} очков опыта`;
 
@@ -1276,7 +1271,7 @@ function renderHome(){
     const ex=EX.find(x=>x.prescription_credit?.group===g);
     const target=dailyTarget(ex),plan=dailyLoadPlan(ex);if(target)total++;
     const n=counts[g]||0,done=target>0&&n>=target;if(done)closed++;
-    grid.insertAdjacentHTML('beforeend',`<div class="daily-cell ${done?'done':''}"><div class="circle">${Math.min(n,target)+'/'+target}</div>${n>target?'<small>+'+(n-target)+' дополнительное</small>':plan.status==='pause'?'<small>Пауза</small>':plan.status==='light'?'<small>Меньший объём</small>':''}<label>${esc(groupShort[g]||g)}</label></div>`);
+    grid.insertAdjacentHTML('beforeend',`<div class="daily-cell ${done?'done':''} ${done&&n>target?'extra':''}"><div class="circle">${n+'/'+target}</div>${plan.status==='pause'?'<small>Пауза</small>':plan.status==='light'?'<small>Меньший объём</small>':''}<label>${esc(groupShort[g]||g)}</label></div>`);
   }
   document.getElementById('dailyCount').textContent=`${closed}/${total} ориентиров`;
   const adherence=progressionAdherence();
