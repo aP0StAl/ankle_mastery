@@ -92,7 +92,7 @@ function app(saved,clock=null){
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -275,7 +275,7 @@ test('one automatic measurement block per day preserves missing tests for after 
   assert.equal(d.actionRecommendations(tomorrow)[0].kind,'test');
   assert.ok(d.testRecommendations(tomorrow).some(r=>!r.latest));
   d.renderTests();
-  assert.match(get('testList').innerHTML,/Следующая проверка — примерно/);
+  assert.match(get('testList').innerHTML,/Повтор ·/);
 });
 test('postponing replaces the recommendation without changing history, load, mastery or XP',()=>{
   const ts=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,ts);
@@ -452,8 +452,8 @@ test('one pain-free execution gives neither running readiness nor half mastery',
   const {dev:d,get}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
   d.recordExercise(ex.id,ex.dose,comfortable);
   assert.equal(d.readinessSummary().score,null);assert.equal(d.exerciseMastery(ex),0);
-  d.renderHome();assert.match(get('readinessHint').textContent,/Недостаточно данных/);
-  assert.equal(get('readinessValue').textContent,'—');
+  d.renderHome();assert.match(get('readinessHint').textContent,/условий выполнено/);
+  assert.match(get('readinessValue').textContent,/^\d+%$/);assert.notEqual(get('readinessValue').textContent,'100%');
 });
 test('three confirmed days establish a working level; shortened time or daily load preserve it',()=>{
   const {dev:d}=app(),ex=d.EXMAP.bilateral_tiptoe_static;
@@ -1069,7 +1069,7 @@ test('one recommended morning check covers yesterday without duplicating the pen
   const feedback=d.actionRecommendations()[0];assert.equal(feedback.kind,'feedback');assert.equal(feedback.mode,'morning');
   d.openFeedback(feedback.mode,feedback.id);assert.equal(get('checkDialog').open,true);
   d.renderAll();assert.match(get('bestNow').innerHTML,/вчерашней нагрузки/);assert.equal(get('pendingChecksWrap').innerHTML,'');
-  assert.match(get('assessmentWrap').innerHTML,/Оценить восстановление/);
+  assert.equal(get('testList').innerHTML.split(`AM.openFeedback('morning','${feedback.id}')`).length-1,1);
   morning(d,l,'same',clock);
   assert.ok(d.actionRecommendations().every(r=>r.kind!=='feedback'));
   d.recordSymptoms({pain:2,steadiness:'shaky',fatigue:'low',response:'worse'},l.id,clock-DAY+3600000);
@@ -1520,4 +1520,177 @@ test('the five-o-clock day boundary preserves rest and excludes an early new-day
   assert.equal(d.scoreExercise(ex,newWindow-60000).score,-1);assert.ok(d.scoreExercise(ex,newWindow).score>=0);
   d.recordExercise(ex.id,ex.dose,comfortable,newWindow,ex.dose);
   assert.equal(d.planCounts(newWindow).tiptoe_static,1);assert.equal(d.prescriptionCounts(newWindow).tiptoe_static,2);
+});
+
+function testCard(get,id){
+  const card=get('testList').innerHTML.match(new RegExp(`<article id="test-${id}"[\\s\\S]*?</article>`));
+  assert.ok(card,`Missing test card: ${id}`);return card[0];
+}
+test('the tests catalog reflects the home planner without adding a recommendation or duplicate cards',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const planned=d.measurementPlan(clock);
+  assert.equal(planned.status,'ready');assert.equal(d.actionRecommendations(clock)[0].test.id,planned.test.id);
+  d.renderTests();
+  const card=testCard(get,planned.test.id),list=get('testList').innerHTML;
+  assert.ok(card.includes(planned.test.name));assert.ok(card.includes(planned.test.what_measures));
+  assert.ok(card.includes(`AM.openTest('${planned.test.id}')`));assert.match(card,/Пройти тест/);
+  for(const t of d.RDCFG.tests){
+    assert.equal(list.split(`id="test-${t.id}"`).length-1,1);
+    const row=testCard(get,t.id);
+    assert.match(row,/<details[^>]*class="test-row"/);
+    assert.doesNotMatch(row,/<details[^>]*class="test-row"[^>]*\bopen\b/);
+    const summary=row.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)[1];
+    assert.ok(summary.includes(t.name));assert.ok(summary.includes(d.testSchedule(t,d.testPlans(clock),clock).title));
+  }
+  const markup=html.match(/<section id="screen-tests"[\s\S]*?<\/section>/)[0];
+  assert.doesNotMatch(markup,/testNextAction|Ближайший шаг|readinessRing2|stageChecks/);
+});
+
+test('waiting test cards name the real preparation window and become ready when it ends',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock),id='single_leg_calf_raise_test';
+  for(const t of d.RDCFG.tests)if(t.id!==id)d.getState().postponedActions['test:'+t.id]=clock+2*DAY;
+  const home=d.EXMAP.bilateral_tiptoe_static;
+  d.recordExercise(home.id,home.dose,comfortable,clock-3600000,home.dose);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const planned=d.measurementPlan(clock);
+  assert.equal(planned.test.id,id);assert.equal(planned.status,'waiting');assert.equal(planned.after,clock+3600000);
+  d.renderTests();
+  const card=testCard(get,id);
+  assert.match(card,/13:00/);assert.match(card,/перерыв/i);assert.match(card,/Записать выполненный тест/);
+  assert.match(card.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)[1],/13:00/);
+  assert.doesNotMatch(card,/Пройти тест|Повторить тест|Можно пройти первое измерение/);
+  const next=app(plain(d.getState()),planned.after);
+  next.dev.renderTests();
+  assert.equal(next.dev.measurementPlan(planned.after).status,'ready');
+  assert.match(testCard(next.get,id),/Пройти тест/);
+});
+
+test('the tests screen makes missing assessment feedback and recovery actionable before another measurement',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock);
+  const session=d.recordTest('knee_to_wall',{left:10,right:8},clock-2*DAY);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const feedback=d.feedbackRecommendation(clock);
+  assert.equal(feedback.mode,'assessment');d.renderTests();
+  const action=`AM.openFeedback('assessment','${session.id}')`;
+  assert.equal(get('testList').innerHTML.split(action).length-1,1);
+  assert.doesNotMatch(get('testList').innerHTML,/Пройти тест|Повторить тест/);
+  d.openFeedback(feedback.mode,feedback.id);assert.equal(get('assessmentDialog').open,true);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock);
+  d.renderTests();assert.match(get('testList').innerHTML,/Пройти тест/);
+  d.recordSymptoms({pain:3,steadiness:'steady',fatigue:'low'},'combined',clock);
+  assert.ok(d.testPlans(clock).every(r=>r.status==='recovery'));d.renderTests();
+  assert.match(get('testList').innerHTML,/AM\.openSymptoms\(/);
+  assert.doesNotMatch(get('testList').innerHTML,/Пройти тест|Повторить тест/);
+});
+
+test('the next measurement block and a fresh test repeat have separate dates and morning requirements',()=>{
+  const clock=new Date(2026,9,10,10).getTime(),{dev:d,get}=app(null,clock),id='knee_to_wall';
+  const session=d.recordTest(id,{left:10,right:8,pain_after:0},clock);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock);
+  const measured=d.RDCFG.tests.find(t=>t.id===id),schedule=d.testSchedule(measured,d.testPlans(clock),clock);
+  assert.equal(schedule.status,'recent');assert.equal(schedule.after,clock+7*DAY);
+  assert.ok(d.testPlans(clock).every(r=>r.status==='tomorrow'));d.renderTests();
+  assert.match(get('testList').innerHTML,/утренн/i);
+  assert.match(testCard(get,id),/Повтор ·/);
+  assert.doesNotMatch(get('testList').innerHTML,/Пройти тест|Повторить тест/);
+  const morningClock=new Date(2026,9,11,8).getTime(),next=app(plain(d.getState()),morningClock);
+  next.dev.renderTests();
+  assert.match(next.get('testList').innerHTML,/AM\.openFeedback\('morning'/);
+  next.dev.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(clock),pain:0,steadiness:'steady',fatigue:'low',response:'same',historyKnown:true,historyWorse:false},'combined',morningClock);
+  next.dev.renderTests();assert.match(next.get('testList').innerHTML,/Пройти тест/);
+  assert.notEqual(next.dev.measurementPlan(morningClock).test.id,id);
+  assert.equal(next.dev.testSchedule(measured,next.dev.testPlans(morningClock),morningClock).status,'recent');
+});
+
+test('measurement coverage names a locked impact direction without turning missing data into zero readiness',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock),state=d.getState();
+  d.renderTests();assert.match(get('measurementCoverage').textContent,/0\/5/);
+  const missingDirections=get('readinessDomains').innerHTML;
+  for(const id of ['knee_to_wall','single_leg_calf_raise_test'])assert.ok(missingDirections.includes(d.RDCFG.tests.find(t=>t.id===id).name));
+  assert.match(missingDirections,/ходьба по линии/i);assert.match(missingDirections,/AM\.openSelfReport\(/);
+  assert.match(missingDirections,/Подготовка к ударной нагрузке/);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  state.selfReports.push({ts:clock,trust:10,fear:0,ready:10});
+  for(const [id,values] of [['knee_to_wall',{left:10,right:10}],['single_leg_calf_raise_test',{left:20,right:20}],['tandem_flat_clean_steps',{value:100}]]){
+    const t=d.RDCFG.tests.find(t=>t.id===id);
+    state.testLogs.push({id:'coverage_'+id,testId:id,protocol_id:t.protocol_id,ts:clock-2*DAY,...values});
+  }
+  const summary=d.readinessSummary(clock);
+  assert.deepEqual(plain(summary.missing),['impact_running_capacity']);assert.equal(summary.score,null);
+  d.renderTests();assert.match(get('measurementCoverage').textContent,/4\/5/);
+  assert.match(get('readinessDomains').innerHTML,/Ударная нагрузка/);
+  const locked=d.RDCFG.tests.filter(t=>t.status==='locked');
+  for(const t of locked){
+    assert.equal(d.testSchedule(t,d.testPlans(clock),clock).status,'locked');
+    assert.ok(!testCard(get,t.id).includes(`AM.openTest('${t.id}')`));
+  }
+  state.selectedStage='ready_for_impact';d.renderTests();
+  for(const t of locked)assert.notEqual(d.testSchedule(t,d.testPlans(clock),clock).status,'locked');
+  assert.equal(d.readinessSummary(clock).score,null);
+});
+
+test('postponed tests show their date and a return action while keeping measurements and load unchanged',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock),id='knee_to_wall';
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const before=plain({testLogs:d.getState().testLogs,load_events:d.getState().load_events,xp:d.getState().xp});
+  d.postponeAction('test',id,'hour',clock);d.renderTests();
+  const t=d.RDCFG.tests.find(t=>t.id===id),schedule=d.testSchedule(t,d.testPlans(clock),clock),card=testCard(get,id);
+  assert.equal(schedule.status,'postponed');assert.equal(schedule.after,clock+3600000);
+  assert.match(card,/13:00/);assert.ok(card.includes(`AM.resumeAction('test','${id}')`));
+  assert.doesNotMatch(card,/Пройти тест|Повторить тест/);
+  d.resumeAction('test',id);d.renderTests();assert.equal(d.testSchedule(t,d.testPlans(clock),clock).status,'ready');
+  assert.match(testCard(get,id),/Пройти тест/);
+  assert.deepEqual(plain({testLogs:d.getState().testLogs,load_events:d.getState().load_events,xp:d.getState().xp}),before);
+});
+
+test('rehabilitation can reach 100 percent of its next-stage conditions before any impact test',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock),state=d.getState();
+  for(const [id,values] of [['knee_to_wall',{left:10,right:10}],['single_leg_calf_raise_test',{left:20,right:20}],['tandem_flat_clean_steps',{value:100}]]){
+    const t=d.RDCFG.tests.find(t=>t.id===id);
+    state.testLogs.push({id:'stage_'+id,testId:id,protocol_id:t.protocol_id,ts:clock-2*DAY,difficulty:'easy',stop_reason:'planned',pain_after:0,...values});
+  }
+  state.selfReports.push({ts:clock,trust:10,fear:0,ready:10});
+  morning(d,{ts:clock-2*DAY});d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const transition=d.stageTransition('ready_for_impact',clock);
+  assert.equal(transition.score,1);assert.ok(transition.checks.every(c=>c.passed));
+  assert.equal(d.readinessSummary(clock).domainScores.impact_running_capacity,null);
+  assert.equal(d.readinessSummary(clock).score,null);
+  d.renderHome();d.renderTests();
+  assert.equal(get('readinessValue').textContent,'100%');
+  assert.ok(get('roadmap').innerHTML.includes(transition.target.name));
+  for(const check of transition.checks)assert.ok(get('roadmap').innerHTML.includes(check.label));
+  assert.ok(get('roadmap').innerHTML.includes("AM.suggestStage('ready_for_impact')"));
+  assert.match(get('measurementCoverage').textContent,/4\/5/);assert.equal(state.selectedStage,'rehab');
+  state.selectedStage='ready_for_impact';
+  const next=d.stageTransition('ready_for_run_walk',clock);
+  assert.ok(next.score<1);assert.match(next.reasons.join(' '),/ударн/i);
+  d.renderHome();d.renderTests();
+  assert.notEqual(get('readinessValue').textContent,'100%');
+});
+
+test('recorded low results contribute partial stage progress and unmet conditions cannot round up to 100 percent',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock),state=d.getState();
+  for(const [id,values] of [['knee_to_wall',{left:10,right:10}],['single_leg_calf_raise_test',{left:5,right:5}],['tandem_flat_clean_steps',{value:20}]]){
+    const t=d.RDCFG.tests.find(t=>t.id===id);
+    state.testLogs.push({id:'partial_'+id,testId:id,protocol_id:t.protocol_id,ts:clock-2*DAY,difficulty:'easy',stop_reason:'planned',pain_after:0,...values});
+  }
+  state.selfReports.push({ts:clock,trust:10,fear:0,ready:10});
+  morning(d,{ts:clock-2*DAY});d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const low=d.stageTransition('ready_for_impact',clock);
+  assert.ok(low.score>0&&low.score<1);assert.ok(low.reasons.length>0);
+  assert.equal(d.readinessSummary(clock).missing.length,1);
+  const strength=state.testLogs.find(l=>l.testId==='single_leg_calf_raise_test'),dynamic=state.testLogs.find(l=>l.testId==='tandem_flat_clean_steps');
+  strength.left=10;strength.right=10;dynamic.value=50;
+  const improved=d.stageTransition('ready_for_impact',clock);
+  assert.ok(improved.score>low.score);assert.ok(improved.score<1);
+  const rom=state.testLogs.find(l=>l.testId==='knee_to_wall');
+  strength.left=20;strength.right=20;dynamic.value=100;rom.right=7.9;
+  const almost=d.stageTransition('ready_for_impact',clock);
+  assert.equal(almost.score,.99);assert.ok(almost.reasons.length>0);
+  assert.ok(!almost.checks.every(c=>c.passed));
+  d.renderHome();d.renderTests();
+  assert.equal(get('readinessValue').textContent,'99%');
+  assert.ok(!get('roadmap').innerHTML.includes("AM.suggestStage('ready_for_impact')"));
+  assert.equal(state.selectedStage,'rehab');
 });

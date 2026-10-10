@@ -82,7 +82,7 @@
     .progress{height:7px;background:#213543;border-radius:99px;overflow:hidden;margin-top:8px}.progress>i{display:block;height:100%;background:linear-gradient(90deg,#54e3aa,#64bfff)}
     .mastery-label{font-size:11px;color:#9db0bd;margin-top:6px}
     .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.test-card .big{font-size:28px;font-weight:800}.test-card .muted{color:var(--muted);font-size:12px}
-    .roadmap{display:grid;gap:10px}.stage-card{position:relative;padding-left:50px}.stage-card:before{content:"";position:absolute;left:21px;top:0;bottom:-10px;width:2px;background:#274052}.stage-card:last-child:before{bottom:50%}.stage-icon{position:absolute;left:8px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#173043;border:2px solid #34536a;font-size:13px}.stage-card.current .stage-icon{background:#235b4a;border-color:var(--green)}.stage-card.locked{opacity:.55}
+    .roadmap{display:grid;gap:10px}.stage-card{position:relative;padding-left:50px}.stage-card:before{content:"";position:absolute;left:21px;top:0;bottom:-10px;width:2px;background:#274052}.stage-card:last-child:before{bottom:50%}.stage-icon{position:absolute;left:8px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#173043;border:2px solid #34536a;font-size:13px}.stage-card.current .stage-icon{background:#235b4a;border-color:var(--green)}
     .chart{display:flex;align-items:flex-end;height:120px;gap:5px;padding:10px 0}.chart-col{flex:1;min-width:6px;background:linear-gradient(180deg,#64c5ff,#50dfa3);border-radius:5px 5px 2px 2px}.chart-labels{display:flex;justify-content:space-between;color:#7890a2;font-size:10px}
     .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #203545}.setting-row:last-child{border-bottom:0}
     .empty{padding:28px;text-align:center;color:#8296a7}
@@ -110,7 +110,23 @@
     .test-chart{width:100%;height:100px;margin-top:10px}
     dialog{max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain}
     input[type="range"]{min-height:36px;accent-color:var(--green)}
-    .test-card{min-width:0}
+    .test-card{min-width:0;scroll-margin-top:80px}.test-card .li-title{font-size:16px;margin-top:10px;line-height:1.35}
+    .test-card .li-meta{font-size:12px;line-height:1.45}.test-card .test-result{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13px}
+    .test-card .test-actions .btn{min-height:44px}.test-row{margin:0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    .test-row>summary{list-style:none;position:relative;padding:12px 32px 12px 13px;line-height:1.35;color:var(--text)}
+    .test-row>summary::-webkit-details-marker{display:none}.test-row>summary:after{content:'›';position:absolute;right:13px;top:14px;color:var(--blue);font-size:22px}
+    .test-row[open]>summary:after{transform:rotate(90deg)}.test-row[open]>summary{border-bottom:1px solid var(--line)}
+    .test-row-name{display:block;font-size:14px;font-weight:700}.test-row-status{display:block;margin-top:4px;font-size:12px;color:var(--yellow)}
+    .test-row-status.ready{color:var(--green)}.test-row-status.later{color:var(--blue)}.test-row-reason{display:block;margin-top:3px;font-size:11px;color:var(--muted)}
+    .test-row-body{padding:0 14px 14px}.test-row-body details>summary{padding:10px 0}.test-row-body ol{padding-left:20px;font-size:12px;color:#bed0dc}
+    .test-row-body ol li{margin:7px 0}
+    .test-schedule{font-size:12px;line-height:1.45;margin-top:8px;color:#b7c9d6}
+    .direction-row{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:12px 0;border-top:1px solid var(--line);font-size:13px}
+    .direction-row:first-child{border-top:0}.direction-mark{color:var(--yellow);font-weight:800}.direction-row.measured .direction-mark{color:var(--green)}
+    .direction-row .li-meta{font-size:12px;line-height:1.45}.direction-row .btn{margin-top:8px;min-height:44px;font-size:12px}
+    .test-group{margin:10px 0 2px}.test-group h3{font-size:14px;margin:0 0 4px}
+    .measurement-data>summary,#stageRoadmap>summary,#assessmentWrap>details>summary{padding:6px 0;min-height:44px}
+    #stageRoadmap{scroll-margin-top:80px}
     @media (max-width:720px){.hero{grid-template-columns:1fr}.daily-grid{grid-template-columns:repeat(3,1fr)}.test-grid{grid-template-columns:1fr}.split{grid-template-columns:1fr}}
   </style>
 </head>
@@ -139,7 +155,8 @@
       <div class="daily-grid" id="dailyGrid"></div>
       <div id="dailyActivity"></div>
 
-      <details class="home-progress"><summary>Прогресс, измерения и нагрузка</summary>
+      <section class="home-progress">
+        <div class="section-title"><h2>Прогресс, измерения и нагрузка</h2></div>
         <div class="hero">
           <div class="card metric-card">
             <div class="ring" id="masteryRing" style="--c:var(--green)"><strong id="masteryValue">0%</strong></div>
@@ -147,12 +164,12 @@
           </div>
           <div class="card metric-card">
             <div class="ring" id="readinessRing" style="--c:var(--blue)"><strong id="readinessValue">—</strong></div>
-            <div style="flex:1"><div class="metric-title">Измерения для возврата к бегу</div><div class="metric-name" id="stageName">Реабилитация</div><div class="stage-line" id="stageLine"></div><div class="muted" id="readinessHint">Готовность ≠ медицинский допуск</div></div>
+            <div style="flex:1"><div class="metric-title">Условия следующего этапа</div><div class="metric-name" id="stageName">Реабилитация</div><div class="stage-line" id="stageLine"></div><div class="muted" id="readinessHint"></div></div>
           </div>
         </div>
         <div class="section-title"><h2>Расчёт похожей нагрузки</h2><small>условные баллы, не измерение усталости</small></div>
         <div class="card" id="fatigueCard"></div>
-      </details>
+      </section>
     </section>
 
     <section id="screen-exercises" class="screen">
@@ -162,20 +179,11 @@
     </section>
 
     <section id="screen-tests" class="screen">
-      <div class="section-title"><h2>Самопроверка</h2><small>не медицинский допуск</small></div>
-      <div class="card">
-        <div class="metric-card">
-          <div class="ring" id="readinessRing2" style="--c:var(--blue)"><strong id="readinessValue2">—</strong></div>
-          <div><div class="metric-name" id="stageName2">Реабилитация</div><div class="muted">Медиана последних 3 валидных тестов, где возможно</div></div>
-        </div>
-      </div>
-      <div class="section-title"><h2>Тесты</h2><small>правая и левая</small></div>
-      <div id="readinessDomains" class="card" style="margin-bottom:12px"></div>
-      <div id="assessmentWrap"></div>
-      <div id="selfReportWrap"></div>
+      <div class="section-title"><h2>Тесты</h2><small>сроки и результаты</small></div>
       <div class="list" id="testList"></div>
-      <div class="section-title"><h2>Этапы возврата к бегу</h2></div>
-      <div class="roadmap" id="roadmap"></div>
+      <div id="assessmentWrap"></div>
+      <details class="card measurement-data" style="margin-top:12px"><summary>Направления измерений · <span id="measurementCoverage"></span></summary><div id="readinessDomains" style="margin-top:8px"></div></details>
+      <details class="card" id="stageRoadmap" style="margin-top:12px"><summary>Все этапы и условия переходов</summary><div class="roadmap" id="roadmap" style="margin-top:12px"></div></details>
     </section>
 
     <section id="screen-stats" class="screen">
@@ -1218,9 +1226,11 @@ function renderHome(){
   const tm=trainingMastery(); setRing('masteryRing','masteryValue',tm);
   document.getElementById('masteryHint').textContent=`${xpAndStreak().streak} дн. серии · ${state.xp||0} очков опыта`;
 
-  const rs=readinessSummary(); setRing('readinessRing','readinessValue',rs.score,'—');
-  document.getElementById('readinessHint').textContent=rs.missing.length?`Недостаточно данных: проверено ${5-rs.missing.length}/5 направлений`:rs.score==null?'Процент отложен: проверь восстановление и реакцию за последние 24 часа':'Оценка измерений; этап плана выбирается вручную';
   const stage=currentStage(); document.getElementById('stageName').textContent=stage.name;
+  const transition=stageTransition(RDCFG.stages.find(s=>s.order===stage.order+1)?.id);
+  setRing('readinessRing','readinessValue',transition.target?transition.score:1);
+  if(!transition.target)document.getElementById('readinessValue').textContent='✓';
+  document.getElementById('readinessHint').textContent=transition.target?`${transition.checks.filter(c=>c.passed).length}/${transition.checks.length} условий выполнено · далее: ${transition.target.name}`:'Последний этап плана';
   const line=document.getElementById('stageLine'); line.innerHTML='';
   RDCFG.stages.forEach(s=>{const d=document.createElement('i');d.className='stage-dot '+(s.order<stage.order?'done':s.order===stage.order?'current':'');line.appendChild(d)});
 
@@ -1332,26 +1342,61 @@ function historyHTML(t,logs){
     <div class="muted" style="font-size:11px">Синий: ${t.bilateral?'правая сторона':'результат'} (0–${max} ${t.unit_short})${t.bilateral?' · Зелёный: симметрия (0–100%)':''} · ${fmtDate(points[0].ts)} — ${fmtDate(latest.ts)}</div>
     <table class="history-table"><thead><tr><th>Дата</th>${t.bilateral?`<th>Л, ${esc(t.unit_short)}</th><th>П, ${esc(t.unit_short)}</th><th>Симметрия</th>`:`<th>${esc(t.unit)}</th>`}</tr></thead><tbody>${[...logs].reverse().map(l=>`<tr${editable?' class="history-result"':''}><td>${fmtDate(l.ts)} ${new Date(l.ts).getFullYear()}${editable?`<br><span class="muted">${fmtTime(l.ts)}</span>`:''}</td>${t.bilateral?`<td>${l.left}</td><td>${l.right}</td><td>${pct(symmetry(t,l))}%</td>`:`<td>${l.value}</td>`}</tr>${editable?`<tr class="history-actions"><td colspan="${t.bilateral?4:2}"><button class="btn ghost" aria-label="Исправить измерение за ${fmtDate(l.ts)} ${fmtTime(l.ts)}" onclick="AM.openTest('${t.id}','${l.id}')">Исправить</button> <button class="btn ghost" aria-label="Удалить измерение за ${fmtDate(l.ts)} ${fmtTime(l.ts)}" onclick="AM.deleteTest('${l.id}')">Удалить</button></td></tr>`:''}`).join('')}</tbody></table>`;
 }
+function testSchedule(t,plans,ts=now()){
+  const latest=testHistory(t).filter(l=>l.ts<=ts).slice(-1)[0];
+  if(!testAvailable(t))return {status:'locked',title:'На следующем этапе',detail:`Откроется после ручного перехода к этапу «${RDCFG.stages.find(s=>s.id===t.unlock_stage)?.name}». На реабилитации этот тест пока не нужен.`,latest};
+  const until=postponedUntil('test',t.id,ts);
+  if(until)return {status:'postponed',title:`Отложено до ${fmtDate(until)} ${fmtTime(until)}`,detail:'Ты отложил это измерение. Его можно вернуть в план раньше.',after:until,latest};
+  const plan=plans.find(r=>r.test.id===t.id);
+  if(plan){
+    const titles={ready:latest?'Можно сейчас · повтор':'Можно сейчас · первое измерение',waiting:`Не раньше ${fmtDate(plan.after)} ${fmtTime(plan.after)}`,feedback:'После оценки самочувствия',recovery:'После восстановления',tomorrow:`Следующий блок · ${fmtDate(plan.after)}`};
+    return {status:plan.status,title:titles[plan.status],detail:plan.reasons[0],after:plan.after,latest};
+  }
+  return {status:'recent',title:`Повтор · ${fmtDate(latest.ts+TEST_REPEAT_DAYS*DAY)}`,detail:'Повтор предлагаем через 7 дней после измерения, с учётом нагрузки и самочувствия. Частые повторы не нужны для роста процента.',after:latest.ts+TEST_REPEAT_DAYS*DAY,latest};
+}
+function testCardHTML(t,schedule){
+  const {status,title,detail,latest}=schedule,ready=status==='ready',locked=status==='locked';
+  const protocols=[...new Set(state.testLogs.filter(l=>l.testId===t.id&&l.protocol_id!==t.protocol_id).map(l=>l.protocol_id))];
+  const history=latest||protocols.length?`<details><summary>Результаты и история</summary>${historyHTML(t,testHistory(t))}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details>`:'';
+  const shortReason={ready:latest?'Пора обновить результат':'Исходного измерения пока нет',waiting:'Перерыв после похожей нагрузки',feedback:detail.replace('Нужна оценка самочувствия после незавершённой серии тестов','Сначала оцени реакцию после серии тестов'),recovery:'Нужна нормальная повторная оценка восстановления',tomorrow:'Сегодня измерение уже было; после утренней проверки',recent:'Измерено '+fmtDate(latest?.ts)+' · повтор через 7 дней',postponed:'Ты отложил это измерение',locked:'Откроется на этапе «Подготовка к ударной нагрузке»'}[status];
+  return `<article id="test-${t.id}" class="test-card"><details class="test-row">
+    <summary><span class="test-row-name">${esc(t.name)}</span><span class="test-row-status ${ready?'ready':locked?'later':''}">${esc(title)}</span><span class="test-row-reason">${esc(shortReason)}</span></summary>
+    <div class="test-row-body"><div class="li-meta">${esc(t.what_measures)} · ${esc(testDoseText(t))}</div><div class="test-schedule">${esc(detail)}</div>
+    ${latest?`<div class="test-result"><b>${esc(resultText(t,latest))}</b><div class="li-meta">Измерено ${fmtDate(latest.ts)} ${fmtTime(latest.ts)}</div></div>`:''}
+    ${ready?`<div class="test-actions"><button class="btn primary" onclick="AM.openTest('${t.id}')">${latest?'Повторить тест':'Пройти тест'}</button><button class="btn ghost" onclick="AM.openPostpone('test','${t.id}')">Отложить</button></div>`:status==='postponed'?`<div class="test-actions"><button class="btn secondary" onclick="AM.resumeAction('test','${t.id}')">Вернуть в план</button></div>`:''}
+    <div class="li-title">Как выполнить</div><ol>${t.protocol.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><div class="li-meta">Остановись при боли или потере контроля.</div>${history}
+    ${!locked&&!ready?`<details><summary>Уже выполнил этот тест?</summary><div class="li-meta">Запиши фактическое выполнение. Срок выше относится к новому измерению.</div><button class="btn ghost" style="margin-top:8px" onclick="AM.openTest('${t.id}')">Записать выполненный тест</button></details>`:''}
+    </div></details></article>`;
+}
+let testPlanTimer=null;
 function renderTests(){
-  const domains=readinessSummary().domainScores,names={pain:'Боль',ankle_capacity:'Сила и подвижность',confidence:'Уверенность',sensorimotor_control:'Контроль и баланс',impact_running_capacity:'Ударная нагрузка'};
-  document.getElementById('readinessDomains').innerHTML=Object.entries(domains).map(([k,v])=>`<div class="kv"><span>${names[k]}</span><b>${v==null?'Нет актуальных данных':pct(v)+'% по измерениям'}</b></div>`).join('');
-  const rs=readinessSummary();setRing('readinessRing2','readinessValue2',rs.score,'—');
-  document.getElementById('stageName2').textContent=currentStage().name;
-  renderAssessment();renderSelfReport();
-  const list=document.getElementById('testList');list.innerHTML='';
-  RDCFG.tests.forEach(t=>{
-    const logs=testHistory(t),latest=logs.slice(-1)[0],available=testAvailable(t);
-    const nextCheck=latest?latest.ts+TEST_REPEAT_DAYS*DAY:null;
-    const schedule=available?nextCheck?(now()<nextCheck?`Следующая проверка — примерно ${fmtDate(nextCheck)}`:'Пора обновить измерение · с учётом нагрузки и самочувствия'):'Можно пройти первое измерение':'';
-    const until=postponedUntil('test',t.id);
-    const protocols=[...new Set(state.testLogs.filter(l=>l.testId===t.id&&l.protocol_id!==t.protocol_id).map(l=>l.protocol_id))];
-    list.insertAdjacentHTML('beforeend',`<div class="card test-card"><div class="li-title">${esc(t.name)}</div><div class="li-meta">${esc(t.what_measures)}</div><p>${esc(resultText(t,latest))}</p><div class="muted" style="font-size:12px">Последний тест: ${latest?fmtDate(latest.ts)+' '+fmtTime(latest.ts):'ещё не выполнен'}</div>${schedule?`<div class="li-meta">${esc(schedule)}</div>`:''}${until?`<div class="notice" style="margin-top:10px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('test','${t.id}')">Вернуть в рекомендации</button></div>`:''}${t.id==='multidirectional_control_clean_rounds'?'<div class="notice" style="margin-top:8px">↖ ↗ · ● · ↙ ↘<br>1 раунд = все 4 фишки</div>':''}${protocolHTML(t)}<div class="test-actions"><button class="btn secondary" ${available?'':'disabled'} onclick="AM.openTest('${t.id}')">${available?(latest?'Повторить тест':'Пройти тест'):'Пока недоступен'}</button><span class="pill">${esc(statusLabels[available&&t.status==='locked'?'available_manual':t.status])}</span></div><details><summary>История и динамика</summary>${historyHTML(t,logs)}${protocols.map((p,i)=>`<details><summary>${p.startsWith('legacy_')?'Прежний протокол — не уточнён':'Другой протокол '+(i+1)} · отдельно</summary>${historyHTML(t.id==='single_leg_hop_basic'&&p.startsWith('legacy_')?{...t,unit:'прежних единиц (не уточнены)',unit_short:'ед. (не уточнены)'}:t,testHistory(t,p))}</details>`).join('')}</details></div>`);
-  });
+  const ts=now(),rs=readinessSummary(ts),plans=testPlans(ts),cur=currentStage();
+  const entries=RDCFG.tests.map(t=>({test:t,...testSchedule(t,plans,ts)}));
+  const order={ready:0,waiting:1,feedback:2,recovery:3,tomorrow:4,recent:5,postponed:6,locked:7};
+  entries.sort((a,b)=>order[a.status]-order[b.status]||(a.after||ts)-(b.after||ts)||plans.findIndex(r=>r.test.id===a.test.id)-plans.findIndex(r=>r.test.id===b.test.id));
+  const feedback=feedbackRecommendation(ts);
+  const measured=5-rs.missing.length;
+  document.getElementById('measurementCoverage').textContent=measured+'/5 с данными';
+  const names={pain:'Боль',ankle_capacity:'Сила и подвижность',confidence:'Уверенность',sensorimotor_control:'Контроль и баланс',impact_running_capacity:'Ударная нагрузка'};
+  const fresh=t=>testHistory(t).some(l=>l.ts<=ts&&ts-l.ts<=30*DAY);
+  const missingCapacity=['knee_to_wall','single_leg_calf_raise_test'].filter(id=>!fresh(RDCFG.tests.find(t=>t.id===id))).map(id=>RDCFG.tests.find(t=>t.id===id).name);
+  const detail={pain:rs.domainScores.pain==null?'Нужна оценка боли. Учитываем записи за последние 7 дней.':'Есть оценка боли за последние 7 дней.',ankle_capacity:rs.domainScores.ankle_capacity==null?'Нужны актуальные измерения: '+missingCapacity.join(' и ')+'.':'Есть измерения подвижности и силы за последние 30 дней.',confidence:rs.domainScores.confidence==null?'Три вопроса об уверенности в ноге. Самооценка ещё не заполнена или старше 14 дней.':selfReportDue()?'Данные есть, пора обновить еженедельную самооценку.':'Самооценка актуальна.',sensorimotor_control:rs.domainScores.sensorimotor_control==null?'Нужен тест движения: ходьба по линии на полной стопе, на носках или фишки. Одного удержания на балансборде недостаточно.':'Есть измерение контроля в движении за последние 30 дней.',impact_running_capacity:rs.domainScores.impact_running_capacity==null?(testAvailable(RDCFG.tests.find(t=>t.id==='pogo_bilateral'))?'Нужен один из прыжковых тестов ниже.':'Пока не измеряем. Прыжковые тесты откроются на этапе «Подготовка к ударной нагрузке».'):'Есть измерение прыжковой нагрузки за последние 30 дней.'};
+  document.getElementById('readinessDomains').innerHTML=Object.entries(names).map(([key,name])=>`<div class="direction-row ${rs.domainScores[key]!=null?'measured':''}"><span class="direction-mark" aria-label="${rs.domainScores[key]!=null?'Данные есть':'Данные пока неполные'}">${rs.domainScores[key]!=null?'✓':'○'}</span><div><b>${name}</b><div class="li-meta">${esc(detail[key])}</div>${key==='pain'&&rs.domainScores.pain==null?'<button class="btn secondary" onclick="AM.openSymptoms()">Оценить самочувствие</button>':key==='confidence'?`<button class="btn ${selfReportDue()?'secondary':'ghost'}" onclick="AM.openSelfReport()">${rs.domainScores.confidence==null?'Заполнить самооценку':'Обновить самооценку'}</button>`:''}</div></div>`).join('');
+  renderAssessment();
+  const groups=[['ready','Можно сейчас'],['waiting','После перерыва'],['feedback','После оценки самочувствия'],['recovery','После восстановления'],['tomorrow','Следующий блок'],['recent','Измерено · следующий повтор'],['postponed','Отложено тобой'],['locked','На следующем этапе']];
+  document.getElementById('testList').innerHTML=groups.map(([status,title])=>{
+    const items=entries.filter(e=>e.status===status);
+    return items.length?`<div class="test-group"><h3>${title}</h3>${status==='feedback'&&feedback?`<div class="test-actions">${actionButtonHTML(feedback)}</div>`:status==='recovery'?'<div class="test-actions"><button class="btn secondary" onclick="AM.openSymptoms()">Проверить восстановление</button></div>':''}</div>${items.map(e=>testCardHTML(e.test,e)).join('')}`:'';
+  }).join('');
+  clearTimeout(testPlanTimer);
+  const boundary=entries.filter(e=>e.status!=='locked'&&e.after>ts).map(e=>e.after).sort((a,b)=>a-b)[0];
+  if(boundary)testPlanTimer=setTimeout(renderTests,boundary-ts);
   const road=document.getElementById('roadmap');road.innerHTML='';
-  const cur=currentStage();
   RDCFG.stages.forEach(s=>{
     const cls=s.order===cur.order?'current':s.order>cur.order?'locked':'';
-    road.insertAdjacentHTML('beforeend',`<div class="card stage-card ${cls}"><div class="stage-icon">${s.order<cur.order?'✓':s.order===cur.order?'●':'🔒'}</div><b>Этап ${s.order} — ${esc(s.name)}</b><div class="muted" style="margin-top:4px">${esc(s.description||'')}</div>${s.order===cur.order+1?`<button class="btn secondary" style="margin-top:10px" onclick="AM.suggestStage('${s.id}')">Проверить переход</button>`:''}</div>`);
+    const opens=RDCFG.tests.filter(t=>s.order===0?t.status!=='locked':t.unlock_stage===s.id),nextStage=RDCFG.stages.find(x=>x.order===s.order+1);
+    const requirements=nextStage?stageTransition(nextStage.id,ts).checks:[];
+    road.insertAdjacentHTML('beforeend',`<div class="card stage-card ${cls}"><div class="stage-icon">${s.order<cur.order?'✓':s.order===cur.order?'●':'🔒'}</div><b>Этап ${s.order+1} — ${esc(s.name)}</b><div class="li-meta">${esc(s.description||'')}</div><details><summary>${opens.length?'Открываются тесты · '+opens.length:'Новых самотестов не добавляется'}</summary>${opens.map(t=>`<div class="li-meta">${esc(t.name)}</div>`).join('')||'Измерения предыдущих этапов остаются доступны.'}</details>${nextStage?`<details><summary>Для перехода к этапу «${esc(nextStage.name)}»</summary><ul>${requirements.map(c=>`<li>${s.order===cur.order?(c.passed?'✓ ':'○ '):''}${esc(c.label)}${s.order===cur.order?`<div class="li-meta">${esc(c.detail)}</div>`:''}</li>`).join('')}</ul>${s.order===cur.order&&requirements.every(c=>c.passed)?`<button class="btn primary" onclick="AM.suggestStage('${nextStage.id}')">Перейти к следующему этапу</button>`:''}${s.order>=2?'<div class="li-meta">Пока используются общие проверки. Отдельные ориентиры длительности и объёма бега для этого перехода ещё не заданы.</div>':''}</details>`:'<div class="li-meta" style="margin-top:10px">Последний этап плана.</div>'}</div>`);
   });
 }
 
@@ -1361,17 +1406,11 @@ function loadSummaryHTML(channels){
     return `<div class="fatigue-row"><span>${esc(fatigueLabels[k])}</span><div class="bar"><i style="width:${Math.min(100,v)}%"></i></div><b>${Math.round(v)}</b></div><div class="muted" style="font-size:11px">${esc(fatigueLabels[k])} — ${level}</div>`;
   }).join('');
 }
-function nextActionHTML(){
-  const best=actionRecommendations().find(r=>r.status==='green');
-  if(best)return `<div class="notice" style="margin-top:12px"><b>Следующее лучшее действие: ${esc(best.kind==='feedback'?best.name:best.kind==='test'?best.test.name:best.ex.name)}</b><div class="rec-actions">${actionButtonHTML(best)}</div><details><summary>Почему?</summary>${esc(best.reasons.join(' · '))}</details></div>`;
-  const windows=recommendations().map(r=>nextGoodWindow(r.ex)).filter(t=>t!=null);
-  return `<div class="notice" style="margin-top:12px"><b>${windows.length?'Отдохнуть ~'+Math.max(15,Math.ceil((Math.min(...windows)-now())/60000))+' минут':'Отдых и контроль реакции'}</b><details><summary>Почему?</summary>Сейчас нет подходящего упражнения без ограничений. Нагрузка затухает со временем; симптомы требуют последующей нормальной реакции.</details></div>`;
-}
 function renderAssessment(){
   const s=state.assessment_sessions.slice(-1)[0],wrap=document.getElementById('assessmentWrap');
   if(!s){wrap.innerHTML='';return;}
   const tests=s.test_log_ids.map(id=>state.testLogs.find(l=>l.id===id)).filter(Boolean);
-  wrap.innerHTML=`<div class="card" style="margin:12px 0"><b>${s.completed_at?'Самопроверка завершена':'Самопроверка'} — ${fmtDate(s.started_at)}</b><div style="margin:10px 0">${tests.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')}</div>`).join('')}</div><div class="li-meta">Нагрузка сессии · условные единицы</div>${loadSummaryHTML(s.aggregate_load)}${s.perceived_fatigue?`<div class="li-meta">${fatigueNames[s.perceived_fatigue]} · Боль: ${s.pain_after}/10${s.instability?' · нестабильность':''}${s.swelling?' · отёк':''}${s.same_day_response?' · Позже: '+responseNames[s.same_day_response]:''}${s.next_day_response?' · Следующим утром: '+responseNames[s.next_day_response]:''}</div>`:''}<button class="btn secondary" style="margin-top:12px" onclick="AM.openAssessment('${s.id}')">${s.perceived_fatigue?'Обновить реакцию':'Как чувствуются ноги? Завершить'}</button>${s.completed_at?nextActionHTML():''}</div>`;
+  wrap.innerHTML=`<details class="card" style="margin:12px 0"><summary>${s.completed_at?'Последняя самопроверка':'Записано в серии'} · ${fmtDate(s.started_at)} · ${tests.length} тестов</summary><div style="margin:10px 0">${tests.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')}</div>`).join('')}</div>${s.perceived_fatigue?`<div class="li-meta">${fatigueNames[s.perceived_fatigue]} · Боль: ${s.pain_after}/10${s.instability?' · нестабильность':''}${s.swelling?' · отёк':''}${s.same_day_response?' · Позже: '+responseNames[s.same_day_response]:''}${s.next_day_response?' · Следующим утром: '+responseNames[s.next_day_response]:''}</div>`:''}<button class="btn secondary" style="margin-top:12px" onclick="AM.openAssessment('${s.id}')">${s.perceived_fatigue?'Обновить реакцию':'Оценить реакцию серии'}</button><details><summary>Расчёт нагрузки серии</summary>${loadSummaryHTML(s.aggregate_load)}</details></details>`;
 }
 function openAssessment(id){
   const s=state.assessment_sessions.find(s=>s.id===id);if(!s)return;
@@ -1416,9 +1455,6 @@ function saveAssessmentCheck(id){
 }
 function selfReportDue(){
   return !state.last_self_report_at||now()-state.last_self_report_at>=RDCFG.self_report.frequency_days*DAY;
-}
-function renderSelfReport(){
-  document.getElementById('selfReportWrap').innerHTML=`<div class="card" style="margin:12px 0"><b>Самооценка уверенности</b><div class="li-meta">${state.last_self_report_at?'Последняя: '+fmtDate(state.last_self_report_at):'Пока нет записей'}${selfReportDue()?' · пора обновить':''}</div><button class="btn secondary" style="margin-top:10px" onclick="AM.openSelfReport()">Обновить самооценку</button></div>`;
 }
 function openSelfReport(){
   const latest=state.selfReports.slice(-1)[0]||{},keys=['trust','fear','ready'];
@@ -1707,32 +1743,53 @@ function saveCheck(id){
 function activateExercise(id){state.exerciseStatuses[id]='active';closeDialog('exerciseDialog');save();toast('Упражнение добавлено в программу');}
 function archiveExercise(id){state.exerciseStatuses[id]='archived';closeDialog('exerciseDialog');save();toast('Упражнение убрано из активных');}
 
-function suggestStage(id){
-  const target=RDCFG.stages.find(x=>x.id===id),rs=readinessSummary();if(!target)return;
-  let reasons=[];
-  const latest=reactionEntries().slice(-1)[0];
-  const current=currentSymptoms();
-  if(safetyFlag())reasons.push('нужна последующая нормальная реакция после боли, отёка или нестабильности');
+function stageTransition(targetId,ts=now()){
+  const target=RDCFG.stages.find(x=>x.id===targetId);
+  if(!target)return {target,checks:[],score:null,reasons:[]};
+  const rs=readinessSummary(ts),reasons=[],latest=reactionEntries(ts).slice(-1)[0],current=currentSymptoms(ts);
+  const safe=!safetyFlag(ts),normal=!current||responseLevel(current)==='normal'&&current.fatigue!=='high'&&current.generalFatigue!=='high';
+  const loadRecovered=!safe||!EX.some(ex=>assessmentSymptomModifier(ex,ts)<1);
+  if(!safe)reasons.push('нужна последующая нормальная реакция после боли, отёка или нестабильности');
   if(latest?.worse)reasons.push('есть ухудшение после нагрузки');
-  if(current&&(responseLevel(current)!=='normal'||current.fatigue==='high'||current.generalFatigue==='high'))reasons.push('сначала нужна нормальная оценка текущего восстановления');
+  if(!normal)reasons.push('сначала нужна нормальная оценка текущего восстановления');
   if(rs.pain24h==null)reasons.push('нет известной оценки боли за последние 24 часа');
   else if(rs.pain24h>1)reasons.push(`за последние 24 часа отмечена боль до ${rs.pain24h}/10`);
   if(rs.adverse24h)reasons.push('за последние 24 часа отмечены ухудшение, отёк или нестабильность');
-  if(!safetyFlag()&&EX.some(ex=>assessmentSymptomModifier(ex)<1))reasons.push('похожая нагрузка после самопроверки пока ограничена');
+  if(!loadRecovered)reasons.push('похожая нагрузка после самопроверки пока ограничена');
   if(rs.domainScores.pain==null)reasons.push('нет актуальной оценки боли');
   if(!rs.coverage.rom)reasons.push('не проверена подвижность голеностопа');
   if(!rs.coverage.strength)reasons.push('не проверена выносливость подъёмами на носок');
   if(rs.domainScores.ankle_capacity!=null&&rs.domainScores.ankle_capacity<.9)reasons.push('сила и подвижность ниже продуктового ориентира');
   if(!rs.coverage.dynamic)reasons.push('не проверен динамический контроль в движении');
-  if(target?.order>=2&&rs.domainScores.impact_running_capacity==null)reasons.push('не проверена ударная нагрузка');
-  if(target?.order>=2){
-    const impact=RDCFG.tests.filter(t=>t.domain==='impact_running_capacity').map(t=>({test:t,log:testHistory(t).filter(l=>l.ts<=now()&&now()-l.ts<=30*DAY).slice(-1)[0]})).filter(e=>e.log);
-    if(impact.some(e=>!testSupportsProgression(e)))reasons.push('нужна известная нормальная реакция следующим утром после ударных тестов');
-  }
-  const morning=state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=now()&&now()-r.ts<=7*DAY&&validMorningDay(r)).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
-  if(!morning||responseLevel(morning)!=='normal'||morning.historyWorse||!morning.historyKnown)reasons.push('нужна нормальная реакция следующим утром после нагрузки');
+  const impact=target.order>=2?RDCFG.tests.filter(t=>t.domain==='impact_running_capacity').map(t=>({test:t,log:testHistory(t).filter(l=>l.ts<=ts&&ts-l.ts<=30*DAY).slice(-1)[0]})).filter(e=>e.log):[];
+  const impactKnown=rs.domainScores.impact_running_capacity!=null,impactRecovered=impact.every(e=>testSupportsProgression(e,ts));
+  if(target.order>=2&&!impactKnown)reasons.push('не проверена ударная нагрузка');
+  if(target.order>=2&&!impactRecovered)reasons.push('нужна известная нормальная реакция следующим утром после ударных тестов');
+  const morning=state.symptomReports.filter(r=>r.phase==='morning'&&r.ts<=ts&&ts-r.ts<=7*DAY&&validMorningDay(r)).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+  const morningNormal=!!morning&&responseLevel(morning)==='normal'&&!morning.historyWorse&&!!morning.historyKnown;
+  if(!morningNormal)reasons.push('нужна нормальная реакция следующим утром после нагрузки');
   if((rs.domainScores.sensorimotor_control??0)<.85)reasons.push('сенсомоторный контроль ниже продуктового ориентира');
   if((rs.domainScores.confidence??0)<.8)reasons.push('нет достаточной записи уверенности');
+  const measuredPercent=(value,target)=>value==null?'нет данных':(value<target?Math.floor(value*1000)/10:pct(value))+'%';
+  const checks=[
+    {id:'recovery',label:'Нормальная реакция и восстановление',passed:rs.pain24h!=null&&safe&&!latest?.worse&&normal&&!rs.adverse24h&&loadRecovered,reason:!safe?'нужна последующая нормальная реакция после боли, отёка или нестабильности':latest?.worse?'есть ухудшение после нагрузки':!normal?'сначала нужна нормальная оценка текущего восстановления':rs.adverse24h?'за последние 24 часа отмечены ухудшение, отёк или нестабильность':!loadRecovered?'похожая нагрузка после самопроверки пока ограничена':'нет известной оценки боли за последние 24 часа'},
+    {id:'pain',label:'Боль за последние 24 часа — не выше 1/10',passed:rs.domainScores.pain!=null&&rs.pain24h!=null&&rs.pain24h<=1,reason:rs.pain24h==null?'нет известной оценки боли за последние 24 часа':rs.pain24h>1?`за последние 24 часа отмечена боль до ${rs.pain24h}/10`:'нет актуальной оценки боли'},
+    {id:'rom',label:'Подвижность голеностопа измерена',passed:rs.coverage.rom,reason:'не проверена подвижность голеностопа'},
+    {id:'ankle_capacity',label:'Сила и подвижность — от 90% ориентира',passed:rs.coverage.strength&&rs.domainScores.ankle_capacity!=null&&rs.domainScores.ankle_capacity>=.9,progress:rs.coverage.rom&&rs.coverage.strength&&rs.domainScores.ankle_capacity!=null?clamp(rs.domainScores.ankle_capacity/.9):0,detail:`Измерения: ${measuredPercent(rs.domainScores.ankle_capacity,.9)} · ориентир 90%`,reason:!rs.coverage.strength?'не проверена выносливость подъёмами на носок':!rs.coverage.rom?'не проверена подвижность голеностопа':'сила и подвижность ниже продуктового ориентира'},
+    {id:'sensorimotor_control',label:'Контроль в движении — от 85% ориентира',passed:rs.coverage.dynamic&&(rs.domainScores.sensorimotor_control??0)>=.85,progress:rs.coverage.dynamic&&rs.domainScores.sensorimotor_control!=null?clamp(rs.domainScores.sensorimotor_control/.85):0,detail:`Измерения: ${measuredPercent(rs.domainScores.sensorimotor_control,.85)} · ориентир 85%`,reason:!rs.coverage.dynamic?'не проверен динамический контроль в движении':'сенсомоторный контроль ниже продуктового ориентира'},
+    {id:'morning',label:'Нормальная реакция следующим утром',passed:morningNormal,reason:'нужна нормальная реакция следующим утром после нагрузки'},
+    {id:'confidence',label:'Уверенность — от 80% по самооценке',passed:(rs.domainScores.confidence??0)>=.8,progress:rs.domainScores.confidence==null?0:clamp(rs.domainScores.confidence/.8),detail:`Самооценка: ${measuredPercent(rs.domainScores.confidence,.8)} · ориентир 80%`,reason:'нет достаточной записи уверенности'}
+  ];
+  if(target.order>=2)checks.push(
+    {id:'impact',label:'Ударная нагрузка измерена',passed:impactKnown,reason:'не проверена ударная нагрузка'},
+    {id:'impact_morning',label:'Нормальная реакция утром после ударных тестов',passed:impactKnown&&impactRecovered,reason:impactKnown?'нужна известная нормальная реакция следующим утром после ударных тестов':'сначала нужно измерение ударной нагрузки'}
+  );
+  const progressChecks=checks.map(c=>({...c,progress:c.passed?c.progress??1:Math.min(.99,c.progress??0),detail:c.detail||(c.passed?'Условие выполнено':c.reason),reason:c.passed?'':c.reason}));
+  const score=progressChecks.reduce((sum,c)=>sum+c.progress,0)/progressChecks.length;
+  return {target,checks:progressChecks,score:reasons.length?Math.min(.99,score):score,reasons};
+}
+function suggestStage(id){
+  const {target,reasons}=stageTransition(id);if(!target)return;
   if(reasons.length)toast('Пока рано: '+reasons.slice(0,2).join(' · '));
   else if(confirm(`Переключить план вручную на этап "${target.name}"? Просмотри результаты измерений и реакцию на нагрузку. Проверки приложения не устанавливают готовность к бегу и не дают медицинского разрешения.`)){state.selectedStage=id;save();}
 }
