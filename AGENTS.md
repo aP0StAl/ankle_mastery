@@ -95,6 +95,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Use synthetic data when needed to reproduce these states without modifying the user's stored history.
 - Report any visual verification that could not be completed; do not imply that logic tests cover it.
 
+## 8. Recommendation Changes
+
+**Define the intended work and its endpoint before changing the rules.**
+
+- Questions, criticism, and discussion do not by themselves authorize a policy change. Explain the proposed behavior first; act when the user explicitly requests the change or has already authorized it.
+- Before coding, describe the contract for each affected exercise category: why it is recommended, the source of its dose, the condition for repetition, what completes the work, and what starts new work. Distinguish clinician instructions, user choices, observations, and product assumptions.
+- Separate exercise availability from planned work. The app must select a finite additional plan from available evidence without requiring manual composition unless requested. New work follows a declared program cadence, which must be identified as a scheduling assumption rather than measured recovery. Normal symptoms, another logged exercise, elapsed time, or a new day may permit remaining work but do not reopen completed work or bypass that cadence. Once work starts, preserve its selected goals and consume the actual dose; preview changes and upgrades must not increase or recreate those goals.
+- Define expected user outcomes independently of the implementation, then test them. Obtain an independent product review of the contract and counterexamples; tests that only reproduce the algorithm's scores or decisions do not establish that the policy is useful.
+- Apply observations received during a session to its unfinished work as well as the next session. Verify fatigue and adverse reactions after the first exercise, stale open forms after intervening work, and the reason shown when recommendations end.
+- Verify complete action sequences, including these opposing failures: alternating two exercises with normal feedback keeps generating work; completing the last home stretch hides unrelated choices; a later general assessment causes a duplicate questionnaire; an adverse reaction followed by a normal assessment forgets completed work; crossing a day or rolling schedule boundary creates work before the cadence permits it. Check that app-selected work appears without a manual picker, ends with a clear next action or completion state, and retains its remaining dose through reloads and upgrades.
+
 ## Project Checks
 
 - The app runs directly from `index.html`; no build step is required.

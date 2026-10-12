@@ -150,6 +150,8 @@
         <div class="list" id="recommendations"></div>
         <details id="moreRecommendations" hidden><summary>Ещё варианты</summary><div class="list" id="moreRecommendationsList" style="margin-top:10px"></div></details>
       </div>
+      <details id="excludedExercises" hidden><summary id="excludedExercisesSummary">Почему не сейчас?</summary><div class="list" id="excludedExerciseList" style="margin-top:10px"></div></details>
+      <div id="additionalPlanWrap" style="margin-top:12px"></div>
 
       <div class="section-title"><h2>Сегодня</h2><small id="dailyCount"></small></div>
       <div class="daily-grid" id="dailyGrid"></div>
@@ -229,6 +231,7 @@
 <dialog id="selfReportDialog"><div class="modal" id="selfReportModal"></div></dialog>
 <dialog id="postponeDialog"><div class="modal" id="postponeModal"></div></dialog>
 <dialog id="symptomsDialog"><div class="modal" id="symptomsModal"></div></dialog>
+<dialog id="additionalPlanDialog"><div class="modal" id="additionalPlanModal"></div></dialog>
 <div class="toast" id="toast"></div>
 
 <script type="application/json" id="appConfigJSON">{"version": 3, "app": {"name": "Ankle Mastery", "locale": "ru", "llm_required": false, "offline_first": true, "timezone_mode": "local_device"}, "core_principles": ["scheduler объяснимый: каждая рекомендация показывает причины", "симптомы и усталость важнее дневных целей", "не фармить XP повторением одного простого упражнения", "load overlap не равен mastery и не равен prescription completion", "run readiness не является медицинским разрешением на бег"], "ui": {"home_screen": {"show": ["training_mastery", "run_readiness", "best_now", "can_do_now", "better_later", "daily_prescription_progress", "skill_balance", "fatigue_channels", "next_recommended_time", "why_this_recommendation"]}, "quick_actions": ["done", "choose_other", "skip", "cannot_do", "log_custom_activity", "log_symptoms", "add_available_exercise"], "skip_reasons": ["нет оборудования", "нет места", "устал", "дискомфорт", "не хочу сейчас", "другое"], "traffic_light": {"green": "можно сейчас", "yellow": "доступно, но есть причина отложить/уменьшить", "red": "не рекомендовать сейчас"}}, "program": {"prescription_groups": {"towel_straight": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "towel_bent": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "tiptoe_static": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "line_walk": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician", "variants_share_credit": true}, "front_back_balance": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}, "side_lunge": {"target_per_day": 3, "max_per_day": 4, "priority": "clinician"}}, "clinician_session_defaults": {"recommended_sessions_per_week": 3, "exercises_per_session": [3, 5], "note": "product default only; not clinician-prescribed frequency"}}, "skills": {"mobility": {"weight": 0.08}, "calf_strength_endurance": {"weight": 0.14}, "static_balance": {"weight": 0.12}, "dynamic_balance": {"weight": 0.16}, "lateral_stability": {"weight": 0.14}, "ankle_control": {"weight": 0.12}, "gait_control": {"weight": 0.08}, "reactive_control": {"weight": 0.08}, "multidirectional_control": {"weight": 0.08}}, "fatigue_channels": {"calf": {"decay_half_life_hours": 8, "yellow_from": 35, "red_from": 70}, "ankle_control": {"decay_half_life_hours": 4, "yellow_from": 40, "red_from": 75}, "dynamic_balance": {"decay_half_life_hours": 3, "yellow_from": 45, "red_from": 80}, "lateral": {"decay_half_life_hours": 5, "yellow_from": 40, "red_from": 75}, "impact": {"decay_half_life_hours": 18, "yellow_from": 25, "red_from": 60}}, "scheduler": {"strategy": "deterministic_score_v2", "refresh_on": ["app_open", "exercise_logged", "custom_activity_logged", "symptom_logged", "exercise_status_changed", "clock_tick_15_min"], "score_weights": {"daily_deficit": 0.25, "skill_deficit": 0.2, "freshness": 0.2, "weekly_balance": 0.15, "variety": 0.1, "progression_value": 0.1}, "multipliers": ["fatigue_modifier", "exercise_tolerance_modifier", "symptom_modifier", "context_availability_modifier"], "same_exercise_soft_penalty_minutes": 120, "same_primary_skill_penalty": 0.2, "recommended_list_size": 5, "next_time": {"resolution_minutes": 15, "search_horizon_hours": 24, "green_score_threshold": 0.58}, "explain_recommendation": true, "fatigue_demand_reference": 0.65}, "overlap": {"load_credit_affects_fatigue": true, "load_credit_can_reduce_priority_of_similar_exercises": true, "load_credit_closes_prescription_target": false, "structured_skill_credit_counts_for_weekly_skill_balance": true, "custom_activity_skill_mastery_credit": false, "family_variant_can_close_same_prescription_target": true}, "exercise_tolerance": {"rolling_window_sessions": 5, "positive_sessions_for_progression": 3, "modifiers": {"normal": 1.0, "mild_reaction": 0.85, "moderate_reaction": 0.6, "strong_reaction": 0.3, "safety_lock": 0.0}, "rules": [{"if": "pain_after <= 1 && !next_day_worse && !swelling && !instability", "state": "normal"}, {"if": "pain_after == 2 || fatigue == moderate", "state": "mild_reaction"}, {"if": "pain_after in [3,4] || next_day_worse", "state": "moderate_reaction"}, {"if": "pain_after >= 5", "state": "strong_reaction"}, {"if": "swelling || instability", "state": "safety_lock"}], "note": "all numeric cutoffs are product heuristics, not medical diagnostic thresholds"}, "symptom_checks": {"after_fields": ["pain_during_0_10", "pain_after_0_10", "local_outer_ankle_pain", "fatigue_low_medium_high", "instability", "swelling", "difficulty_easy_normal_hard"], "delayed_fields": ["later_same_day_worse_same_better", "next_morning_worse_same_better"], "light_exercises_can_skip_full_check": true, "always_ask_after": ["tier:S", "tier:FUTURE", "custom_activity_high_load"]}, "progression": {"success_requires": {"target_completed": true, "pain_during_max": 2, "pain_after_max": 2, "next_day_worse": false, "swelling": false, "instability": false, "technique": ["good", "ok"]}, "successful_sessions_required_default": 3, "auto_progress_inside_same_exercise": false, "offer_progression_confirmation": true, "never_auto_unlock_new_exercise": true}, "gamification": {"xp": {"base_per_useful_dose": 10, "same_skill_daily_multipliers": [1.0, 0.65, 0.35, 0.15], "extra_volume_beyond_cap_xp": 0, "no_bonus_for_pain_or_failure": true}, "streak": {"day_counts_if_distinct_skills_at_least": 2, "rest_freezes_per_week": 2, "no_penalty_for_safety_rest": true}, "training_mastery": {"separate_from_run_readiness": true, "formula": {"exercise_mastery": 0.5, "skill_consistency_14d": 0.3, "symptom_stability_7d": 0.2}}}, "exercise_lifecycle": {"states": ["active", "available", "locked", "archived"], "available_to_active": "manual user action only", "locked_to_available": "manual stage transition / explicit unlock rule; never regular scheduler", "archive_preserves_history": true, "show_source_badge": true}, "substitutions": {"enabled": true, "trigger_reasons": ["нет оборудования", "нет места", "не хочу сейчас"], "method": "explicit substitute_ids first; then vector similarity", "minimum_skill_similarity": 0.7, "respect_fatigue_and_symptom_locks": true, "do_not_use_locked_or_archived": true}, "custom_activity_logging": {"enabled": true, "presets": {"sand_tiptoe_fun": {"name": "Носки на песке", "load": {"calf": 60, "ankle_control": 40, "dynamic_balance": 35, "lateral": 15, "impact": 0}}, "long_tiptoe_walk": {"name": "Долгая ходьба на носках", "load": {"calf": 55, "ankle_control": 30, "dynamic_balance": 25, "lateral": 10, "impact": 0}}, "general_walk": {"name": "Обычная прогулка", "load": {"calf": 10, "ankle_control": 10, "dynamic_balance": 5, "lateral": 0, "impact": 0}}}, "manual_fields": ["duration_minutes", "calf_load_low_medium_high", "balance_load_low_medium_high", "lateral_load_low_medium_high", "pain_after_0_10", "fatigue_low_medium_high"], "freeform_requires_llm": false, "mastery_credit": false}, "return_to_running": {"module_enabled": true, "permission_semantics": "readiness estimator only; never medical clearance", "initial_stage": "rehab", "automatic_running_permission": false, "impact_tests_locked_initially": true, "clinician_context": "реабилитолог рекомендовал примерно пару месяцев тренировать ноги/голеностоп до уверенного мастерства", "calendar_hint_days": 56, "calendar_hint_is_approximation": true}, "notifications": {"enabled_by_default": false, "optional": ["next_good_window", "evening_delayed_check", "next_morning_check", "weekly_self_test"]}, "assessment": {"session_gap_minutes": 60, "nominal_load": 45, "load_factor_min": 0.5, "load_factor_max": 1.5, "fatigue_multipliers": {"easy": 0.9, "moderate": 1, "strong": 1.25}, "moderate_pain_from": 3, "safety_pain_from": 5, "reaction_modifier": 0.6}}</script>
@@ -290,7 +293,7 @@ function defaultState(){
   return {
     version:3, createdAt:Date.now(), logs:[], customActivities:[], testLogs:[], selfReports:[],
     assessment_sessions:[], load_events:[], last_self_report_at:null,
-    delayedChecks:[], symptomReports:[], dailyPlans:{}, exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
+    delayedChecks:[], symptomReports:[], dailyPlans:{}, additionalPlan:null, exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
   };
 }
 let state = loadState();
@@ -423,7 +426,7 @@ function confirmedSafe(l,ts=now()){
   const r=exerciseResponse(l,ts),m=morningFor(l,ts);
   return !!l.actualDose&&isSuccessful(l,ts)&&!!r.morning&&r.morning!=='worse'&&
     (!m||(responseLevel(m)==='normal'&&m.historyKnown&&!m.historyWorse))&&
-    !state.symptomReports.some(x=>x.ts>=l.ts&&x.ts<=(m?.ts||l.ts+DAY)&&x.ts<=ts&&responseLevel(x)!=='normal');
+    !reportedSymptoms(ts).some(x=>x.ts>=l.ts&&x.ts<=(m?.ts||l.ts+DAY)&&responseLevel(x)!=='normal');
 }
 function confirmedEasy(l,ts=now()){
   return confirmedSafe(l,ts)&&l.difficulty==='easy'&&l.fatigue!=='high'&&l.technique==='good';
@@ -433,7 +436,7 @@ function sameDose(a,b){
 }
 function exerciseProgress(ex,ts=now()){
   // Keep earlier units in history, but do not use them to set a dose in the current units.
-  const logs=state.logs.filter(l=>l.exerciseId===ex.id&&l.actualDose?.type===ex.dose?.type&&l.ts<=ts).sort((a,b)=>a.ts-b.ts);
+  const logs=state.logs.filter(l=>l.exerciseId===ex.id&&!l.additionalPlanPart&&l.actualDose?.type===ex.dose?.type&&l.ts<=ts).sort((a,b)=>a.ts-b.ts);
   let working={...ex.dose},confirmed=false,run=[];
   for(const l of logs){
     const safe=confirmedSafe(l,ts);
@@ -457,6 +460,172 @@ function reduceDose(ex,anchor){
   else {const step=key==='target_sec'?5:Math.max(1,Math.ceil(dose[key]/4));dose[key]=Math.max(1,dose[key]-step);}
   return dose;
 }
+function unprescribedFrequency(ex){return !ex.prescription_credit?.group;}
+function doseWithinVolume(ex,anchor,volume){
+  const dose={...anchor},key=doseKey(ex);
+  if(doseVolume(dose)<=volume)return dose;
+  if(dose.sets>1)dose.sets=Math.max(1,Math.floor(volume/(doseVolume(dose)/dose.sets)));
+  if(key&&doseVolume(dose)>volume)dose[key]=Math.floor(dose[key]*volume/doseVolume(dose));
+  return key&&dose[key]>=1&&doseVolume(dose)<=volume?dose:null;
+}
+function recordedAdditionalState(ex,ts=now()){
+  const plan=state.additionalPlan,targetDose=plan?.targets[ex.id];
+  if(!plan||plan.startedAt>ts||plan.closedAt!=null||!targetDose)return {status:'unplanned',reason:'Это упражнение не входит в текущее дополнительное занятие'};
+  const logs=state.logs.filter(l=>l.additionalPlanId===plan.id&&l.exerciseId===ex.id&&l.ts>=plan.startedAt&&l.ts<=ts);
+  const valid=l=>l.actualDose?.type===targetDose.type&&(doseFields[targetDose.type]||[]).every(([key])=>Number.isInteger(l.actualDose[key])&&l.actualDose[key]>=1)&&Number.isFinite(doseVolume(l.actualDose))&&doseVolume(l.actualDose)>0;
+  const target=doseVolume(targetDose),used=logs.filter(valid).reduce((sum,l)=>sum+doseVolume(l.actualDose),0),remaining=Math.max(0,target-used);
+  const common={target,used,remaining,targetDose};
+  if(logs.some(l=>!valid(l)))return {...common,status:'uncertain',reason:'Объём одного выполнения неизвестен или записан в других единицах. Остаток не предлагаем; занятие можно завершить без наверстывания'};
+  if(state.exerciseStatuses[ex.id]!=='active')return {...common,status:'stopped',reason:'Упражнение убрано из активных. Его остаток не переносим в другой вариант'};
+  if(!remaining)return {...common,status:'complete',reason:`Выбранный объём занятия выполнен: ${doseText(ex,targetDose)}. Новое выполнение автоматически не назначаем`};
+  if(logs.some(l=>responseLevel(exerciseResponse(l,ts))!=='normal'||l.difficulty==='hard'||l.fatigue==='high'||l.technique==='poor'||!['time','planned_remainder'].includes(l.doseReason)&&doseVolume(l.actualDose)<target))return {...common,status:'stopped',reason:'Здесь занятие закончено с меньшим объёмом после реакции или выполнения без запаса. Остаток не нужно наверстывать'};
+  if(plan.endedAt!=null&&plan.endedAt<=ts)return {...common,status:'stopped',reason:plan.endedReason||'Занятие уже закончено. Изменение истории не назначает оставшийся объём повторно'};
+  const dose=doseWithinVolume(ex,targetDose,remaining);
+  return {...common,status:'remaining',dose,reason:used?`Остаток выбранного занятия: ${doseText(ex,dose)}; весь выбранный объём — ${doseText(ex,targetDose)}`:`Объём занятия: ${doseText(ex,targetDose)}. ${plan.reasons?.[ex.id]||'Следующее занятие предлагается отдельно по ритму программы'}`};
+}
+function additionalPlanEntries(ts=now()){
+  return Object.keys(state.additionalPlan?.targets||{}).map(id=>({ex:EXMAP[id],...recordedAdditionalState(EXMAP[id],ts)}));
+}
+function startAdditionalPlan(ids,ts=now(),offered=null){
+  if(additionalPlanEntries(ts).some(entry=>['remaining','uncertain'].includes(entry.status)))throw new Error('Сначала заверши текущее дополнительное занятие');
+  const selected=[...new Set(ids)].map(id=>EXMAP[id]);
+  if(!selected.length||selected.some(ex=>!ex||!unprescribedFrequency(ex)||state.exerciseStatuses[ex.id]!=='active'||!doseFields[ex.dose?.type]))throw new Error('Выбери активные дополнительные упражнения');
+  const targets=Object.fromEntries(selected.map(ex=>[ex.id,{...(offered?.[ex.id]||suggestedDose(ex,ts).dose)}]));
+  if(selected.some(ex=>targets[ex.id].type!==ex.dose.type||doseFields[ex.dose.type].some(([key])=>!Number.isInteger(targets[ex.id][key])||targets[ex.id][key]<1)))throw new Error('Проверь выбранный объём занятия');
+  state.additionalPlan={id:makeId('p'),startedAt:ts,targets,closedAt:null,endedAt:null};
+  return state.additionalPlan;
+}
+function finishAdditionalPlan(ts=now()){
+  if(state.additionalPlan)state.additionalPlan.closedAt=ts;
+}
+function settleAdditionalPlan(ts){
+  const plan=state.additionalPlan;
+  if(!plan||plan.closedAt!=null||plan.endedAt!=null)return;
+  if(additionalPlanEntries(ts).every(entry=>['complete','stopped'].includes(entry.status))){plan.endedAt=ts;return;}
+  const current=currentSymptoms(ts);
+  if(additionalLightState(current)&&state.logs.some(l=>l.additionalPlanId===plan.id&&l.ts<=current.ts)){
+    plan.endedAt=ts;plan.endedReason='Дополнительное занятие закончено с выполненным объёмом после отмеченной усталости или ухудшения самочувствия. Остаток не нужно наверстывать';
+  }
+}
+function additionalLightState(current){return !!current&&(responseLevel(current)!=='normal'||['medium','high'].includes(current.fatigue)||['medium','high'].includes(current.generalFatigue));}
+function additionalPattern(ex){
+  if(/^(balance_board|hemisphere)_both_tiptoe_/.test(ex.id))return 'unstable_balance';
+  if(['tiptoe_sidewalk_ball_reaction','tiptoe_sidewalk_cone_reach'].includes(ex.id))return 'lateral_tiptoe';
+  return ex.id;
+}
+function trainingDayOffset(day,n){const d=new Date(day);d.setDate(d.getDate()+n);return +d;}
+function additionalTrainingDays(ts=now()){
+  return [...new Set(state.logs.filter(l=>l.ts<=ts&&EXMAP[l.exerciseId]&&unprescribedFrequency(EXMAP[l.exerciseId])).map(l=>startOfDay(l.ts)))].sort((a,b)=>a-b);
+}
+function additionalSessionDays(ts){
+  const logs=state.logs.filter(l=>l.ts<=ts&&EXMAP[l.exerciseId]&&unprescribedFrequency(EXMAP[l.exerciseId])),sessions=new Map(),managedDays=new Set();
+  for(const log of logs)if(log.additionalPlanId){const day=startOfDay(log.ts);managedDays.add(day);sessions.set(log.additionalPlanId,Math.max(day,sessions.get(log.additionalPlanId)||0));}
+  for(const log of logs){const day=startOfDay(log.ts);if(!log.additionalPlanId&&!managedDays.has(day))sessions.set('legacy_'+day,day);}
+  return [...sessions.values()].sort((a,b)=>a-b);
+}
+function additionalChoice(ex,ts=now(),selected=[],context=null){
+  const exposure=context?.exposure||weeklySkillExposure(ts),scores=context?.scores||readinessSummary(ts).domainScores;
+  const covered={};for(const other of selected)for(const [skill,value] of Object.entries(other.skill_credit||{}))covered[skill]=(covered[skill]||0)+value;
+  let gain=0,weakest=null,least=null;
+  for(const [skill,value] of Object.entries(ex.skill_credit||{})){
+    if(!APP.skills[skill])continue;
+    const domain=['mobility','calf_strength_endurance'].includes(skill)?'ankle_capacity':'sensorimotor_control';
+    const weakness=scores[domain]==null?0:1-scores[domain],practice=1-clamp((exposure[skill]||0)/6);
+    const marginal=Math.max(0,value-(covered[skill]||0));
+    gain+=APP.skills[skill].weight*marginal*(practice+weakness);
+    if(weakness>0&&(!weakest||weakness>weakest.value))weakest={domain,value:weakness};
+    if(practice>0&&(!least||practice>least.value))least={skill,value:practice};
+  }
+  const logs=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts<=ts).sort((a,b)=>a.ts-b.ts),last=logs.at(-1);
+  const quality=last&&(last.difficulty==='hard'||last.technique==='poor'||last.fatigue==='high') ? .65 : 1;
+  const score=gain*quality*tolerance(ex,ts)*fatigueModifier(ex,ts);
+  const reasons=[];
+  if(weakest?.value>.3)reasons.push(`По измерениям стоит уделить внимание ${weakest.domain==='ankle_capacity'?'силе и подвижности голеностопа':'контролю и балансу'}`);
+  if(least)reasons.push(`Дополняет недельный план: ${skillLabels[least.skill]||least.skill}`);
+  if(last&&isSuccessful(last,ts))reasons.push('Последнее выполнение было без отмеченной неблагоприятной реакции');
+  if(quality<1)reasons.push('После выполнения без запаса или потери качества используем меньший объём');
+  if(relevantFatigue(ex,ts)>=38)reasons.push('Недавняя похожая работа снижает приоритет');
+  return {score,reason:reasons.join('. ')||'Дополняет другие направления выбранной программы'};
+}
+function additionalPracticeContext(ts){
+  const actual=weeklySkillExposure(ts),exposure={...actual},counts=planCounts(ts),attempts=prescriptionCounts(ts);
+  for(const [group,target] of Object.entries(dailyPlan(ts).targets)){
+    const ex=activeExercises().find(ex=>ex.prescription_credit?.group===group);
+    if(!ex||dailyLoadPlan(ex,ts).status==='pause')continue;
+    const remaining=Math.max(0,Math.min(target-(counts[group]||0),(ex.prescription_credit.max_per_day||target)-(attempts[group]||0)));
+    const factor=Math.min(1,doseVolume(suggestedDose(ex,ts).dose)/doseVolume(ex.dose));
+    for(const [skill,value] of Object.entries(ex.skill_credit||{}))exposure[skill]=(exposure[skill]||0)+remaining*value*factor;
+  }
+  return {exposure,scores:readinessSummary(ts).domainScores};
+}
+function autoAdditionalPlan(ts=now()){
+  const entries=additionalPlanEntries(ts),pending=state.additionalPlan?.closedAt==null&&state.additionalPlan?.endedAt==null&&entries.some(e=>['remaining','uncertain'].includes(e.status));
+  if(pending)return {status:'ongoing',targets:state.additionalPlan.targets,reasons:state.additionalPlan.reasons||{},reason:'Продолжаем только оставшийся объём начатого занятия'};
+  const empty={targets:{},reasons:{}};
+  const active=activeExercises().filter(ex=>unprescribedFrequency(ex)&&doseFields[ex.dose?.type]);
+  if(!active.length)return {...empty,status:'unavailable',reason:'Нет активных дополнительных упражнений'};
+  const day=startOfDay(ts),days=additionalTrainingDays(ts),week=additionalSessionDays(ts).filter(d=>d>=trainingDayOffset(day,-6)),limit=APP.program.clinician_session_defaults.recommended_sessions_per_week;
+  const today=state.logs.filter(l=>l.ts>=day&&l.ts<=ts&&EXMAP[l.exerciseId]&&unprescribedFrequency(EXMAP[l.exerciseId]));
+  const donePatterns=new Set(today.map(l=>additionalPattern(EXMAP[l.exerciseId])));
+  const prior=state.additionalPlan,endedToday=prior&&(prior.endedAt!=null||prior.closedAt!=null)&&startOfDay(prior.closedAt??prior.endedAt)===day&&(startOfDay(prior.startedAt)===day||today.some(l=>l.additionalPlanId===prior.id));
+  const previous=days.filter(d=>d<day),previousWeek=week.filter(d=>d<day);
+  let dayEligibleAfter=previous.length?trainingDayOffset(previous.at(-1),2):day;
+  if(previousWeek.length>=limit)dayEligibleAfter=Math.max(dayEligibleAfter,trainingDayOffset(previousWeek[previousWeek.length-limit],7));
+  const continuingToday=today.length>0&&!endedToday&&dayEligibleAfter<=day;
+  const last=days.at(-1);let after=last==null?day:trainingDayOffset(last,2);
+  if(week.length>=limit)after=Math.max(after,trainingDayOffset(week[week.length-limit],7));
+  const waiting={...empty,status:'waiting',after,reason:`Дополнительная работа уже учтена. Следующее занятие — не раньше ${fmtDate(after)} ${fmtTime(after)}: ритм приложения до ${limit} занятий за 7 дней, с днём между ними`};
+  if(endedToday&&prior.endedReason)waiting.reason=prior.endedReason+'. '+waiting.reason;
+  if(after>ts&&!continuingToday)return waiting;
+  const current=currentSymptoms(ts);
+  if(safetyFlag(ts)||current&&responseLevel(current)==='pause')return {...empty,status:'recovery',reason:'Дополнительное занятие ждёт повторной оценки после боли, отёка или нестабильности'};
+  const morning=pendingMorningDays(ts).find(d=>nextDayStart(d)===day);
+  if(morning!=null)return {...empty,status:'feedback',reason:'Перед новым дополнительным занятием нужна общая оценка восстановления после вчерашней нагрузки'};
+  if(!current||startOfDay(current.ts)!==day)return {...empty,status:'feedback',reason:'Перед дополнительным занятием нужно знать сегодняшнее самочувствие'};
+  const measurement=measurementPlan(ts),context=additionalPracticeContext(ts);
+  const candidates=active.filter(ex=>!donePatterns.has(additionalPattern(ex))&&!postponedUntil('exercise',ex.id,ts)&&dailyLoadPlan(ex,ts).status!=='pause'&&!(measurement&&overlapsTest(measurement.test,ex.load_channels))&&exerciseAfterTestUntil(ex,ts)<=ts);
+  const light=additionalLightState(current);
+  const count=Math.max(0,(light?1:APP.program.clinician_session_defaults.exercises_per_session[0])-donePatterns.size),selected=[],reasons={},targets={};
+  if(!count)return waiting;
+  while(selected.length<count){
+    const available=candidates.filter(ex=>!selected.some(other=>additionalPattern(other)===additionalPattern(ex))).map(ex=>({ex,...additionalChoice(ex,ts,selected,context)})).filter(choice=>choice.score>0).sort((a,b)=>(light?Math.max(...Object.values(a.ex.load_channels))-Math.max(...Object.values(b.ex.load_channels)):0)||b.score-a.score||a.ex.id.localeCompare(b.ex.id));
+    const choice=available[0];if(!choice||choice.score<=0)break;
+    const suggested=suggestedDose(choice.ex,ts);
+    selected.push(choice.ex);targets[choice.ex.id]=light&&suggested.status==='normal'?reduceDose(choice.ex,suggested.dose):{...suggested.dose};
+    reasons[choice.ex.id]=choice.reason+(light?'. Сегодня меньше работы из-за отмеченной усталости или неполного восстановления':'');
+  }
+  if(!selected.length)return {...empty,status:'unavailable',reason:measurement?'Сначала запланированное измерение; дополнительную похожую работу подберём после него':candidates.length?'Зарегистрированная практика уже покрывает направления программы; новый объём сейчас не добавляем':'Дополнительные варианты сейчас ждут оценки, перерыва после теста или окончания отсрочки'};
+  return {status:'ready',day,logCount:state.logs.length,targets,reasons,reason:light?'Одно облегчённое направление с учётом сегодняшнего состояния':'Приложение подобрало разные направления по измерениям, практике и переносимости'};
+}
+function additionalPlanState(ex,ts=now()){
+  const automatic=autoAdditionalPlan(ts),recorded=recordedAdditionalState(ex,ts);
+  if(automatic.status==='ongoing')return recorded;
+  if(automatic.status==='ready'&&automatic.targets[ex.id]){
+    const targetDose=automatic.targets[ex.id],target=doseVolume(targetDose);
+    return {status:'remaining',targetDose,target,used:0,remaining:target,dose:{...targetDose},automaticPreview:automatic,reason:`Объём занятия: ${doseText(ex,targetDose)}. ${automatic.reasons[ex.id]}`};
+  }
+  if(recorded.status!=='unplanned')return recorded;
+  return {status:'unplanned',reason:automatic.status==='ready'?'В этом занятии подобраны другие направления; похожие варианты не добавляем сверху':automatic.reason};
+}
+function openAdditionalPlan(){
+  const plan=autoAdditionalPlan(),entries=plan.status==='ongoing'?additionalPlanEntries():Object.entries(plan.targets).map(([id,dose])=>({ex:EXMAP[id],dose,reason:plan.reasons[id]}));
+  document.getElementById('additionalPlanModal').innerHTML=`<div class="modal-head"><h3>Дополнительное занятие</h3><button class="x" onclick="AM.close('additionalPlanDialog')">×</button></div><p>${esc(plan.reason)}</p>${entries.map(entry=>`<div class="notice" style="margin-top:10px"><b>${esc(entry.ex.name)}</b><div>${esc(doseText(entry.ex,entry.dose||entry.targetDose))}</div><div class="li-meta">${esc(entry.reason)}</div></div>`).join('')}<div class="notice" style="margin-top:12px">Состав подбирает приложение. Ритм — до 3 занятий за 7 дней с днём между ними, до 3 разных направлений. Это исходная программа приложения; частота дома врачом не уточнялась.</div>${plan.status==='ongoing'?'<div class="modal-actions"><button class="btn secondary" onclick="AM.closeAdditionalPlan()">Закончить с выполненным объёмом</button></div>':''}`;
+  showDialog('additionalPlanDialog');
+}
+function closeAdditionalPlan(){finishAdditionalPlan();closeDialog('additionalPlanDialog');save();toast('Занятие закончено. Наверстывать остаток не нужно');}
+function renderAdditionalPlan(){
+  const wrap=document.getElementById('additionalPlanWrap'),plan=autoAdditionalPlan();
+  if(plan.status==='unavailable'&&!state.additionalPlan){wrap.innerHTML='';return;}
+  const count=Object.keys(plan.targets).length;
+  const title=plan.status==='ready'?'Подобрано дополнительное занятие · '+count+' '+countWord(count,'упражнение','упражнения','упражнений'):plan.status==='ongoing'?'Состав и завершение дополнительного занятия':state.additionalPlan?'Дополнительное занятие закончено':'Ритм дополнительных занятий';
+  wrap.innerHTML=`<details class="notice"><summary>${esc(title)}</summary><div class="li-meta">${esc(plan.reason)}</div><button class="btn ghost" style="margin-top:8px" onclick="AM.openAdditionalPlan()">Состав и основания</button></details>`;
+}
+function recommendedDose(ex,ts=now()){
+  const suggested=suggestedDose(ex,ts),entry=unprescribedFrequency(ex)&&additionalPlanState(ex,ts);
+  if(entry?.status!=='remaining')return suggested;
+  const anchor=doseVolume(suggested.dose)<doseVolume(entry.targetDose)?suggested.dose:entry.targetDose;
+  return {...suggested,dose:doseWithinVolume(ex,anchor,entry.remaining)||entry.dose,reason:entry.reason+' · '+suggested.reason};
+}
 function dailyLoadPlan(ex,ts=now()){
   const demand=Math.max(0,...Object.values(ex.load_channels||{})),current=currentSymptoms(ts);
   const level=current?responseLevel(current):'normal';
@@ -468,12 +637,12 @@ function dailyLoadPlan(ex,ts=now()){
   // Reported incomplete recovery calls for feedback, not a fixed daily load budget.
   if(level==='reduce'){
     let episode=null;
-    for(const r of state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts)){
+    for(const r of reportedSymptoms(ts).sort((a,b)=>a.ts-b.ts)){
       if(responseLevel(r)==='normal')episode=null;else if(episode==null)episode=r.ts;
     }
     const already=state.logs.some(l=>l.ts>(episode??current.ts)&&l.ts<=ts&&Math.max(0,...Object.values(EXMAP[l.exerciseId]?.load_channels||{}))>=.25);
     if(already)return {status:'pause',reason:'После облегчённого выполнения оцени самочувствие перед следующим',needsFeedback:true};
-    return {status:'light',reason:'Уменьшаем объём из-за отмеченного самочувствия; частота пока сохраняется'};
+    return {status:'light',reason:'Уменьшаем объём из-за отмеченного самочувствия'+(unprescribedFrequency(ex)?'':'; частота пока сохраняется')};
   }
   const morning=state.symptomReports.filter(r=>r.phase==='morning'&&validMorningDay(r)&&r.ts<=ts&&startOfDay(r.ts)===startOfDay(ts)).slice(-1)[0];
   if(current?.generalFatigue==='high'&&startOfDay(current.ts)===startOfDay(ts))return {status:'light',reason:'Сегодня меньший объём из-за общей усталости; переносимость упражнения не ухудшаем'};
@@ -493,6 +662,7 @@ function lastRelatedExecution(ex,ts=now()){
   return [...state.logs.filter(l=>matches(l.exerciseId)),...state.testLogs.filter(l=>RDCFG.tests.some(t=>t.id===l.testId&&l.protocol_id===t.protocol_id&&matches(t.dose_exercise_id)))].filter(l=>l.ts<=ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
 }
 function exerciseRestUntil(ex,ts=now()){
+  if(unprescribedFrequency(ex))return 0;
   const group=ex.prescription_credit?.group;
   return state.logs.filter(l=>l.ts<=ts&&(l.exerciseId===ex.id||group&&EXMAP[l.exerciseId]?.prescription_credit?.group===group)).reduce((until,l)=>Math.max(until,l.ts+Math.max(ex.min_rest_minutes||0,EXMAP[l.exerciseId]?.min_rest_minutes||0)*60000),0);
 }
@@ -523,7 +693,7 @@ function suggestedDose(ex,ts=now()){
   if(recovering){
     const after=progress.logs.filter(l=>l.ts>adverse.ts&&l.doseReason!=='time').slice(-1)[0];
     dose=after&&responseLevel(exerciseResponse(after,ts))==='normal'?{...after.actualDose}:['trial','calibration','test'].includes(adverse.doseReason)?{...working}:reduceDose(ex,adverse.actualDose||working);
-    reason='Проверяем меньший объём после реакции или выполнения без запаса; частота сохраняется';
+    reason='Проверяем меньший объём после реакции или выполнения без запаса'+(unprescribedFrequency(ex)?'':'; частота сохраняется');
   }
   if(!recovering&&['trial','calibration','test'].includes(last?.doseReason)&&!sameDose(last.actualDose,working)){dose={...last.actualDose};reason=`Объём уточняется по выполнениям и утреннему самочувствию: ${progress.candidateDays}/3 подтверждений в разные дни`;}
   const plan=dailyLoadPlan(ex,ts);
@@ -556,8 +726,15 @@ function suggestedDose(ex,ts=now()){
   const confirmedDays=sameDose(dose,working)?progress.confirmedDays:Math.min(3,progress.run.filter(l=>sameDose(l.actualDose,dose)).length);
   return {dose,working,confirmed:progress.confirmed,confirmedDays,trial,doseFromTest,evidence,reason,status:plan.status};
 }
+function reportedSymptoms(ts=now()){
+  const reports=state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts);
+  const overall=state.logs.filter(l=>(l.symptomScope==='combined'||l.symptomScope==null&&l.phase==='after')&&l.ts<=ts).map(l=>({ts:l.ts,pain:l.painAfter,painBefore:l.painBefore||0,
+    steadiness:l.steadiness||(l.instability?'giving_way':'steady'),swelling:!!l.swelling,fatigue:l.fatigue,phase:'current',context:'combined',sourceLogId:l.id,
+    generalFatigue:reports.findLast(r=>r.ts<=l.ts&&startOfDay(r.ts)===startOfDay(l.ts))?.generalFatigue||'unknown'}));
+  return [...overall,...reports];
+}
 function currentSymptoms(ts=now()){
-  const explicit=state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+  const explicit=reportedSymptoms(ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
   const exercise=state.logs.filter(l=>l.ts<=ts&&l.painAfter!=null).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
   const session=state.assessment_sessions.filter(s=>s.pain_after!=null&&(s.reaction_at||s.completed_at)<=ts).sort((a,b)=>(a.reaction_at||a.completed_at)-(b.reaction_at||b.completed_at)).slice(-1)[0];
   const assessment=session&&{ts:session.reaction_at||session.completed_at,painAfter:session.pain_after,fatigue:{easy:'low',moderate:'medium',strong:'high'}[session.perceived_fatigue],steadiness:session.instability?'giving_way':'steady',swelling:session.swelling,context:'assessment',id:session.id,worse:session.same_day_response==='worse'||session.next_day_response==='worse'};
@@ -575,7 +752,7 @@ function testSupportsProgression(evidence,ts=now()){
     !reactionEntries(ts).some(r=>r.ts>=log.ts&&r.ts<=morning.ts&&(r.pain>=3||r.swelling||r.instability||r.worse));
 }
 
-function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[id],ts).dose){
+function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[id],ts).dose,offered=null){
   const ex=EXMAP[id],fields=doseFields[ex?.dose?.type]||[];
   if(!ex||fields.some(([k])=>!Number.isInteger(dose[k])||dose[k]<1||dose[k]>10000))throw new Error('Проверь фактически выполненный объём');
   const option=doseOptions[id];
@@ -583,8 +760,24 @@ function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[
   const actualDose={...ex.dose,...Object.fromEntries(fields.map(([k])=>[k,dose[k]])),...(option&&dose[option.key]?{[option.key]:dose[option.key]}:{})};
   const log={id:makeId('l'),exerciseId:id,ts,...response,actualDose,suggestedDose:{...suggested},
     doseFactor:doseVolume(actualDose)/doseVolume(ex.dose||{}),doseReason:response.doseReason||'capacity',sameDay:null,nextDay:null};
+  settleAdditionalPlan(ts);
+  const currentPlan=autoAdditionalPlan(ts);let preview=currentPlan;
+  if(offered?.status==='ready'){
+    if(currentPlan.status==='ready')preview={...currentPlan,targets:Object.fromEntries(Object.entries(offered.targets).filter(([id])=>currentPlan.targets[id]))};
+    else if(currentPlan.status==='feedback'&&offered.day!==startOfDay(ts)&&offered.logCount===state.logs.length)preview=offered;
+  }
+  if(unprescribedFrequency(ex)&&!['ongoing','waiting','recovery'].includes(currentPlan.status)&&preview.status==='ready'&&preview.targets[id]){
+    const created=startAdditionalPlan(Object.keys(preview.targets),ts,preview.targets);
+    created.source='automatic';created.planningDay=preview.day;created.reasons={...preview.reasons};
+  }
+  const plan=state.additionalPlan;
+  if(plan&&plan.closedAt==null&&plan.endedAt==null&&plan.startedAt<=ts&&plan.targets[id]){
+    log.additionalPlanId=plan.id;
+    if(state.logs.some(l=>l.additionalPlanId===plan.id&&l.exerciseId===id&&l.ts<=ts))log.additionalPlanPart=true;
+  }
   ensureDailyPlan(ts);
   state.logs.push(log);addXp(ex,log);maybeAddDelayedCheck(log);
+  settleAdditionalPlan(ts);
   return log;
 }
 function activeExercises(){ return EX.filter(x=>state.exerciseStatuses[x.id]==='active'); }
@@ -690,6 +883,7 @@ function testAvailable(t){
 }
 function reactionEntries(ts=now()){
   return [
+    ...reportedSymptoms(ts).filter(r=>r.sourceLogId).map(r=>({...r,source_type:'symptoms',instability:r.steadiness==='giving_way',normal:responseLevel(r)==='normal'})),
     ...state.logs.filter(l=>l.ts<=ts).map(l=>({source_type:'exercise',ts:l.ts,pain:Math.max(l.painDuring||0,l.painAfter||0),swelling:l.swelling,instability:l.instability||l.steadiness==='giving_way',worse:l.sameDay==='worse'||l.nextDay==='worse',normal:!observationsFor(l,ts).length&&l.nextDay&&isSuccessful(l,ts)})),
     ...state.customActivities.map(a=>({ts:a.ts,pain:a.painAfter||0,normal:false})),
     ...state.testLogs.filter(l=>l.pain_after!=null).map(l=>({ts:l.ts,pain:l.pain_after,normal:false,source_type:'test'})),
@@ -840,6 +1034,7 @@ function isSuccessful(l,ts=now()){
   return responseLevel(r)==='normal'&&r.morning!=='worse'&&(l.technique||'ok')!=='poor';
 }
 function maxPerDayReached(ex,ts=now()){
+  if(unprescribedFrequency(ex))return false;
   const max=ex.prescription_credit?.max_per_day ?? ex.recommended_frequency?.max_per_day;
   if(max==null)return false;
   const group=ex.prescription_credit?.group;
@@ -872,18 +1067,15 @@ function scoreExercise(ex,ts=now()){
   const lifecycleStatus=state.exerciseStatuses[ex.id];
   if(lifecycleStatus!=='active')return {score:-1,status:'red',reasons:['не активно']};
   if(dailyLoadPlan(ex,ts).status==='pause')return {score:-1,status:'red',reasons:[dailyLoadPlan(ex,ts).reason]};
+  const additional=unprescribedFrequency(ex)&&additionalPlanState(ex,ts);
+  if(additional&&additional.status!=='remaining')return {score:-1,status:'yellow',reasons:[additional.reason]};
   if(maxPerDayReached(ex,ts))return {score:-1,status:'red',reasons:['достигнут максимум на сегодня для автоматических рекомендаций; дальнейшие выполнения можно записать через каталог']};
   const group=ex.prescription_credit?.group,counts=planCounts(ts),plan=dailyPlan(ts);
   if(group&&!(group in plan.targets))return {score:-1,status:'red',reasons:['новая дневная цель войдёт в план следующего дня']};
   const extraRound=!!group&&counts[group]>=dailyTarget(ex,ts);
   const current=currentSymptoms(ts),last=lastRelatedExecution(ex,ts);
-  if(extraRound&&(ex.source!=='clinician_home'||dailyLoadPlan(ex,ts).status!=='normal'||!current||responseLevel(current)!=='normal'||current.fatigue==='high'||current.generalFatigue==='high'||!['easy','normal'].includes(last?.difficulty)||last.fatigue==='high'))
+  if(extraRound&&(ex.source!=='clinician_home'||dailyLoadPlan(ex,ts).status!=='normal'||!current||additionalLightState(current)||!['easy','normal'].includes(last?.difficulty)||last.fatigue==='high'))
     return {score:-1,status:'yellow',reasons:['дневная цель выполнена; для дополнительного выполнения нужна известная нормальная переносимость и восстановление']};
-  if(!group){
-    const complete=Object.keys(plan.targets).length&&Object.keys(plan.targets).every(g=>counts[g]>=dailyTarget(EX.find(x=>x.prescription_credit?.group===g),ts));
-    const extras=state.logs.filter(l=>l.ts>=startOfDay(ts)&&l.ts<=ts&&!EXMAP[l.exerciseId]?.prescription_credit?.group).length;
-    if(complete||extras>=5)return {score:-1,status:'red',reasons:['дневной план завершён; дополнительные упражнения доступны в каталоге']};
-  }
   const measurement=measurementPlan(ts);
   const reserved=measurement&&overlapsTest(measurement.test,ex.load_channels);
   if(reserved&&(!group||extraRound))return {score:-1,status:'yellow',reasons:[`Сначала запланирован тест «${measurement.test.name}»; дополнительную похожую тренировку оставляем после измерения`]};
@@ -910,13 +1102,14 @@ function scoreExercise(ex,ts=now()){
     const f=fatigueAt(ts),k=Object.keys(f).sort((a,b)=>(f[b]*(ex.load_channels?.[b]||0))-(f[a]*(ex.load_channels?.[a]||0)))[0];
     reasons.push(`${fatigueLabels[k]}: много похожей работы по расчёту; уточни ощущения, это не измерение усталости`);
   }
-  if(dd>.65)reasons.push('можно включить в план дня при нормальной реакции');
+  if(group&&dd>0)reasons.unshift(`План этой группы: ${counts[group]||0} из ${dailyTarget(ex,ts)} выполнений зачтены`);
   if(sd>.65)reasons.push('этот навык недотренирован на неделе');
   if(fresh>.78)reasons.push('нагрузка по этому паттерну свежая');
   if(fresh<.55)reasons.push('есть пересечение с недавней нагрузкой');
   if(va<.7)reasons.push('недавно уже был похожий паттерн');
   if(tol<.85)reasons.push('последняя переносимость снижает приоритет');
-  const dose=suggestedDose(ex,ts);if(dose.reason)reasons.unshift(dose.reason);
+  const dose=recommendedDose(ex,ts);if(dose.reason)reasons.push(dose.reason);
+  if(additional)reasons.unshift(additional.reason);
   if(extraRound)reasons.unshift('Дневная цель этой группы выполнена; дополнительное выполнение в назначенном диапазоне 3–4, с сохранением качества');
   if(deficit!=null&&deficit>.3)reasons.push('измерения показывают запас для улучшения этого навыка');
   if(pv>.65)reasons.push('близко к следующему уровню мастерства');
@@ -937,6 +1130,12 @@ function scoreExerciseAtTime(ex,ts){
 }
 function recommendations(ts=now()){
   return activeExercises().filter(ex=>!postponedUntil('exercise',ex.id,ts)).map(ex=>({ex,...scoreExercise(ex,ts)})).filter(x=>x.score>=0&&x.status!=='red').sort((a,b)=>b.score-a.score);
+}
+function exercisePauseReason(ex,rec,ts=now()){
+  const reason=rec.reasons[0]||'';
+  if(reason!=='отдых после предыдущего выполнения'&&!reason.startsWith('Перерыв после похожего теста'))return reason;
+  const until=Math.max(exerciseRestUntil(ex,ts),exerciseAfterTestUntil(ex,ts));
+  return `${reason==='отдых после предыдущего выполнения'?'Перерыв между выполнениями':'Перерыв после похожего теста'} — не раньше ${fmtTime(until)}${startOfDay(until,0)!==startOfDay(ts,0)?' '+fmtDate(until):''}`;
 }
 function overlapsTest(t,channels){return t.preparation_channels.some(k=>(channels?.[k]||0)>=.25);}
 function testPreparationUntil(t,ts=now()){
@@ -1003,7 +1202,8 @@ function feedbackRecommendation(ts=now()){
   if(day!=null)return {kind:'feedback',mode:'morning',id:day,name:'Оценить восстановление после вчерашней нагрузки',detail:'Одна общая оценка за день',status:'green',score:1,reasons:['Оценки сразу после упражнений известны; нужна отложенная реакция для выбора сегодняшнего объёма.']};
   const current=currentSymptoms(ts);
   const session=state.assessment_sessions.findLast(s=>s.reaction_at<=ts&&startOfDay(s.reaction_at)===startOfDay(ts)&&s.pain_after!=null);
-  if(activeExercises().some(ex=>dailyLoadPlan(ex,ts).needsFeedback))return {kind:'feedback',mode:'current',id:'current',name:'Оценить самочувствие после нагрузки',detail:'Как лодыжка в целом после комплекса',status:'green',score:1,reasons:['После облегчённого выполнения нужна общая оценка восстановления перед следующей нагрузкой.']};
+  const feedback=activeExercises().map(ex=>dailyLoadPlan(ex,ts)).find(plan=>plan.needsFeedback);
+  if(feedback)return {kind:'feedback',mode:'current',id:'current',name:'Оценить самочувствие после нагрузки',detail:'Как лодыжка в целом после комплекса',status:'green',score:1,reasons:[feedback.reason]};
   if((!current||startOfDay(current.ts)<startOfDay(ts))&&!session)return {kind:'feedback',mode:'current',id:'current',name:'Оценить самочувствие перед нагрузкой',detail:'Боль, устойчивость и усталость сейчас',status:'green',score:1,reasons:['Сегодня ещё нет оценки самочувствия. Оценка после выполнения упражнения тоже подойдёт.']};
   return null;
 }
@@ -1014,7 +1214,7 @@ function openFeedback(mode,id){
 }
 function actionRecommendations(ts=now()){
   const order={green:0,yellow:1,red:2};
-  const priority=r=>r.kind==='exercise'&&r.ex.source==='clinician_home'&&dailyDeficit(r.ex,ts)>0?0:r.kind==='test'?1:r.extraRound?2:3;
+  const priority=r=>r.kind==='exercise'&&r.ex.source==='clinician_home'&&dailyDeficit(r.ex,ts)>0?0:r.kind==='test'?1:r.extraRound?3:2;
   const actions=[...recommendations(ts).map(r=>({...r,kind:'exercise'})),...testRecommendations(ts).slice(0,1)]
     .sort((a,b)=>priority(a)-priority(b)||order[a.status]-order[b.status]||b.score-a.score);
   const testIndex=actions.findIndex(r=>r.kind==='test');
@@ -1163,6 +1363,20 @@ function pendingChecks(){
 }
 function addXp(ex,log){
   if(!isSuccessful(log))return;
+  if(log.additionalPlanId&&log.additionalPlanId===state.additionalPlan?.id){
+    const plan=state.additionalPlan,target=doseVolume(plan.targets[ex.id]),logs=state.logs.filter(l=>l.additionalPlanId===log.additionalPlanId&&l.exerciseId===ex.id&&l.ts<=log.ts).sort((a,b)=>a.ts-b.ts);
+    plan.xpLimits??={};
+    if(plan.xpLimits[ex.id]==null){
+      const skills=Object.keys(ex.skill_credit||{}),earlier=state.logs.filter(l=>l.ts<=log.ts&&startOfDay(l.ts)===startOfDay(log.ts)&&isSuccessful(l)&&!(l.additionalPlanId===plan.id&&l.exerciseId===ex.id));
+      const count=new Set(earlier.filter(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{}).some(skill=>skills.includes(skill))).map(l=>l.additionalPlanId?l.additionalPlanId+':'+l.exerciseId:l.id)).size;
+      plan.xpLimits[ex.id]=APP.gamification.xp.base_per_useful_dose*(APP.gamification.xp.same_skill_daily_multipliers[Math.min(count,APP.gamification.xp.same_skill_daily_multipliers.length-1)]??.15);
+    }
+    let used=0,useful=0;
+    for(const item of logs){const volume=item.actualDose?doseVolume(item.actualDose):target;if(isSuccessful(item))useful+=Math.max(0,Math.min(volume,target-used));used+=volume;}
+    const credited=logs.filter(l=>l.id!==log.id).reduce((sum,l)=>sum+(l.additionalPlanXp||0),0);
+    log.additionalPlanXp=Math.max(0,Math.round(plan.xpLimits[ex.id]*clamp(useful/target))-credited);
+    state.xp=(state.xp||0)+log.additionalPlanXp;return;
+  }
   const skills=Object.keys(ex.skill_credit||{}),today=logsToday().filter(l=>l.id!==log.id&&isSuccessful(l));
   const count=today.filter(l=>Object.keys(EXMAP[l.exerciseId]?.skill_credit||{}).some(s=>skills.includes(s))).length;
   const mult=APP.gamification.xp.same_skill_daily_multipliers[Math.min(count,APP.gamification.xp.same_skill_daily_multipliers.length-1)]??.15;
@@ -1192,18 +1406,20 @@ function closeDialog(id){
 function noRecommendationHTML(ts=now()){
   const active=activeExercises(),scored=active.filter(ex=>!postponedUntil('exercise',ex.id,ts)).map(ex=>({ex,...scoreExercise(ex,ts)}));
   const waiting=scored.filter(r=>r.score<0&&r.reasons.some(reason=>reason==='отдых после предыдущего выполнения'||reason.startsWith('Перерыв после похожего теста'))).map(r=>({...r,until:Math.max(exerciseRestUntil(r.ex,ts),exerciseAfterTestUntil(r.ex,ts))}));
-  const pauses=[...new Set(scored.filter(r=>dailyLoadPlan(r.ex,ts).status==='pause').map(r=>dailyLoadPlan(r.ex,ts).reason))];
+  const loadPlans=scored.map(r=>dailyLoadPlan(r.ex,ts));
+  const pauses=[...new Set(loadPlans.filter(plan=>plan.status==='pause').map(plan=>plan.reason))];
   const current=currentSymptoms(ts),adverse=current&&(responseLevel(current)!=='normal'||current.fatigue==='high'||current.generalFatigue==='high');
   const plan=dailyPlan(ts),counts=planCounts(ts),groups=Object.keys(plan.targets);
   const complete=groups.length&&groups.every(g=>counts[g]>=dailyTarget(EX.find(ex=>ex.prescription_credit?.group===g),ts));
   const rangeComplete=complete&&groups.every(g=>prescriptionCounts(ts)[g]>=APP.program.prescription_groups[g]?.max_per_day);
-  if(complete&&!adverse&&!safetyFlag(ts)&&!waiting.length&&!pauses.length)
-    return `<span class="best-label">План дня выполнен</span><div class="rec-name">Сейчас дополнительных рекомендаций нет</div><div class="reason">${rangeComplete?'Назначенный диапазон 3–4 выполнен. Дальнейшие выполнения можно записать через каталог.':'Минимальная цель закрыта. Дополнительное выполнение в назначенном диапазоне 3–4 предлагается с учётом перерывов, переносимости и запланированного измерения.'}</div><div class="rec-actions"><button class="btn secondary" onclick="AM.openSymptoms()">Отметить самочувствие</button></div>`;
+  const additional=autoAdditionalPlan(ts),sessionEnded=complete&&additional.status==='waiting'&&state.additionalPlan?.endedReason;
   if(!scored.length&&!adverse&&Object.values(state.postponedActions).some(until=>until>ts))return '<div class="empty">Сейчас нет рекомендаций. Есть отложенные действия — их можно вернуть ниже.</div>';
   const reasons=[];
+  if(complete&&additional.status==='waiting')reasons.push(additional.reason);
   if(current&&!adverse)reasons.push(`Последняя отметка: ${steadinessNames[current.steadiness].toLowerCase()}, боль ${current.pain}/10. Перерывы и уже выполненная нагрузка продолжают учитываться.`);
   if(adverse)reasons.push(`Последняя отметка: ${steadinessNames[current.steadiness].toLowerCase()}, боль ${current.pain}/10${current.fatigue==='high'?', сильная усталость':''}${current.generalFatigue==='high'?', сильная общая усталость':''}${current.swelling?', отёк':''}. Тесты ждут нормальной реакции.`);
   reasons.push(...pauses);
+  if(rangeComplete)reasons.push('Назначенный диапазон 3–4 выполнен. Дальнейшие выполнения можно записать через каталог.');
   if(!waiting.length&&!pauses.length)reasons.push(...[...new Set(scored.filter(r=>r.score<0||r.status==='red').map(r=>r.reasons[0]))].slice(0,2));
   if(waiting.length){
     reasons.push(...waiting.slice(0,2).map(r=>{
@@ -1213,8 +1429,9 @@ function noRecommendationHTML(ts=now()){
   }
   if(!reasons.length)reasons.push(active.length?'Сейчас нет подходящих действий. Отдохни и отметь реакцию после нагрузки.':'Добавь доступное упражнение в программу через каталог.');
   const next=waiting.sort((a,b)=>a.until-b.until)[0];
-  const summary=pauses[0]||(adverse?reasons[0]:waiting.length?'Выдерживаем перерыв между выполнениями.':reasons[0]);
-  return `<span class="best-label">${complete?'План дня выполнен':'Пауза в плане'}</span><div class="rec-name">${active.length?'Сейчас восстановление':'Нет активных упражнений'}</div><div class="reason">${esc(summary)}</div>${next?`<div class="next-window"><span>Ближайший повтор — не раньше</span><strong>${fmtTime(next.until)}${startOfDay(next.until,0)!==startOfDay(ts,0)?' '+fmtDate(next.until):''}</strong><div class="li-meta">${esc(next.ex.name)}</div></div>`:''}<div class="rec-actions"><button class="btn secondary" onclick="AM.openSymptoms()">Отметить самочувствие</button></div><details class="recommend-details"><summary>Почему пауза?</summary>${reasons.map(r=>`<div class="reason">${esc(r)}</div>`).join('')}</details>`;
+  const summary=pauses[0]||(adverse?reasons.find(r=>r.startsWith('Последняя отметка')):complete&&additional.status==='waiting'&&(!waiting.length||sessionEnded)?additional.reason:waiting.length?'Выдерживаем перерыв между выполнениями.':scored.find(r=>r.score<0||r.status==='red')?.reasons[0]||reasons[0]);
+  const title=!active.length?'Нет активных упражнений':adverse||loadPlans.some(plan=>plan.status==='pause'&&!plan.needsFeedback)?'Сейчас восстановление':pauses.length?'Нужна оценка самочувствия':sessionEnded?'Дополнительное занятие закончено':waiting.length?'Перерыв между выполнениями':'Сейчас дополнительных рекомендаций нет';
+  return `<span class="best-label">${complete?'План дня выполнен':'Пауза в плане'}</span><div class="rec-name">${title}</div><div class="reason">${esc(summary)}</div>${next?`<div class="next-window"><span>Ближайший повтор — не раньше</span><strong>${fmtTime(next.until)}${startOfDay(next.until,0)!==startOfDay(ts,0)?' '+fmtDate(next.until):''}</strong><div class="li-meta">${esc(next.ex.name)}</div></div>`:''}${adverse||pauses.length?'<div class="rec-actions"><button class="btn secondary" onclick="AM.openSymptoms()">Отметить самочувствие</button></div>':''}<details class="recommend-details"><summary>Подробнее</summary>${reasons.map(r=>`<div class="reason">${esc(r)}</div>`).join('')}</details>`;
 }
 
 let dayBoundaryTimer=null;
@@ -1251,6 +1468,7 @@ function renderHome(){
       ${best.kind==='feedback'?'':`<details class="recommend-details"><summary>Подробнее о рекомендации</summary>${best.reasons.slice(1).map(r=>`<div class="reason">${esc(r)}</div>`).join('')}${best.kind==='test'?best.latest?'<div class="li-meta">Последний результат: '+esc(resultText(best.test,best.latest))+'</div>':'':`<div class="tags">${(best.ex.primary_skills||[]).slice(0,3).map(s=>`<span class="tag">${esc(skillLabels[s]||fatigueLabels[s]||s)}</span>`).join('')}</div>`}</details>`}`;
   }else bestEl.innerHTML=noRecommendationHTML();
   renderPostponed(best);
+  renderAdditionalPlan();
 
   document.getElementById('otherOptions').hidden=recs.length<2;
   const list=document.getElementById('recommendations'); list.innerHTML='';
@@ -1269,6 +1487,11 @@ function renderHome(){
         <span class="pill ${r.status}">${esc(delay)}</span>
       </div>`);
   });
+
+  const excluded=activeExercises().filter(ex=>!postponedUntil('exercise',ex.id)).map(ex=>({ex,...scoreExercise(ex)})).filter(r=>r.score<0||r.status==='red');
+  document.getElementById('excludedExercises').hidden=!excluded.length;
+  document.getElementById('excludedExercisesSummary').textContent=`Почему не сейчас? · ${excluded.length}`;
+  document.getElementById('excludedExerciseList').innerHTML=excluded.map(r=>`<button type="button" class="list-item" style="color:inherit;text-align:left" onclick="AM.openExercise('${r.ex.id}')"><span class="li-main"><span class="li-title">${esc(r.ex.name)}</span><span class="li-meta" style="display:block">${esc(exercisePauseReason(r.ex,r))}</span></span><span aria-hidden="true">›</span></button>`).join('');
 
   const counts=planCounts(), grid=document.getElementById('dailyGrid');grid.innerHTML='';
   let closed=0,total=0;
@@ -1308,12 +1531,13 @@ function renderExercises(){
   const list=document.getElementById('exerciseList');list.innerHTML='';
   if(!items.length)list.innerHTML='<div class="empty">Ничего нет.</div>';
   items.forEach(ex=>{
-    const st=state.exerciseStatuses[ex.id], m=exerciseMastery(ex), tr=scoreExercise(ex);
+    const st=state.exerciseStatuses[ex.id], m=exerciseMastery(ex), tr=scoreExercise(ex),until=postponedUntil('exercise',ex.id);
     list.insertAdjacentHTML('beforeend',`
       <div class="list-item exercise-card" onclick="AM.openExercise('${ex.id}')">
         <div class="li-main"><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><div class="li-title">${esc(ex.name)}</div>
-          <div class="li-meta">${esc(doseText(ex,suggestedDose(ex).dose))}${st==='active'?' · '+(tr.status==='green'?'можно сейчас':tr.status==='yellow'?'с учётом самочувствия':'пауза'):''}</div>
-          ${postponedUntil('exercise',ex.id)?`<div class="li-meta">Отложено до ${fmtDate(postponedUntil('exercise',ex.id))} ${fmtTime(postponedUntil('exercise',ex.id))}</div>`:''}
+          <div class="li-meta">${esc(doseText(ex,recommendedDose(ex).dose))}${st==='active'?' · '+(until?'отложено':tr.score<0||tr.status==='red'?'пока не предлагается':tr.status==='green'?'можно сейчас':'с учётом самочувствия'):''}</div>
+          ${st==='active'&&!until&&(tr.score<0||tr.status==='red')?`<div class="li-meta">${esc(exercisePauseReason(ex,tr))}</div>`:''}
+          ${until?`<div class="li-meta">Отложено до ${fmtDate(until)} ${fmtTime(until)}</div>`:''}
           ${m==null?'':`<div class="mastery-label">${exerciseProgress(ex).confirmedDays}/3 подтверждений в разные дни</div>`}
         </div><div><span class="tier">${ex.tier==='FUTURE'?'Позже':'Уровень '+esc(ex.tier||'—')}</span><div class="pill" style="margin-top:8px">${esc(statusLabels[st]||'Статус неизвестен')}</div></div>
       </div>`);
@@ -1427,7 +1651,7 @@ function chooseFatigue(button){
   document.querySelectorAll('#assessmentFatigue button').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',b===button);});
 }
 function completeAssessment(s,response,ts=now()){
-  Object.assign(s,response,{completed_at:s.completed_at||ts,reaction_at:ts});recalculateSession(s);
+  Object.assign(s,response,{completed_at:s.completed_at||ts,reaction_at:ts});recalculateSession(s);settleAdditionalPlan(ts);
 }
 function saveAssessment(id){
   const s=state.assessment_sessions.find(s=>s.id===id),button=document.querySelector('#assessmentFatigue .selected');
@@ -1451,6 +1675,7 @@ function saveAssessmentCheck(id){
   const s=state.assessment_sessions.find(s=>s.id===id),same=document.getElementById('assessmentSameDay').value,next=document.getElementById('assessmentNextDay').value;
   if(!s||!same||!next)return toast('Отметь обе реакции');
   Object.assign(s,{same_day_response:same,next_day_response:next,reaction_at:now()});
+  settleAdditionalPlan(now());
   closeDialog('checkDialog');save();toast(next==='worse'||same==='worse'?'Реакция учтена: похожая нагрузка снижена':'Реакция сохранена');
 }
 function selfReportDue(){
@@ -1494,21 +1719,21 @@ function renderAll(){
 function openExercise(id){
   const ex=EXMAP[id]; if(!ex)return; const st=state.exerciseStatuses[id],m=exerciseMastery(ex),rec=scoreExercise(ex);
   const until=postponedUntil('exercise',id);
-  const suggested=suggestedDose(ex),variant=nextVariant(ex);
+  const suggested=recommendedDose(ex),variant=nextVariant(ex);
   const statusActions = st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:
                         st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
   document.getElementById('exerciseModal').innerHTML=`
     <div class="modal-head"><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('exerciseDialog')">×</button></div>
     <div class="notice"><b>Сейчас: ${esc(doseText(ex,suggested.dose))}</b><br>${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}</div>
+    ${until?`<div class="notice" style="margin-top:12px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:''}
     <div style="margin-top:14px">${(ex.instructions||[]).map((x,i)=>`<div class="kv"><span>${i+1}. ${esc(x)}</span></div>`).join('')}</div>
     ${m==null?'':`<div style="margin-top:14px"><b>${suggested.confirmedDays}/3 подтверждений в разные дни</b><div class="li-meta">Учитываем качество и реакцию следующим утром.</div></div>`}
     ${variant?`<div class="notice" style="margin-top:12px"><b>Следующий вариант: ${esc(variant.ex.name)}</b><p>Базовый вариант освоен по качеству. Объём нового варианта уточняется отдельно; оба варианта делят дневную цель.</p>${variant.after>now()?`<div>Перерыв перед проверкой — не раньше ${fmtTime(variant.after)}.</div>`:variant.test?`<button class="btn secondary" onclick="AM.close('exerciseDialog');AM.openTest('${variant.test.id}')">Проверить следующий вариант</button>`:''}</div>`:''}
     ${suggested.evidence?`<div class="notice" style="margin-top:12px"><b>Тест этого варианта: ${suggested.evidence.capacity} ${esc(suggested.evidence.test.unit_short)}</b> · ${fmtDate(suggested.evidence.log.ts)}<div class="li-meta">${suggested.evidence.capacity===testCap(suggested.evidence.test)?'Достигнута граница теста; максимум неизвестен. ':''}Трудность: ${esc({easy:'легко',normal:'посильно',hard:'тяжело',unknown:'не отмечена'}[suggested.evidence.log.difficulty||'unknown'])}.</div>${suggested.evidence.log.difficulty==null||suggested.evidence.log.difficulty==='unknown'||suggested.evidence.log.stop_reason==null||suggested.evidence.log.stop_reason==='unknown'?'<p>Для перехода к следующему варианту уточни, как дался уже выполненный тест и почему ты его завершил. Повторять тест для исправления записи не нужно.</p>':''}${suggested.doseFromTest?'<p>Результат ниже рабочего объёма: предложение уменьшено до половины результата. Это осторожный ориентир приложения; дальше проверяем переносимость.</p>':'<p>Высокий результат не увеличивает дневную дозу автоматически. Повышение предлагаем отдельным небольшим шагом по обычным выполнениям и восстановлению.</p>'}<button class="btn ghost" onclick="AM.close('exerciseDialog');AM.openTest('${suggested.evidence.test.id}','${suggested.evidence.log.id}')">Уточнить запись теста</button></div>`:''}
     ${suggested.trial?`<div class="notice" style="margin-top:12px"><b>Пробный шаг: ${esc(doseText(ex,suggested.trial))}</b><div class="li-meta">${Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)>0?'Изменение объёма: +'+Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)+'%.':'Меняется сложность варианта; численный объём прежний.'} Проверим переносимость после выполнения.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.close('exerciseDialog');AM.openLog('${id}',true)">Попробовать этот шаг</button></div>`:''}
-    ${st==='active'?`<div class="reason"><b>Сейчас:</b> ${esc(rec.reasons.join(' · '))}</div>`:''}
+    ${st==='active'&&!until?`<div class="reason"><b>${rec.score<0||rec.status==='red'?'Почему сейчас не предлагается':'Почему предлагается'}:</b> ${esc(rec.score<0||rec.status==='red'?exercisePauseReason(ex,rec):rec.reasons.join(' · '))}</div>`:''}
     <div class="source-badge">${esc(sourceLabels[ex.source]||ex.source)}</div>
-    ${until?`<div class="notice" style="margin-top:12px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:''}
-    <div class="modal-actions">${st==='active'?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>`:''}${statusActions}</div>`;
+    <div class="modal-actions">${st==='active'?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>${unprescribedFrequency(ex)?'<button class="btn secondary" onclick="AM.close(\'exerciseDialog\');AM.openAdditionalPlan()">Дополнительное занятие</button>':''}`:''}${statusActions}</div>`;
   showDialog('exerciseDialog');
 }
 let suggestedForLog=null;
@@ -1518,9 +1743,12 @@ function steadinessField(id,value='steady'){
 }
 function openLog(id,useTrial=false){
   const ex=EXMAP[id];if(!ex)return;
-  const plan=suggestedDose(ex),dose=useTrial===true&&plan.trial?plan.trial:plan.dose;
+  const plan=recommendedDose(ex),dose=useTrial===true&&plan.trial?plan.trial:plan.dose;
   const previous=exerciseProgress(ex).logs.slice(-1)[0]?.doseReason;
   suggestedForLog={id,dose,kind:useTrial===true&&plan.trial?'trial':plan.status==='light'?'daily_load':plan.doseFromTest?'test':!sameDose(dose,plan.working)&&['trial','calibration','test'].includes(previous)?previous:sameDose(dose,plan.working)?'capacity':'recovery'};
+  const entry=unprescribedFrequency(ex)&&additionalPlanState(ex);
+  suggestedForLog.additionalPreview=entry?.automaticPreview||null;
+  if(useTrial!==true&&plan.status==='normal'&&entry?.used>0&&sameDose(dose,entry.dose))suggestedForLog.kind='planned_remainder';
   const option=doseOptions[id];
   document.getElementById('logModal').innerHTML=`
     <div class="modal-head"><div><div class="source">${useTrial===true?'Пробный шаг':'Запись выполнения'}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
@@ -1530,13 +1758,13 @@ function openLog(id,useTrial=false){
     ${option?`<div class="field"><label for="doseOption">${option.label}</label><select id="doseOption" onchange="AM.doseChanged()">${option.values.map(([v,n])=>`<option value="${v}" ${v===(dose[option.key]||option.values[0][0])?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
     <div class="field"><label for="difficultySel">Как дался объём?</label><select id="difficultySel"><option value="">Выбери</option><option value="normal">Посильно</option><option value="easy">Легко, есть запас</option><option value="hard">Тяжело, без запаса</option></select></div>
     <div class="field"><label for="techSel">Качество движений</label><select id="techSel"><option value="">Выбери</option><option value="good">Хорошее</option><option value="ok">Приемлемое</option><option value="poor">Терял контроль</option></select></div>
-      <div class="field" id="volumeReason" style="display:none"><label for="doseReason">Почему выбран такой объём?</label><select id="doseReason">${[['capacity','Подходит моим возможностям'],['daily_load','Меньше из-за общей нагрузки сегодня'],['time','Не хватило времени'],['recovery','Облегчение после реакции'],['trial','Пробую следующий шаг'],['test','Объём по результату теста'],...(suggestedForLog.kind==='calibration'?[['calibration','Объём по результату теста']]:[])].map(([v,n])=>`<option value="${v}" ${v===suggestedForLog.kind?'selected':''}>${n}</option>`).join('')}</select></div>
+      <div class="field" id="volumeReason" style="display:none"><label for="doseReason">Почему выбран такой объём?</label><select id="doseReason">${[['capacity','Подходит моим возможностям'],['daily_load','Меньше из-за общей нагрузки сегодня'],['time','Не хватило времени'],['recovery','Облегчение после реакции'],['trial','Пробую следующий шаг'],['test','Объём по результату теста'],...(suggestedForLog.kind==='planned_remainder'?[['planned_remainder','Остаток выбранного занятия']]:[]),...(suggestedForLog.kind==='calibration'?[['calibration','Объём по результату теста']]:[])].map(([v,n])=>`<option value="${v}" ${v===suggestedForLog.kind?'selected':''}>${n}</option>`).join('')}</select></div>
     <details open><summary>Самочувствие после выполнения</summary>
       <div class="field"><label for="painBefore">Боль до упражнения, 0–10</label><input id="painBefore" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
       <div class="field"><label for="painDuring">Боль во время, 0–10</label><input id="painDuring" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
-      <div class="field"><label for="painAfter">Боль сразу после, 0–10</label><input id="painAfter" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
+      <div class="field"><label for="painAfter">Боль сейчас после всех нагрузок, 0–10</label><input id="painAfter" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
       ${steadinessField('logSteadiness',currentSymptoms()?.steadiness||'steady')}
-      <div class="field"><label for="fatigueSel">Местная усталость голеностопа / икр после</label><select id="fatigueSel"><option value="low">Лёгкая</option><option value="medium">Умеренная</option><option value="high">Сильная</option></select></div>
+      <div class="field"><label for="fatigueSel">Местная усталость голеностопа / икр сейчас</label><select id="fatigueSel">${['low','medium','high'].map(k=>`<option value="${k}" ${k===(currentSymptoms()?.fatigue||'low')?'selected':''}>${fatigueNames[k]}</option>`).join('')}</select></div>
       <label class="notice"><input type="checkbox" id="outerPain"> Боль у наружной лодыжки</label>
       <label class="notice" style="display:block;margin-top:10px"><input type="checkbox" id="swelling" ${currentSymptoms()?.swelling?'checked':''}> Новый/усилившийся отёк</label>
 
@@ -1563,10 +1791,11 @@ function saveLog(id){
   try{log=recordExercise(id,dose,{
     painBefore:pains[0],painDuring:pains[1],painAfter:pains[2],doseReason:document.getElementById('doseReason').value||suggestedForLog?.kind||'capacity',
     fatigue:document.getElementById('fatigueSel').value,technique:document.getElementById('techSel').value,
+    symptomScope:'combined',
     phase:'after',difficulty:document.getElementById('difficultySel').value,steadiness,instability:steadiness==='giving_way',
     localOuterAnklePain:document.getElementById('outerPain').checked,
     swelling:document.getElementById('swelling').checked,comment:document.getElementById('comment').value.trim()
-  },now(),suggestedForLog?.id===id?suggestedForLog.dose:suggestedDose(ex).dose);}catch(e){return toast(e.message);}
+  },now(),suggestedForLog?.id===id?suggestedForLog.dose:suggestedDose(ex).dose,suggestedForLog?.additionalPreview);}catch(e){return toast(e.message);}
   closeDialog('logDialog');save();
   toast(responseLevel(exerciseResponse(log))!=='normal'?'Записано. Следующая нагрузка адаптирована.':'Фактический объём записан ✓');
 }
@@ -1595,7 +1824,7 @@ function recordSymptoms(response,context='unknown',ts=now()){
   if(!Number.isFinite(response.pain)||response.pain<0||response.pain>10)throw new Error('Укажи боль от 0 до 10');
   const l=state.logs.find(x=>x.id===context),r={id:makeId('r'),ts,...response,phase:response.phase||'current',context:l?'exercise':context,logId:l?.id||null};
   r.worse=response.response==='worse'||response.worse===true;
-  state.symptomReports.push(r);return r;
+  state.symptomReports.push(r);settleAdditionalPlan(ts);return r;
 }
 function saveSymptoms(){
   const minutes=Number(document.getElementById('symptomMinutes').value);
@@ -1741,7 +1970,7 @@ function saveCheck(id){
   const c=state.delayedChecks.find(x=>x.id===id);if(c)openMorning(startOfDay(c.createdAt));
 }
 function activateExercise(id){state.exerciseStatuses[id]='active';closeDialog('exerciseDialog');save();toast('Упражнение добавлено в программу');}
-function archiveExercise(id){state.exerciseStatuses[id]='archived';closeDialog('exerciseDialog');save();toast('Упражнение убрано из активных');}
+function archiveExercise(id){state.exerciseStatuses[id]='archived';settleAdditionalPlan(now());closeDialog('exerciseDialog');save();toast('Упражнение убрано из активных');}
 
 function stageTransition(targetId,ts=now()){
   const target=RDCFG.stages.find(x=>x.id===targetId);
@@ -1826,6 +2055,7 @@ setupTabs();
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',restorePageScroll));
 
 window.AM={
+  openAdditionalPlan,closeAdditionalPlan,
   openFeedback,openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,
   openPostpone,postponeAction,resumeAction,
   openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,deleteTest,openCheck,saveCheck,
