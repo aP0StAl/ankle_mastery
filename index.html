@@ -78,9 +78,45 @@
     .tabbar{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(980px,100%);z-index:30;background:rgba(8,18,29,.96);backdrop-filter:blur(18px);border-top:1px solid #203648;padding:8px max(10px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr)}
     .tab{border:0;background:transparent;color:#7e93a5;font-size:10px;padding:7px 4px;border-radius:12px}.tab b{display:block;font-size:20px;margin-bottom:2px}.tab.active{color:#67b8ff;background:#102336}
     .filters{display:flex;gap:7px;overflow:auto;padding-bottom:3px}.filter{border:1px solid var(--line);background:var(--card);color:#b8c8d3;padding:8px 12px;border-radius:999px;white-space:nowrap;font-size:12px}.filter.active{background:#dcefff;color:#102536}
-    .exercise-card{display:grid;grid-template-columns:1fr auto;gap:10px}.source{font-size:10px;color:#8da1b0}.tier{font-size:11px;font-weight:800;padding:4px 7px;border-radius:8px;background:#1b3143;color:#c8dce8}
+    .source{font-size:10px;color:#8da1b0}
+    .catalog-intro{color:var(--muted);font-size:13px;line-height:1.5;margin:0 2px 18px}
+    .exercise-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 12px;margin-top:18px}
+    .exercise-tile{border:0;background:none;color:var(--text);padding:0;text-align:left;min-width:0;align-self:start}
+    .exercise-picture{display:flex;position:relative;align-items:center;justify-content:center;aspect-ratio:1;border-radius:22px;border:1px solid #294354;background:radial-gradient(ellipse at 65% 25%,color-mix(in srgb,var(--exercise-color) 13%,transparent),transparent 80%),#112332;overflow:hidden;transition:transform .18s,border-color .18s}
+    .exercise-picture svg{width:85%;height:85%;color:var(--exercise-color)}
+    .exercise-tile:hover .exercise-picture{border-color:var(--exercise-color);transform:translateY(-3px)}
+    .exercise-tile:focus-visible{outline:2px solid var(--blue);outline-offset:6px;border-radius:18px}
+    .exercise-tile[data-lifecycle="locked"] .exercise-picture,.exercise-tile[data-lifecycle="archived"] .exercise-picture{background:#11202d;border-style:dashed}
+    .tile-mark{position:absolute;right:9px;top:9px;width:23px;height:23px;display:grid;place-items:center;border-radius:8px;background:#0a1927;color:var(--muted);font-size:12px}
+    .tile-name{display:block;font-size:13px;font-weight:700;line-height:1.35;margin:9px 2px 0;overflow-wrap:anywhere}
+    .tile-status{display:flex;align-items:center;gap:5px;font-size:10px;line-height:1.4;color:var(--muted);margin:5px 2px 0}
+    .tile-status i{width:5px;height:5px;border-radius:50%;background:currentColor;flex:0 0 auto}.tile-status.green{color:#78dcb1}.tile-status.yellow{color:#e6c57f}
+    .exercise-grid>.empty{grid-column:1/-1}
+    #exerciseDialog{width:min(640px,calc(100% - 20px));max-width:calc(100% - 20px)}#exerciseModal{padding:0}
+    .exercise-detail-head{display:grid;grid-template-columns:68px minmax(0,1fr);position:relative;gap:14px;align-items:center;padding:20px 20px 16px}.exercise-detail-head .exercise-picture{width:68px;border-radius:18px}
+    .exercise-detail-head h3{font-size:19px;line-height:1.3;margin:8px 0 0}.exercise-detail-head .x{position:absolute;top:14px;right:14px;min-width:44px;min-height:44px}
+    .exercise-detail-head .source{line-height:1.4;padding-right:36px;min-height:36px}.exercise-overview{padding:0 20px 16px}.exercise-dose{font-size:17px;font-weight:800;margin-bottom:6px}
+    .exercise-overview .li-meta{font-size:12px;line-height:1.5}.exercise-state{margin:12px 0 0;font-size:12px;line-height:1.5;color:#c5d6e1}
+    .exercise-tabs{display:flex;gap:22px;padding:0 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0c1926;z-index:2}
+    .exercise-tabs button{flex:1;padding:14px 0;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font-weight:700;font-size:13px}
+    .exercise-tabs button[aria-selected="true"]{border-bottom-color:var(--green);color:var(--green)}
+    .exercise-panel{padding:20px}.exercise-panel[hidden]{display:none}.exercise-panel h4{font-size:15px;margin:0 0 13px}.exercise-panel p{font-size:13px;line-height:1.6;color:#bdd0dd}.exercise-panel p.source{font-size:11px;line-height:1.5;color:var(--muted)}
+    .technique-steps{list-style:none;counter-reset:step;margin:0;padding:0}.technique-steps li{counter-increment:step;position:relative;padding:0 0 18px 38px;font-size:13px;line-height:1.6;color:#d2dee7}
+    .technique-steps li:before{content:counter(step,decimal-leading-zero);position:absolute;left:0;top:0;color:#72ccac;font-size:11px;font-weight:800;background:#16332f;border-radius:9px;width:26px;height:26px;display:grid;place-items:center}
+    .exercise-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.exercise-fact{min-width:0;overflow-wrap:anywhere;padding:12px;border:1px solid var(--line);border-radius:13px;font-size:12px;color:var(--muted);line-height:1.5}.exercise-fact b{display:block;color:var(--text);font-size:14px;margin-top:3px}
+    .exercise-rules{border-top:1px solid var(--line);padding-top:6px}.exercise-rules summary{padding:8px 0;min-height:44px}.exercise-rules .kv{grid-template-columns:minmax(0,1fr);line-height:1.5;margin:12px 0}
+    .exercise-footer{position:sticky;bottom:0;background:#0c1926;border-top:1px solid var(--line);padding:12px 20px max(12px,env(safe-area-inset-bottom));display:flex;gap:8px;z-index:3}.exercise-footer .btn{min-height:46px;flex:1;font-size:13px}.exercise-footer:empty{display:none}
+    .progress-summary{padding:16px;background:linear-gradient(135deg,#12372f,#142737);border:1px solid #2c5348;border-radius:16px}.progress-summary .exercise-dose{margin:5px 0 12px}.confirmation-days{display:flex;gap:6px;margin:12px 0 8px}.confirmation-days i{height:6px;border-radius:10px;background:#29433f;flex:1}.confirmation-days i.done{background:var(--green)}
+    .progress-checks{list-style:none;padding:0;margin:12px 0}.progress-checks li{display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.5;padding:11px 0;border-bottom:1px solid var(--line)}.check-mark{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#1c3041;color:#91a9ba;display:grid;place-items:center;font-size:12px}.check-mark.passed{background:#173d31;color:var(--green)}
+    .dose-levels{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 18px}.dose-levels span{border:1px solid var(--line);padding:6px 10px;border-radius:9px;font-size:11px;color:var(--muted)}.dose-levels span.current{color:var(--green);border-color:#367b61;background:#13362c}
+    .exercise-history-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:22px}.exercise-history-metrics b{display:block;font-size:23px;margin-bottom:4px;color:var(--text)}.exercise-history-metrics span{font-size:10px;line-height:1.4;color:var(--muted)}
+    .exercise-history-chart{height:142px;display:flex;gap:5px;align-items:flex-end;border-bottom:1px solid #345064;margin-top:14px;padding-top:18px;background:repeating-linear-gradient(0deg,transparent 0,transparent 34px,#203646 35px,transparent 36px)}.exercise-history-day{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;position:relative;border:0;padding:0;background:none}.exercise-history-day:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.exercise-history-day[aria-pressed="true"] .exercise-history-bar{outline:1px solid var(--green);outline-offset:2px}.exercise-history-bar{width:100%;min-height:3px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#75dcbd,#398c96)}.exercise-history-bar.empty-day{background:#1b3040}
+    .exercise-chart-caption{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:8px}.exercise-calendar{display:flex;gap:5px;margin:14px 0 8px}.exercise-calendar span{flex:1;aspect-ratio:1;max-height:26px;border-radius:5px;background:#1b3040}.exercise-calendar .trained{background:#398c75}.exercise-calendar .pending{background:#527d9b}.exercise-calendar .reaction{background:#ceaa60}.exercise-calendar .today{outline:1px solid #9db8c7;outline-offset:2px}
+    .exercise-entry{border-top:1px solid var(--line);padding:13px 0}.exercise-entry-head{display:flex;justify-content:space-between;gap:8px;font-size:12px}.exercise-entry .li-meta{line-height:1.6;font-size:11px}.exercise-entry .btn{margin-top:8px;min-height:40px;font-size:11px;padding:8px 10px}.exercise-history-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:10px;color:var(--muted);margin:10px 0}.exercise-history-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;background:var(--blue)}
+    @media(min-width:721px){.exercise-grid{gap:26px 24px}.exercise-picture{border-radius:28px}.exercise-tile .exercise-picture svg{max-width:180px}.tile-name{font-size:15px}.tile-status{font-size:11px}}
+    @media(max-width:380px){.exercise-grid{gap:18px 9px}.tile-name{font-size:12px}.exercise-detail-head{padding:16px 14px 14px;gap:10px;grid-template-columns:52px minmax(0,1fr)}.exercise-detail-head h3{font-size:17px}.exercise-detail-head .exercise-picture{width:52px}.exercise-overview,.exercise-panel{padding-left:16px;padding-right:16px}.exercise-tabs{gap:12px;padding:0 16px}.exercise-footer{padding-left:14px;padding-right:14px}.exercise-footer .btn{padding:11px 8px}}
+    @media(prefers-reduced-motion:reduce){.exercise-picture{transition:none}}
     .progress{height:7px;background:#213543;border-radius:99px;overflow:hidden;margin-top:8px}.progress>i{display:block;height:100%;background:linear-gradient(90deg,#54e3aa,#64bfff)}
-    .mastery-label{font-size:11px;color:#9db0bd;margin-top:6px}
     .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.test-card .big{font-size:28px;font-weight:800}.test-card .muted{color:var(--muted);font-size:12px}
     .roadmap{display:grid;gap:10px}.stage-card{position:relative;padding-left:50px}.stage-card:before{content:"";position:absolute;left:21px;top:0;bottom:-10px;width:2px;background:#274052}.stage-card:last-child:before{bottom:50%}.stage-icon{position:absolute;left:8px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#173043;border:2px solid #34536a;font-size:13px}.stage-card.current .stage-icon{background:#235b4a;border-color:var(--green)}
     .chart{display:flex;align-items:flex-end;height:120px;gap:5px;padding:10px 0}.chart-col{flex:1;min-width:6px;background:linear-gradient(180deg,#64c5ff,#50dfa3);border-radius:5px 5px 2px 2px}.chart-labels{display:flex;justify-content:space-between;color:#7890a2;font-size:10px}
@@ -97,7 +133,6 @@
     .warn{background:#3a2e16;border-color:#624c1d;color:#ffe2a2}.bad{background:#39202a;border-color:#63313f;color:#ffc0ca}
     .toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);opacity:0;transition:.25s;background:#142b3c;border:1px solid #345066;color:#edf6fb;padding:11px 14px;border-radius:12px;z-index:100;pointer-events:none;max-width:90%;text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
     .kv{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:12px;margin:8px 0}.muted{color:var(--muted)}
-    .source-badge{display:inline-block;margin-top:7px;font-size:10px;padding:4px 6px;border-radius:7px;background:#1b3140;color:#a9bdca}
     .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .test-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
     .test-actions .btn{font-size:12px;padding:10px 12px}
@@ -176,8 +211,9 @@
 
     <section id="screen-exercises" class="screen">
       <div class="section-title"><h2>Упражнения</h2><small id="activeExerciseCount"></small></div>
+      <p class="catalog-intro">Выбери движение. Внутри — техника, твой прогресс и история.</p>
       <div class="filters" id="exerciseFilters"></div>
-      <div class="list" id="exerciseList" style="margin-top:12px"></div>
+      <div class="exercise-grid" id="exerciseList"></div>
     </section>
 
     <section id="screen-tests" class="screen">
@@ -222,7 +258,7 @@
   <button class="tab" data-screen="settings"><b>⚙</b>Настройки</button>
 </nav>
 
-<dialog id="exerciseDialog"><div class="modal" id="exerciseModal"></div></dialog>
+<dialog id="exerciseDialog" aria-labelledby="exerciseTitle"><div class="modal" id="exerciseModal"></div></dialog>
 <dialog id="logDialog"><div class="modal" id="logModal"></div></dialog>
 <dialog id="activityDialog"><div class="modal" id="activityModal"></div></dialog>
 <dialog id="testDialog"><div class="modal" id="testModal"></div></dialog>
@@ -1522,25 +1558,60 @@ function setRing(id,valId,v,empty='0%'){
   if(v==null){el.style.setProperty('--v',0);ve.textContent=empty;}else{el.style.setProperty('--v',pct(v));ve.textContent=pct(v)+'%';}
 }
 
+const exerciseFigureHead='<circle cx="49" cy="20" r="7" fill="#a3c7e7" stroke="none"/>';
+const exerciseStanding=exerciseFigureHead+'<path d="M49 33v24m0-17L34 48m15-8 15 8"/>';
+const exerciseFloor='<path d="M19 85h62" stroke="#c3d5d9" stroke-width="2"/>';
+const exerciseTiptoe=exerciseStanding+'<path d="m49 57-10 19 5 7h8m-3-26 10 19 5 7h8"/>';
+function equipmentExerciseArt(dome,left,showSide=true){
+  return exerciseFigureHead+'<path d="m49 33 2 22m-1-15-13 11m13-11 15 8m-14 7-18 13-5 9 6 6h6m17-25 13 8 4 11 8 5h7"/>'+(dome?'<path d="M54 84a17 12 0 0 1 34 0Z" fill="#9fcfc6" stroke="#75aaa2" stroke-width="2"/>':'<path d="m54 82 33-3 1 5-33 3Z" fill="#a9b9e5" stroke="#8395c7" stroke-width="2"/><path d="m66 86 7 4 5-5" stroke="#8395c7" stroke-width="2"/>')+'<path d="m68 74 8 5h7" stroke="#a3c7e7"/>'+(showSide?'<circle cx="21" cy="25" r="9" fill="'+(left?'#dde9f2':'#d9eee5')+'" stroke="none"/><text x="21" y="29" text-anchor="middle" font-family="inherit" font-size="10" font-weight="700" fill="#436374" stroke="none">'+(left?'Л':'П')+'</text>':'')+exerciseFloor;
+}
+const exerciseVisuals={
+  towel_stretch_straight_knee:{label:'Прямая нога',color:'#78dbb4',art:'<circle cx="28" cy="28" r="7" fill="#a3c7e7" stroke="none"/><path d="m29 41 9 22h38l3-10M33 47l18 4 22 4"/><path d="m76 53-3-10-21 9" stroke="#5fa99a" stroke-width="3"/><path d="M22 76h61" stroke="#c3d5d9" stroke-width="2"/><path d="m65 35 7-1-2 7" stroke="#5fa99a" stroke-width="2"/>'},
+  towel_stretch_bent_knee:{label:'Согнутая нога',color:'#78dbb4',art:'<circle cx="27" cy="28" r="7" fill="#a3c7e7" stroke="none"/><path d="m28 41 9 23h12l14-18 13 18 5-8M32 46l20-2 24 12"/><path d="m80 56-4-10-23-2" stroke="#5fa99a" stroke-width="3"/><path d="M21 77h63" stroke="#c3d5d9" stroke-width="2"/>'},
+  bilateral_tiptoe_static:{label:'На носках',color:'#8abfff',art:exerciseTiptoe+'<path d="M23 69v-9m-4 4 4-4 4 4m50 5v-9m-4 4 4-4 4 4" stroke="#7f9bcc" stroke-width="2"/>'+exerciseFloor},
+  tandem_walk_flat:{label:'Ходьба по линии',color:'#78dbb4',art:'<path d="M49 16v70" stroke="#b5cbd0" stroke-width="2" stroke-dasharray="3 5"/><g fill="#82b6ab" stroke="none"><path d="M39 57c-4 1-5 8-3 14 2 5 7 6 10 3 3-3 2-9 0-13-2-3-4-5-7-4Z"/><path d="M55 28c4-1 6 5 5 11-1 6-5 9-9 7-4-2-4-8-3-12 1-3 4-6 7-6Z"/></g><path d="m69 50 7-8m-6 0h6v6" stroke="#a3c7e7" stroke-width="2"/>'},
+  tandem_walk_tiptoe:{label:'По линии на носках',color:'#8abfff',art:'<path d="M49 16v70" stroke="#b5cbd0" stroke-width="2" stroke-dasharray="3 5"/><g fill="#8fa9d3" stroke="none"><ellipse cx="41" cy="65" rx="7" ry="10" transform="rotate(-12 41 65)"/><ellipse cx="55" cy="35" rx="7" ry="10" transform="rotate(12 55 35)"/></g><g fill="#a3c7e7" stroke="none"><circle cx="37" cy="52" r="2"/><circle cx="42" cy="51" r="2"/><circle cx="50" cy="22" r="2"/><circle cx="55" cy="21" r="2"/></g><path d="m72 62 5-7m-6 0h6v6" stroke="#a3c7e7" stroke-width="2"/>'},
+  right_leg_balance_left_front_back:{label:'Нога вперёд и назад',color:'#b9a4f4',art:exerciseStanding+'<path d="m49 57-4 24h9m-5-24 14-9 10 13"/><path d="m49 57-14 10-11 10" stroke="#b3b1d2" stroke-dasharray="3 5" stroke-width="3"/><path d="M70 72c-12 8-25 8-37 5m5-5-5 5 5 3" stroke="#8b87b9" stroke-width="2"/>'+exerciseFloor},
+  left_side_lunge_right_leg_straight:{label:'Боковой выпад',color:'#78dbb4',art:'<circle cx="40" cy="23" r="7" fill="#a3c7e7" stroke="none"/><path d="m40 36 6 20m-3-13-16 5m16-5 17-2m-14 15-16 9-4 17h9m11-26 24 25h9"/><path d="M23 23h-8m4-4-4 4 4 4" stroke="#5fa99a" stroke-width="2"/>'+exerciseFloor},
+  slider_injured_leg_three_directions:{label:'Слайдер',color:'#8abfff',art:exerciseStanding+'<path d="m49 57-10 13 3 10h9m-2-23 17 19h9"/><ellipse cx="72" cy="81" rx="11" ry="3" fill="#aabce1" stroke="#8395c7" stroke-width="2"/><path d="M83 56v13m-4-4 4 4 4-4M64 89h15m-4-4 4 4-4 4" stroke="#8395c7" stroke-width="2"/>'+exerciseFloor},
+  hemisphere_weight_shift_injured_front:{label:'Перенос веса',color:'#b9a4f4',art:equipmentExerciseArt(true,false,false)},
+  hemisphere_weight_shift_rear_heel_up:{label:'Поднятая пятка',color:'#b9a4f4',art:equipmentExerciseArt(true,true,false)},
+  balance_board_both_tiptoe_right_front:{label:'Балансборд · правая',color:'#8abfff',art:equipmentExerciseArt(false,false)},
+  balance_board_both_tiptoe_left_front:{label:'Балансборд · левая',color:'#8abfff',art:equipmentExerciseArt(false,true)},
+  hemisphere_both_tiptoe_right_front:{label:'Полусфера · правая',color:'#78dbb4',art:equipmentExerciseArt(true,false)},
+  hemisphere_both_tiptoe_left_front:{label:'Полусфера · левая',color:'#78dbb4',art:equipmentExerciseArt(true,true)},
+  obstacle_high_knee_heel_to_toe:{label:'Перешагивания',color:'#b9a4f4',art:exerciseFigureHead+'<path d="M49 33v23m0-16-14 8m14-8 13 7m-13 9-9 26h9m0-26 17-12 8 17h9"/><path d="M60 82v-9h20v9" stroke="#a19ac9" stroke-width="3"/><path d="m65 36 7-1 2 6" stroke="#a19ac9" stroke-width="2"/>'+exerciseFloor},
+  tiptoe_sidewalk_ball_reaction:{label:'Шаги с мячом',color:'#8abfff',art:exerciseFigureHead+'<path d="M49 33v24m0-17 12-4 9 2m-21 4 9 10 14-5m-23 10-10 19 5 7h8m-3-26 10 19 5 7h8"/><circle cx="79" cy="35" r="10" fill="#abbde0" stroke="#8395c7" stroke-width="2"/><path d="m72 29 13 12m-14-6h17" stroke="#8395c7" stroke-width="1.5"/><path d="M24 55H14m4-4-4 4 4 4" stroke="#8395c7" stroke-width="2"/>'+exerciseFloor},
+  tiptoe_square_corner_lunges:{label:'К углам квадрата',color:'#78dbb4',art:'<path d="m22 34 28-10 28 10v39L50 84 22 73Z" stroke="#bad7ce" stroke-width="2" stroke-dasharray="3 5"/><g fill="#8fc2b1" stroke="none"><path d="m17 35 5-9 5 9Zm56 0 5-9 5 9ZM17 76l5-9 5 9Zm56 0 5-9 5 9Z"/></g><circle cx="47" cy="36" r="6" fill="#a3c7e7" stroke="none"/><path d="m48 48 7 13m-5-9-17 11-9 4m31-6-15 10-5 7m20-17 12 10 7 6" stroke-width="3.5"/>'},
+  tiptoe_sidewalk_cone_reach:{label:'Шаги к фишкам',color:'#b9a4f4',art:'<circle cx="43" cy="22" r="7" fill="#a3c7e7" stroke="none"/><path d="m43 35 10 23m-6-16 17 10 12 14m-28-22-17 5m22 9-15 16 4 7h8m3-23 10 18 5 5h8"/><path d="m74 78 6-13 6 13Z" fill="#b9b2d9" stroke="#9b91c2" stroke-width="2"/><path d="M22 62H12m4-4-4 4 4 4" stroke="#9b91c2" stroke-width="2"/>'+exerciseFloor},
+  sand_tiptoe_walk_or_stand:{label:'Носки на песке',color:'#e3c18e',art:exerciseTiptoe+'<path d="M16 87c7-4 12 4 19 0s12 4 19 0 12 4 19 0 9 1 12 0" stroke="#c5a982" stroke-width="2"/><g fill="#c5a982" stroke="none"><circle cx="23" cy="94" r="1.5"/><circle cx="39" cy="91" r="1"/><circle cx="58" cy="95" r="1.5"/><circle cx="77" cy="92" r="1"/></g>'},
+  single_leg_calf_raise:{label:'Подъём на одной',color:'#78dbb4',art:exerciseStanding+'<path d="m49 57-5 19 5 7h9m-9-26 16 9 6-10"/><path d="M29 73V60m-4 4 4-4 4 4" stroke="#5fa99a" stroke-width="2"/>'+exerciseFloor},
+  band_eversion:{label:'Стопа с резинкой',color:'#b9a4f4',art:'<path d="M38 20v35c0 9 8 12 14 17 4 3 8 7 12 5 5-2 3-8-1-12l-7-8V20"/><path d="m22 66 41-4 5 10-46 4Z" fill="#c5bddf" fill-opacity=".7" stroke="#9b91c2" stroke-width="2"/><path d="M20 60v22m54-36 9 6-3-7m3 7-8 2" stroke="#9b91c2" stroke-width="2"/>'+exerciseFloor},
+  hops_and_direction_changes:{label:'Прыжки и повороты',color:'#8abfff',art:'<circle cx="48" cy="17" r="7" fill="#a3c7e7" stroke="none"/><path d="m48 30 1 22m-1-15-15-7-7-9m22 16 15-7 7-9M49 52 35 63l10 9m4-20 15 10-5 11"/><path d="M27 83h13m-5-4 5 4-5 4m14-4h24m-5-4 5 4-5 4" stroke="#8395c7" stroke-width="2"/><path d="m19 63-3 7m64-7 3 7" stroke="#b4c4df" stroke-width="2"/>'},
+  single_leg_multidirectional_reach:{label:'Баланс по направлениям',color:'#b9a4f4',art:exerciseStanding+'<path d="m49 57-4 24h9m-5-24 19 13 10 1"/><path d="m49 57-21 9m21-9 12 24" stroke="#b3b1d2" stroke-width="3" stroke-dasharray="3 5"/><g fill="#a19ac9" stroke="none"><circle cx="21" cy="68" r="3"/><circle cx="64" cy="87" r="3"/><circle cx="85" cy="72" r="3"/></g>'+exerciseFloor}
+};
+function exerciseArt(ex){
+  const visual=exerciseVisuals[ex.id]||exerciseVisuals.bilateral_tiptoe_static;
+  return `<svg class="exercise-art" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${visual.art}</svg>`;
+}
+
 let exerciseFilter='active';
 function renderExercises(){
-  const filters=[['active','Активные'],['available','Доступные'],['locked','Заблокированные'],['all','Все']];
-  const f=document.getElementById('exerciseFilters');f.innerHTML=filters.map(([id,n])=>`<button class="filter ${exerciseFilter===id?'active':''}" onclick="AM.setExerciseFilter('${id}')">${n}</button>`).join('');
+  const filters=[['active','В программе'],['available','Можно добавить'],['locked','На будущее'],['all','Все']];
+  const f=document.getElementById('exerciseFilters');f.innerHTML=filters.map(([id,n])=>`<button class="filter ${exerciseFilter===id?'active':''}" aria-pressed="${exerciseFilter===id}" onclick="AM.setExerciseFilter('${id}')">${n}</button>`).join('');
   let items=EX.filter(x=>exerciseFilter==='all'||state.exerciseStatuses[x.id]===exerciseFilter);
   items.sort((a,b)=>(a.order_in_tier||999)-(b.order_in_tier||999));
   const list=document.getElementById('exerciseList');list.innerHTML='';
   if(!items.length)list.innerHTML='<div class="empty">Ничего нет.</div>';
   items.forEach(ex=>{
-    const st=state.exerciseStatuses[ex.id], m=exerciseMastery(ex), tr=scoreExercise(ex),until=postponedUntil('exercise',ex.id);
+    const st=state.exerciseStatuses[ex.id],tr=scoreExercise(ex),until=postponedUntil('exercise',ex.id),visual=exerciseVisuals[ex.id];
+    const label=until?'Отложено':st==='active'?(tr.score<0||tr.status==='red'?'Пауза':tr.status==='green'?'Можно сейчас':'С учётом самочувствия'):statusLabels[st];
+    const reason=until?`Отложено до ${fmtDate(until)} ${fmtTime(until)}`:st==='active'&&(tr.score<0||tr.status==='red')?'Сейчас пока не предлагается: '+exercisePauseReason(ex,tr):label;
     list.insertAdjacentHTML('beforeend',`
-      <div class="list-item exercise-card" onclick="AM.openExercise('${ex.id}')">
-        <div class="li-main"><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><div class="li-title">${esc(ex.name)}</div>
-          <div class="li-meta">${esc(doseText(ex,recommendedDose(ex).dose))}${st==='active'?' · '+(until?'отложено':tr.score<0||tr.status==='red'?'пока не предлагается':tr.status==='green'?'можно сейчас':'с учётом самочувствия'):''}</div>
-          ${st==='active'&&!until&&(tr.score<0||tr.status==='red')?`<div class="li-meta">${esc(exercisePauseReason(ex,tr))}</div>`:''}
-          ${until?`<div class="li-meta">Отложено до ${fmtDate(until)} ${fmtTime(until)}</div>`:''}
-          ${m==null?'':`<div class="mastery-label">${exerciseProgress(ex).confirmedDays}/3 подтверждений в разные дни</div>`}
-        </div><div><span class="tier">${ex.tier==='FUTURE'?'Позже':'Уровень '+esc(ex.tier||'—')}</span><div class="pill" style="margin-top:8px">${esc(statusLabels[st]||'Статус неизвестен')}</div></div>
-      </div>`);
+      <button type="button" class="exercise-tile" data-lifecycle="${st}" style="--exercise-color:${visual.color}" aria-label="${esc(ex.name+' · '+reason)}" title="${esc(ex.name+' · '+reason)}" onclick="AM.openExercise('${ex.id}')">
+        <span class="exercise-picture">${exerciseArt(ex)}${st==='locked'||st==='archived'?`<span class="tile-mark" aria-hidden="true">${st==='locked'?'⌑':'↶'}</span>`:''}</span>
+        <span class="tile-name">${esc(visual.label)}</span><span class="tile-status ${st==='active'?until||tr.status!=='green'||tr.score<0?'yellow':'green':''}"><i aria-hidden="true"></i>${esc(label)}</span>
+      </button>`);
   });
   document.getElementById('activeExerciseCount').textContent=`${activeExercises().length} активно`;
 }
@@ -1716,25 +1787,121 @@ function renderAll(){
   renderHome();renderExercises();renderTests();renderStats();
 }
 
+const equipmentLabels={slider_or_towel_on_smooth_floor:'Слайдер или полотенце и гладкий пол',hemisphere_or_balance_dome:'Полусфера',balance_board:'Балансборд',hemisphere:'Полусфера',safe_low_obstacles:'Невысокие безопасные препятствия',soft_ball_or_wall:'Мягкий мяч и партнёр / стена', '4_cones_or_markers':'Четыре фишки или ориентира',cones_or_household_markers:'Фишки или домашние ориентиры',sand:'Песок',resistance_band:'Эластичная лента'};
+const extraTechnique={
+  single_leg_calf_raise:{steps:['Встань на одну ногу рядом с устойчивой опорой; при необходимости придерживайся для равновесия.','Поднимись на носок опорной ноги, затем плавно опусти пятку на пол.'],url:'https://dynamichealth.nhs.uk/help-and-advice/foot-or-ankle-pain/',source:'NHS · Foot or ankle pain'},
+  band_eversion:{steps:['Сидя, надень эластичную ленту вокруг обеих стоп.','Сохраняя пятку неподвижной, отведи переднюю часть рабочей стопы наружу, растягивая ленту. Колено и бедро остаются неподвижными.'],url:'https://www.worcsacute.nhs.uk/leaflets/ankle-sprain/',source:'NHS · Ankle Sprain'}
+};
+function exerciseRulesHTML(ex){
+  if(!ex.dose)return '';
+  const group=ex.prescription_credit?.group,frequency=group?APP.program.prescription_groups[group]:null;
+  return `<details class="exercise-rules"><summary>Правила и расписание</summary>
+    <div class="kv"><b>Откуда взялся объём</b><span>${ex.frequency_basis==='clinician_prescribed'?'Домашнее назначение реабилитолога. Текущий объём учитывает выполнения и реакцию.':'Начальный объём приложения; домашняя частота не назначалась очно. Текущий объём уточняется по переносимости.'}</span></div>
+    <div class="kv"><b>Как часто</b><span>${frequency?`${frequency.target_per_day}–${frequency.max_per_day} раза в день в группе назначения. ${frequency.target_per_day} зачтённых выполнения закрывают дневной минимум.`:'Дополнительное занятие подбирает приложение: до 3 занятий за 7 дней с днём между ними и конечным объёмом на занятие. Это ритм программы приложения, не измерение восстановления.'}</span></div>
+    ${group?`<div class="kv"><b>Зачёт сегодня</b><span>${planCounts()[group]||0}/${dailyTarget(ex)} · ${EX.filter(x=>x.prescription_credit?.group===group).length>1?'Варианты делят одну дневную цель; переход не создаёт вторую.':'Учитываются объём, техника, перерывы и самочувствие.'}</span></div>`:'<p>Выполненный объём занятия не назначается заново после нормальной оценки, перезагрузки или смены дня. После выраженной реакции остаток не нужно наверстывать.</p>'}
+    <div class="kv"><b>${group?'Перерыв между выполнениями':'Остаток дополнительного занятия'}</b><span>${group?`Не меньше ${ex.min_rest_minutes||0} мин. Похожая нагрузка и самочувствие могут увеличить ожидание.`:'Отдельный таймер между частями не задан. Приложение учитывает самочувствие и похожую нагрузку; новое занятие следует ритму программы.'}</span></div>
+    ${ex.progression?.notes?`<p>${esc(ex.progression.notes)}</p>`:''}${ex.activation_rule?`<p>${esc(ex.activation_rule)}</p>`:''}
+    <p>Приложение учитывает боль, отёк, устойчивость, качество и реакцию следующим утром. Неблагоприятная реакция ограничивает новые предложения; выполненная работа остаётся в истории.</p>
+    <p>Боль от 5/10, отёк или подламывание ставят предложения на паузу. Боль 3–4/10, ухудшение, шаткость или потеря техники ограничивают нагрузку. Это пороги приложения, не медицинские нормативы.</p>
+    ${ex.source==='home_equipment_variant'?'<p>Другое оборудование учитывается отдельно: освоение балансборда не подтверждает освоение полусферы.</p>':''}
+  </details>`;
+}
+function exerciseEvidenceHTML(ex,suggested){
+  const evidence=suggested.evidence;if(!evidence)return '';
+  return `<details class="exercise-rules"><summary>Связанный тест · ${evidence.capacity} ${esc(evidence.test.unit_short)} · ${fmtDate(evidence.log.ts)}</summary>
+    <p>${evidence.capacity===testCap(evidence.test)?'Достигнута граница теста; максимум неизвестен. ':''}Трудность: ${esc({easy:'легко',normal:'посильно',hard:'тяжело',unknown:'не отмечена'}[evidence.log.difficulty||'unknown'])}.</p>
+    ${evidence.log.difficulty==null||evidence.log.difficulty==='unknown'||evidence.log.stop_reason==null||evidence.log.stop_reason==='unknown'?'<p>Для перехода уточни трудность и причину остановки в уже выполненном тесте. Повторять тест для исправления записи не нужно.</p>':''}
+    <p>${suggested.doseFromTest?'Результат ниже рабочего объёма: предложение уменьшено до половины результата. Дальше проверяем переносимость.':'Высокий результат не увеличивает дневную дозу автоматически. Повышение — отдельный пробный шаг после проверки качества и восстановления.'}</p>
+    <button class="btn ghost" onclick="AM.close('exerciseDialog');AM.openTest('${evidence.test.id}','${evidence.log.id}')">Уточнить запись теста</button></details>`;
+}
+function exerciseProgressHTML(ex,suggested,variant){
+  if(!ex.dose)return '<h4>Следующий этап</h4><p>Объём и ступени этого упражнения пока не заданы.</p>';
+  if(ex.progression?.type==='none')return '<h4>Сохраняем назначенный объём</h4><p>Для этого упражнения повышение объёма не предусмотрено. Ориентир — регулярное комфортное выполнение по назначению.</p>'+exerciseEvidenceHTML(ex,suggested);
+  const progress=exerciseProgress(ex),working=progress.working,key=doseKey(ex),option=doseOptions[ex.id];
+  const next=EXMAP[ex.progression?.next_exercise_id],levels=ex.progression?.levels_sec||ex.mastery_tracking?.levels||[];
+  const canGrow=next||option&&working[option.key]!==option.values.at(-1)[0]||key&&working[key]<doseCeiling(ex,working);
+  const recent=progress.run.filter(l=>now()-l.ts<=7*DAY).slice(-3),easy=recent.filter(l=>confirmedEasy(l)).length;
+  const adherence=progressionAdherence(),evidence=suggested.evidence;
+  const testPassed=next&&evidence&&evidence.capacity>=testCap(evidence.test)&&testSupportsProgression(evidence)&&evidence.log.stop_reason==='cap';
+  const current=currentSymptoms(),recovered=!safetyFlag()&&dailyLoadPlan(ex).status==='normal'&&(!current||responseLevel(current)==='normal'&&current.fatigue!=='high'&&!(current.generalFatigue==='high'&&startOfDay(current.ts)===startOfDay()));
+  const checks=[
+    {passed:!!testPassed||progress.confirmed&&easy===3,text:testPassed?'Качество базового варианта подтверждено связанным тестом':`Лёгкие выполнения с хорошей техникой и известной нормальной реакцией утром: ${easy}/3 за последние 7 дней. Объём одинаковый, дни разные.`},
+    {passed:adherence.allowed,text:`Дневной план выполнен в ${adherence.completedDays}/7 последних полных дней; нужно не меньше 5.`},
+    {passed:recovered,text:recovered?'Текущее самочувствие допускает повышение.':'Повышение ждёт нормального самочувствия и восстановления. '+dailyLoadPlan(ex).reason}
+  ];
+  if(evidence&&evidence.log.ts>(recent.at(-1)?.ts||0)&&!testSupportsProgression(evidence))checks.push({passed:false,text:'Нужно уточнить трудность, причину остановки и нормальную реакцию следующим утром после связанного теста.'});
+  if(suggested.doseFromTest&&!variant)checks.push({passed:false,text:'Связанный тест ниже рабочего объёма. Перед повышением объёма нужно подтвердить переносимость предложенной меньшей дозы.'});
+  const session=evidence&&state.assessment_sessions.find(s=>s.test_log_ids.includes(evidence.log.id));
+  if(next&&session&&(session.pain_after>=3||session.swelling||session.instability||session.same_day_response==='worse'||session.next_day_response==='worse'))checks.push({passed:false,text:'В сессии связанного теста отмечена неблагоприятная реакция. Условие перехода к следующему варианту пока не выполнено.'});
+  if(next&&!['active','available'].includes(state.exerciseStatuses[next.id]))checks.push({passed:false,text:'Следующий вариант пока не доступен в программе; автоматического открытия нет.'});
+  return `<div class="progress-summary"><div class="source">Рабочий объём</div><div class="exercise-dose">${esc(doseText(ex,working))}</div>
+    <b>${progress.confirmedDays}/3 подтверждений в разные дни</b><div class="confirmation-days" aria-hidden="true">${[1,2,3].map(n=>`<i class="${n<=progress.confirmedDays?'done':''}"></i>`).join('')}</div>
+    <div class="li-meta">${progress.confirmed?'Этот объём уже был подтверждён. Для нового повышения проверяем недавние выполнения и восстановление.':'Для подтверждения учитываем качество и известную реакцию следующим утром. Выполнения в один день не заменяют разные дни.'}</div></div>
+    ${levels.length>1?`<p style="margin-bottom:4px">Ориентиры объёма в программе</p><div class="dose-levels">${levels.map(v=>`<span class="${v===working[key]?'current':''}">${v} ${key==='target_sec'?'сек':key==='target_steps'?'шаг.':key==='rounds'?'круга':key==='cycles'?'цикла':'повт.'}</span>`).join('')}</div>`:''}
+    <h4 style="margin-top:22px">${suggested.trial||variant?'Можно попробовать следующий шаг':canGrow?'Что осталось до следующего шага':'Следующий уровень не задан'}</h4>
+    ${suggested.trial?`<div class="notice"><b>Пробный шаг: ${esc(doseText(ex,suggested.trial))}</b><p>${doseVolume(suggested.trial)>doseVolume(working)?'Изменение объёма: +'+Math.round((doseVolume(suggested.trial)/doseVolume(working)-1)*100)+'%.':'Меняется сложность варианта; численный объём прежний.'} Рабочий уровень изменится после подтверждения переносимости.</p><button class="btn secondary" onclick="AM.close('exerciseDialog');AM.openLog('${ex.id}',true)">Попробовать этот шаг</button></div>`:''}
+    ${next?`<div class="notice" style="margin-top:12px"><b>Следующий вариант: ${esc(next.name)}</b><p>Объём нового варианта уточняется отдельно; варианты делят дневную цель. ${testPassed?'Подходящий тест может подтвердить качество базового варианта вместо трёх лёгких выполнений.':''}</p>${variant?variant.after>now()?`<div>Перерыв перед проверкой — не раньше ${fmtTime(variant.after)}.</div>`:variant.test?`<button class="btn secondary" onclick="AM.close('exerciseDialog');AM.openTest('${variant.test.id}')">Проверить следующий вариант</button>`:'':`<button class="btn ghost" onclick="AM.openExercise('${next.id}')">Посмотреть вариант</button>`}</div>`:''}
+    ${canGrow?`<ul class="progress-checks">${checks.map(c=>`<li><span class="check-mark ${c.passed?'passed':''}" aria-label="${c.passed?'Выполнено':'Осталось'}">${c.passed?'✓':'○'}</span><span>${esc(c.text)}</span></li>`).join('')}</ul>${!suggested.trial&&!variant?`<p>${esc(suggested.reason)}. Предложение появится отдельно, когда условия действующих правил совпадут.</p>`:''}`:'<p>В программе нет дальнейшего автоматического усложнения этого варианта. Можно продолжать работу с текущим объёмом по переносимости.</p>'}
+    ${exerciseEvidenceHTML(ex,suggested)}<p class="source">Три подтверждения, регулярность 5 из 7 и ступени объёма — правила приложения, не оценка заживления и не разрешение на бег.</p>`;
+}
+function exerciseHistoryHTML(ex){
+  const logs=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts<=now()).sort((a,b)=>a.ts-b.ts);
+  if(!logs.length)return '<div class="empty"><div style="font-size:28px;color:var(--blue);margin-bottom:12px" aria-hidden="true">↗</div><h4>Здесь будет твоя история</h4><p>После первого выполнения появятся объём, календарь занятий и реакция на нагрузку.</p></div>';
+  const days=Array.from({length:14},(_,i)=>{const d=new Date(startOfDay());d.setDate(d.getDate()-13+i);return +d;});
+  const current=logs.filter(l=>l.actualDose&&l.actualDose.type===ex.dose?.type&&Number.isFinite(doseVolume(l.actualDose))),volumes=days.map(day=>current.filter(l=>startOfDay(l.ts)===day).reduce((sum,l)=>sum+doseVolume(l.actualDose),0));
+  const unit={duration:'сек',duration_sets:'сек',hold_reps:'сек',steps:'шагов',cycles:ex.dose?.front_hold_sec?'сек':'циклов',directional_rounds:'направлений',reps_sets:'повторений',directional_reps:'повторений',passes:'проходов'}[ex.dose?.type]||'ед.';
+  const max=Math.max(1,...volumes),trainingDays=new Set(logs.map(l=>startOfDay(l.ts))).size;
+  const calendar=days.map(day=>{const entries=logs.filter(l=>startOfDay(l.ts)===day);return {day,count:entries.length,status:!entries.length?'':entries.some(l=>responseLevel(exerciseResponse(l))!=='normal')?'reaction':entries.every(l=>confirmedSafe(l))?'trained':'pending'};});
+  const calendarLabels={'':'нет записей',reaction:'есть реакция',trained:'утро подтверждено',pending:'утро не подтверждено'};
+  const entry=l=>{const response=exerciseResponse(l),level=responseLevel(response),safe=confirmedSafe(l),label=level!=='normal'?'Есть реакция':safe?'Утро подтверждено':'Утро не подтверждено';return `<div class="exercise-entry"><div class="exercise-entry-head"><b>${fmtDate(l.ts)} · ${fmtTime(l.ts)}</b><span style="color:${level!=='normal'?'var(--yellow)':safe?'var(--green)':'var(--muted)'}">${label}</span></div><p style="margin:7px 0 4px">${l.actualDose?esc(doseText(ex,l.actualDose)):'Объём не записан'}${l.additionalPlanPart?' · часть занятия':''}</p><div class="li-meta">Техника: ${esc({good:'хорошая',ok:'приемлемая',poor:'терял контроль'}[l.technique]||'не отмечена')} · ${esc({easy:'легко',normal:'посильно',hard:'тяжело'}[l.difficulty]||'трудность не отмечена')}<br>Боль после: ${l.painAfter==null?'не отмечена':esc(l.painAfter)+'/10'} · утром: ${esc(responseNames[response.morning]||'не отмечено')}${l.comment?'<br>'+esc(l.comment):''}</div><button class="btn ghost" onclick="AM.close('exerciseDialog');AM.openSymptoms('${l.id}')">Уточнить реакцию</button></div>`;};
+  return `<div class="exercise-history-metrics"><div><b>${logs.length}</b><span>выполнений<br>за всё время</span></div><div><b>${trainingDays}</b><span>дней<br>с практикой</span></div><div><b>${logs.filter(l=>confirmedSafe(l)).length}</b><span>выполнений<br>с подтверждённым утром</span></div></div>
+    <h4>Объём за 14 дней</h4><div class="li-meta">${unit}, суммарно за день · нажми на столбик</div>
+    <div class="exercise-history-chart" role="group" aria-label="Объём за 14 дней">${days.map((d,i)=>`<button type="button" class="exercise-history-day" aria-pressed="false" aria-label="${fmtDate(d)}: ${volumes[i]} ${unit}" title="${fmtDate(d)}: ${volumes[i]} ${unit}" onclick="AM.exerciseHistoryDay(this)"><span class="exercise-history-bar ${volumes[i]?'':'empty-day'}" style="height:${volumes[i]?Math.max(3,volumes[i]/max*100):2}%"></span></button>`).join('')}</div>
+    <div class="exercise-chart-caption"><span>${fmtDate(days[0])}</span><span id="exerciseChartSelection" aria-live="polite">Макс. ${Math.max(...volumes)} ${unit}</span><span>Сегодня</span></div>
+    <p class="source">Объём не измеряет качество или восстановление. Помощь, амплитуда и распределение веса указаны в записях.${logs.some(l=>!current.includes(l))?' Старые или неизвестные единицы сохранены ниже и не смешиваются на графике.':''}</p>
+    <h4 style="margin-top:24px">Практика и реакция</h4><div class="exercise-calendar" role="img" aria-label="${esc('Практика за 14 дней: '+calendar.map(d=>fmtDate(d.day)+' — '+d.count+', '+calendarLabels[d.status]).join('; '))}">${calendar.map((d,i)=>`<span class="${d.status} ${i===13?'today':''}" title="${fmtDate(d.day)}: ${d.count} выполнений · ${calendarLabels[d.status]}"></span>`).join('')}</div><div class="exercise-history-legend"><span><i style="background:#398c75"></i>Утро подтверждено</span><span><i style="background:#527d9b"></i>Утро не подтверждено</span><span><i style="background:#ceaa60"></i>Есть реакция</span></div>
+    <h4 style="margin-top:26px">Последние выполнения</h4>${logs.slice(-6).reverse().map(entry).join('')}${logs.length>6?`<details><summary>Ранние записи · ${logs.length-6}</summary>${logs.slice(0,-6).reverse().map(entry).join('')}</details>`:''}<p class="source">Поздняя реакция может относиться к нескольким нагрузкам за день; она не устанавливает причину симптомов.</p>`;
+}
+function exerciseHistoryDay(button){
+  document.querySelectorAll('.exercise-history-day').forEach(day=>day.setAttribute('aria-pressed',String(day===button)));
+  document.getElementById('exerciseChartSelection').textContent=button.getAttribute('aria-label');
+}
+function exerciseTab(name,focus=false){
+  for(const id of ['technique','progress','history']){
+    const tab=document.getElementById('exercise-tab-'+id),active=id===name;
+    tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;
+    document.getElementById('exercise-panel-'+id).hidden=!active;
+    if(active&&focus)tab.focus();
+  }
+  document.getElementById('exerciseDialog').scrollTop=0;
+}
+function exerciseTabKey(event){
+  const tabs=['technique','progress','history'],index=tabs.indexOf(event.target.dataset.exerciseTab);
+  const next=event.key==='ArrowRight'?(index+1)%3:event.key==='ArrowLeft'?(index+2)%3:event.key==='Home'?0:event.key==='End'?2:null;
+  if(next!=null){event.preventDefault();exerciseTab(tabs[next],true);}
+}
 function openExercise(id){
-  const ex=EXMAP[id]; if(!ex)return; const st=state.exerciseStatuses[id],m=exerciseMastery(ex),rec=scoreExercise(ex);
-  const until=postponedUntil('exercise',id);
-  const suggested=recommendedDose(ex),variant=nextVariant(ex);
-  const statusActions = st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:
-                        st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
+  const ex=EXMAP[id];if(!ex)return;
+  const st=state.exerciseStatuses[id],rec=scoreExercise(ex),until=postponedUntil('exercise',id),suggested=recommendedDose(ex),variant=nextVariant(ex),visual=exerciseVisuals[id];
+  const instructions=ex.instructions?.length?ex.instructions:extraTechnique[id]?.steps||[];
+  const statusActions=st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
   document.getElementById('exerciseModal').innerHTML=`
-    <div class="modal-head"><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('exerciseDialog')">×</button></div>
-    <div class="notice"><b>Сейчас: ${esc(doseText(ex,suggested.dose))}</b><br>${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}</div>
-    ${until?`<div class="notice" style="margin-top:12px">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn secondary" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:''}
-    <div style="margin-top:14px">${(ex.instructions||[]).map((x,i)=>`<div class="kv"><span>${i+1}. ${esc(x)}</span></div>`).join('')}</div>
-    ${m==null?'':`<div style="margin-top:14px"><b>${suggested.confirmedDays}/3 подтверждений в разные дни</b><div class="li-meta">Учитываем качество и реакцию следующим утром.</div></div>`}
-    ${variant?`<div class="notice" style="margin-top:12px"><b>Следующий вариант: ${esc(variant.ex.name)}</b><p>Базовый вариант освоен по качеству. Объём нового варианта уточняется отдельно; оба варианта делят дневную цель.</p>${variant.after>now()?`<div>Перерыв перед проверкой — не раньше ${fmtTime(variant.after)}.</div>`:variant.test?`<button class="btn secondary" onclick="AM.close('exerciseDialog');AM.openTest('${variant.test.id}')">Проверить следующий вариант</button>`:''}</div>`:''}
-    ${suggested.evidence?`<div class="notice" style="margin-top:12px"><b>Тест этого варианта: ${suggested.evidence.capacity} ${esc(suggested.evidence.test.unit_short)}</b> · ${fmtDate(suggested.evidence.log.ts)}<div class="li-meta">${suggested.evidence.capacity===testCap(suggested.evidence.test)?'Достигнута граница теста; максимум неизвестен. ':''}Трудность: ${esc({easy:'легко',normal:'посильно',hard:'тяжело',unknown:'не отмечена'}[suggested.evidence.log.difficulty||'unknown'])}.</div>${suggested.evidence.log.difficulty==null||suggested.evidence.log.difficulty==='unknown'||suggested.evidence.log.stop_reason==null||suggested.evidence.log.stop_reason==='unknown'?'<p>Для перехода к следующему варианту уточни, как дался уже выполненный тест и почему ты его завершил. Повторять тест для исправления записи не нужно.</p>':''}${suggested.doseFromTest?'<p>Результат ниже рабочего объёма: предложение уменьшено до половины результата. Это осторожный ориентир приложения; дальше проверяем переносимость.</p>':'<p>Высокий результат не увеличивает дневную дозу автоматически. Повышение предлагаем отдельным небольшим шагом по обычным выполнениям и восстановлению.</p>'}<button class="btn ghost" onclick="AM.close('exerciseDialog');AM.openTest('${suggested.evidence.test.id}','${suggested.evidence.log.id}')">Уточнить запись теста</button></div>`:''}
-    ${suggested.trial?`<div class="notice" style="margin-top:12px"><b>Пробный шаг: ${esc(doseText(ex,suggested.trial))}</b><div class="li-meta">${Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)>0?'Изменение объёма: +'+Math.round((doseVolume(suggested.trial)/doseVolume(suggested.dose)-1)*100)+'%.':'Меняется сложность варианта; численный объём прежний.'} Проверим переносимость после выполнения.</div><button class="btn secondary" style="margin-top:10px" onclick="AM.close('exerciseDialog');AM.openLog('${id}',true)">Попробовать этот шаг</button></div>`:''}
-    ${st==='active'&&!until?`<div class="reason"><b>${rec.score<0||rec.status==='red'?'Почему сейчас не предлагается':'Почему предлагается'}:</b> ${esc(rec.score<0||rec.status==='red'?exercisePauseReason(ex,rec):rec.reasons.join(' · '))}</div>`:''}
-    <div class="source-badge">${esc(sourceLabels[ex.source]||ex.source)}</div>
-    <div class="modal-actions">${st==='active'?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>${unprescribedFrequency(ex)?'<button class="btn secondary" onclick="AM.close(\'exerciseDialog\');AM.openAdditionalPlan()">Дополнительное занятие</button>':''}`:''}${statusActions}</div>`;
+    <div class="exercise-detail-head"><div class="exercise-picture" style="--exercise-color:${visual.color}">${exerciseArt(ex)}</div><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3 id="exerciseTitle">${esc(ex.name)}</h3></div><button class="x" aria-label="Закрыть упражнение" onclick="AM.close('exerciseDialog')">×</button></div>
+    <div class="exercise-overview">${ex.dose?`<div class="exercise-dose">Сейчас: ${esc(doseText(ex,suggested.dose))}</div><div class="li-meta">${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}</div>`:'<div class="notice">Следующий этап · протокол и объём пока не заданы</div>'}
+      ${until?`<div class="exercise-state">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn ghost" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:st==='active'?`<div class="exercise-state"><b>${rec.score<0||rec.status==='red'?'Почему сейчас не предлагается':'Почему предлагается'}:</b> ${esc(rec.score<0||rec.status==='red'?exercisePauseReason(ex,rec):rec.reasons.join(' · '))}</div>`:`<div class="exercise-state">${esc(statusLabels[st])}${ex.activation_rule?' · '+esc(ex.activation_rule):''}</div>`}</div>
+    <div class="exercise-tabs" role="tablist" aria-label="Об упражнении" onkeydown="AM.exerciseTabKey(event)">${[['technique','Техника'],['progress','Прогресс'],['history','История']].map(([tab,label])=>`<button type="button" role="tab" id="exercise-tab-${tab}" data-exercise-tab="${tab}" aria-controls="exercise-panel-${tab}" aria-selected="${tab==='technique'}" tabindex="${tab==='technique'?0:-1}" onclick="AM.exerciseTab('${tab}')">${label}</button>`).join('')}</div>
+    <section class="exercise-panel" id="exercise-panel-technique" role="tabpanel" aria-labelledby="exercise-tab-technique"><h4>Как выполнять</h4>${instructions.length?`<ol class="technique-steps">${instructions.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:'<p>Подробная техника пока не добавлена. Этот вариант требует отдельного согласования; автоматической активации нет.</p>'}
+      ${extraTechnique[id]?`<p class="source">Общее описание техники: <a href="${extraTechnique[id].url}" target="_blank" rel="noopener" style="color:var(--blue)">${extraTechnique[id].source}</a>. Справочное описание; упражнение добавляется в программу вручную.</p>`:''}
+      <div class="tags">${(ex.primary_skills||[]).map(s=>`<span class="tag">${esc(skillLabels[s]||s)}</span>`).join('')}</div>
+      ${ex.dose?`<div class="exercise-facts"><div class="exercise-fact">${ex.prescription_credit?.group?'Минимальный перерыв':'Остаток занятия'}<b>${ex.prescription_credit?.group?ex.min_rest_minutes+' мин':'По самочувствию'}</b></div><div class="exercise-fact">Ритм работы<b>${ex.prescription_credit?.group?'Домашнее назначение':'Дополнительное занятие'}</b></div></div>`:''}
+      ${ex.equipment?.length?`<p><b>Что понадобится</b><br>${ex.equipment.map(e=>esc(equipmentLabels[e]||e)).join(' · ')}</p>`:ex.id.startsWith('towel_')?'<p><b>Что понадобится</b><br>Полотенце</p>':''}
+      ${ex.solo_alternative?`<p><b>Без партнёра</b><br>${esc(ex.solo_alternative)}</p>`:''}${exerciseRulesHTML(ex)}
+      ${st==='active'?`<details class="exercise-rules"><summary>Управление упражнением</summary><p>История сохранится после удаления из активных.</p>${statusActions}</details>`:''}</section>
+    <section class="exercise-panel" id="exercise-panel-progress" role="tabpanel" aria-labelledby="exercise-tab-progress" hidden>${exerciseProgressHTML(ex,suggested,variant)}</section>
+    <section class="exercise-panel" id="exercise-panel-history" role="tabpanel" aria-labelledby="exercise-tab-history" hidden>${exerciseHistoryHTML(ex)}</section>
+    <div class="exercise-footer">${st==='active'&&ex.dose?`<button class="btn primary" onclick="AM.close('exerciseDialog');AM.openLog('${id}')">Записать выполнение</button>${unprescribedFrequency(ex)?'<button class="btn secondary" onclick="AM.close(\'exerciseDialog\');AM.openAdditionalPlan()">План занятия</button>':''}`:st==='available'?statusActions:''}</div>`;
   showDialog('exerciseDialog');
+  document.getElementById('exerciseDialog').scrollTop=0;
 }
 let suggestedForLog=null;
 const steadinessNames={steady:'Устойчива',shaky:'Менее уверенная / шаткая',giving_way:'Подламывается / подворачивается'};
@@ -2058,7 +2225,7 @@ window.AM={
   openAdditionalPlan,closeAdditionalPlan,
   openFeedback,openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,
   openPostpone,postponeAction,resumeAction,
-  openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,deleteTest,openCheck,saveCheck,
+  exerciseHistoryDay,exerciseTab,exerciseTabKey,openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,deleteTest,openCheck,saveCheck,
   activateExercise,archiveExercise,suggestStage,openAssessment,saveAssessment,chooseFatigue,openAssessmentCheck,saveAssessmentCheck,openSelfReport,saveSelfReport,close:closeDialog,
   setExerciseFilter:(x)=>{exerciseFilter=x;renderExercises()}
 };

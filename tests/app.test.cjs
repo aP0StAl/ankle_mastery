@@ -85,14 +85,14 @@ function app(saved,clock=null){
     if(!elements.has(id)){
       const config=html.match(new RegExp('id="'+id+'">(.*?)</script>'));
       const classes=new Set(),handlers={};
-      elements.set(id,{textContent:config?config[1]:'',value:'',innerHTML:'',style:{setProperty(){}},classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k),toggle(k,on){if(on??!classes.has(k))classes.add(k);else classes.delete(k);}},appendChild(){},insertAdjacentHTML(_,s){this.innerHTML+=s;},open:false,showModal(){this.open=true;},close(){this.open=false;handlers.close?.();},addEventListener(k,fn){handlers[k]=fn;},querySelector(){return this.focused||null;},click(){}});
+      elements.set(id,{textContent:config?config[1]:'',value:'',innerHTML:'',style:{setProperty(){}},classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k),toggle(k,on){if(on??!classes.has(k))classes.add(k);else classes.delete(k);}},appendChild(){},insertAdjacentHTML(_,s){this.innerHTML+=s;},setAttribute(k,v){this[k]=String(v);},getAttribute(k){return this[k];},focus(){this.focused=true;},open:false,showModal(){this.open=true;},close(){this.open=false;handlers.close?.();},addEventListener(k,fn){handlers[k]=fn;},querySelector(){return this.focused||null;},click(){}});
     }
     return elements.get(id);
   };
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -890,7 +890,7 @@ test('a high matching test informs capacity without increasing ordinary volume o
   morning(d,d.getState().testLogs[0]);
   assert.equal(d.suggestedDose(ex).dose.target_steps,16);assert.equal(d.suggestedDose(ex).trial,null);
   assert.equal(d.suggestedDose(d.EXMAP.tandem_walk_tiptoe).dose.target_steps,12);
-  d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Тест этого варианта: 100/);
+  d.openExercise(ex.id);assert.match(get('exerciseModal').innerHTML,/Связанный тест · 100/);
   assert.match(get('exerciseModal').innerHTML,/Сейчас: 16 шагов/);
   assert.match(get('exerciseModal').innerHTML,/не увеличивает дневную дозу автоматически/);
   assert.doesNotMatch(get('exerciseModal').innerHTML,/Записать проб|Рабочий уровень: 16/);
@@ -1016,7 +1016,8 @@ test('home, catalog and exercise details explain a paused exercise while another
   assert.match(get('excludedExerciseList').innerHTML,new RegExp(waiting.id));
   assert.match(get('excludedExerciseList').innerHTML,/Перерыв между выполнениями — не раньше 10:30/);
   assert.doesNotMatch(get('excludedExerciseList').innerHTML,new RegExp(postponed.id));
-  const card=get('exerciseList').innerHTML.split(`onclick="AM.openExercise('${waiting.id}')"`)[1].split('<div class="list-item exercise-card"')[0];
+  const card=get('exerciseList').innerHTML.split('</button>').find(markup=>markup.includes(`onclick="AM.openExercise('${waiting.id}')"`));
+  assert.match(card,/class="exercise-tile"/);assert.match(card,/>Пауза<\/span>/);
   assert.match(card,/пока не предлагается/);
   assert.match(card,/Перерыв между выполнениями — не раньше 10:30/);
   d.openExercise(waiting.id);
@@ -1032,8 +1033,8 @@ test('a postponed available exercise has one consistent postponement status in t
   d.postponeAction('exercise',ex.id,'hour',clock);
   assert.ok(!d.recommendations(clock).some(r=>r.ex.id===ex.id));
   d.renderAll();
-  const card=get('exerciseList').innerHTML.split(`onclick="AM.openExercise('${ex.id}')"`)[1].split('<div class="list-item exercise-card"')[0];
-  assert.match(card,/отложено/);
+  const card=get('exerciseList').innerHTML.split('</button>').find(markup=>markup.includes(`onclick="AM.openExercise('${ex.id}')"`));
+  assert.match(card,/class="exercise-tile"/);assert.match(card,/>Отложено<\/span>/);
   assert.match(card,/Отложено до [^<]+13:00/);
   assert.doesNotMatch(card,/можно сейчас/);
   d.openExercise(ex.id);
@@ -1924,6 +1925,156 @@ test('recorded low results contribute partial stage progress and unmet condition
   assert.equal(get('readinessValue').textContent,'99%');
   assert.ok(!get('roadmap').innerHTML.includes("AM.suggestStage('ready_for_impact')"));
   assert.equal(state.selectedStage,'rehab');
+});
+
+test('exercise details distinguish an empty history, fixed prescription and an unspecified locked protocol',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d,get}=app(null,clock);
+  const stretch=d.EXMAP.towel_stretch_straight_knee;
+  const empty=d.exerciseHistoryHTML(stretch);
+  assert.match(empty,/Здесь будет твоя история/);assert.doesNotMatch(empty,/exercise-history-chart|подтверждённым утром/);
+  d.openExercise(stretch.id);
+  assert.match(get('exerciseModal').innerHTML,/повышение объёма не предусмотрено/);
+  assert.doesNotMatch(d.exerciseProgressHTML(stretch,d.recommendedDose(stretch),null),/progress-checks|Пробный шаг/);
+  const locked=d.EXMAP.hops_and_direction_changes;
+  d.openExercise(locked.id);
+  const details=get('exerciseModal').innerHTML;
+  assert.match(details,/протокол и объём пока не заданы/);assert.match(details,/Объём и ступени этого упражнения пока не заданы/);
+  assert.doesNotMatch(details,/Сейчас:|AM\.openLog\(|AM\.activateExercise\(|до 3 занятий за 7 дней/);
+});
+
+test('exercise history preserves legacy units and unknown doses without adding them to the current chart',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.obstacle_high_knee_heel_to_toe;
+  d.getState().logs.push(
+    {id:'old_passes',exerciseId:ex.id,ts:clock-DAY,...comfortable,actualDose:{type:'passes',passes:3}},
+    {id:'unknown_dose',exerciseId:ex.id,ts:clock-2*DAY,...comfortable},
+    {id:'new_steps',exerciseId:ex.id,ts:clock,...comfortable,actualDose:{...ex.dose,target_steps:18}},
+    {id:'future_steps',exerciseId:ex.id,ts:clock+DAY,...comfortable,actualDose:{...ex.dose,target_steps:900}},
+    {id:'unrelated',exerciseId:'tandem_walk_flat',ts:clock,...comfortable,actualDose:{type:'steps',target_steps:800}}
+  );
+  const history=d.exerciseHistoryHTML(ex);
+  assert.match(history,/>3<\/b><span>выполнений/);assert.match(history,/3 прохода/);assert.match(history,/Объём не записан/);
+  assert.match(history,/18 шагов/);assert.match(history,/Макс\. 18 шагов/);
+  assert.match(history,/Старые или неизвестные единицы сохранены ниже и не смешиваются на графике/);
+  assert.doesNotMatch(history,/900|800|undefined|NaN/);
+});
+
+test('exercise history includes escaped comments, difficulty and changes in assistance at unchanged volume',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.bilateral_tiptoe_static;
+  d.getState().logs.push(
+    {id:'equal',exerciseId:ex.id,ts:clock-DAY,...comfortable,actualDose:{...ex.dose,weight_distribution:'even'},comment:'Контроль <script>alert(1)</script> & опора'},
+    {id:'shift',exerciseId:ex.id,ts:clock,...comfortable,difficulty:'hard',actualDose:{...ex.dose,weight_distribution:'right_bias'}}
+  );
+  const history=d.exerciseHistoryHTML(ex);
+  assert.match(history,/Вес поровну/);assert.match(history,/Больше веса на правой/);assert.match(history,/тяжело/);
+  assert.match(history,/Контроль &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; опора/);assert.doesNotMatch(history,/<script>/);
+  assert.match(history,/Утро не подтверждено/);assert.match(history,/не устанавливает причину симптомов/);
+});
+
+test('progress details require different confirmed mornings and do not turn same-day repetition into advancement',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d,get}=app(null,clock),ex=d.EXMAP.right_leg_balance_left_front_back;
+  completePlans(d,undefined,clock);
+  for(let ago=3;ago>=1;ago--)d.recordExercise(ex.id,ex.dose,{...comfortable,difficulty:'easy'},clock-ago*DAY,ex.dose);
+  d.openExercise(ex.id);
+  assert.match(get('exerciseModal').innerHTML,/0\/3 подтверждений в разные дни/);
+  assert.match(get('exerciseModal').innerHTML,/утром: 0\/3 за последние 7 дней/);
+  assert.doesNotMatch(get('exerciseModal').innerHTML,/Пробный шаг:|Можно попробовать следующий шаг/);
+  const sameDay=app(null,clock).dev,other=sameDay.EXMAP.right_leg_balance_left_front_back;
+  completePlans(sameDay,undefined,clock);
+  for(let i=0;i<3;i++){
+    const log=sameDay.recordExercise(other.id,other.dose,{...comfortable,difficulty:'easy'},clock-2*DAY+i*60000,other.dose);
+    morning(sameDay,log);
+  }
+  const progress=sameDay.exerciseProgressHTML(other,sameDay.recommendedDose(other),sameDay.nextVariant(other));
+  assert.match(progress,/1\/3 подтверждений в разные дни/);assert.doesNotMatch(progress,/Пробный шаг:/);
+});
+
+test('progress details show the missing adherence day, then a real trial, and retain history after a late reaction',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.tiptoe_square_corner_lunges;
+  const logs=confirmedDose(d,ex,ex.dose,'easy',clock-2*DAY);
+  completePlans(d,[7,6,5,4],clock);
+  let progress=d.exerciseProgressHTML(ex,d.recommendedDose(ex),d.nextVariant(ex));
+  assert.match(progress,/4\/7 последних полных дней/);assert.doesNotMatch(progress,/Пробный шаг:/);
+  completePlans(d,[3],clock);
+  progress=d.exerciseProgressHTML(ex,d.recommendedDose(ex),d.nextVariant(ex));
+  assert.match(progress,/Можно попробовать следующий шаг/);assert.match(progress,/Пробный шаг: 3 круга/);assert.match(progress,/\+50%/);
+  d.recordSymptoms({pain:3,steadiness:'steady',fatigue:'low'},logs.at(-1).id,clock);
+  progress=d.exerciseProgressHTML(ex,d.recommendedDose(ex),d.nextVariant(ex));
+  assert.match(progress,/Рабочий объём<\/div><div class="exercise-dose">2 круга/);assert.match(progress,/Повышение ждёт/);assert.doesNotMatch(progress,/Пробный шаг:/);
+  assert.match(d.exerciseHistoryHTML(ex),/Есть реакция/);assert.equal(d.getState().logs.filter(l=>l.exerciseId===ex.id).length,3);
+});
+
+test('a partial additional session shows its remaining dose without replacing the working dose',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d,get}=app(null,clock),ex=d.EXMAP.balance_board_both_tiptoe_right_front;
+  d.startAdditionalPlan([ex.id],clock-3600000);
+  d.recordExercise(ex.id,{...ex.dose,sets:1},{...comfortable,doseReason:'time'},clock-1800000,ex.dose);
+  const before=plain(d.getState());
+  assert.equal(d.additionalPlanState(ex).remaining,20);
+  d.openExercise(ex.id);
+  const details=get('exerciseModal').innerHTML;
+  assert.match(details,/Сейчас: 2 × 10 сек/);assert.match(details,/Остаток выбранного занятия/);
+  assert.match(details,/Рабочий объём<\/div><div class="exercise-dose">3 × 10 сек/);
+  assert.match(details,/Отдельный таймер между частями не задан/);assert.doesNotMatch(details,/Не меньше 240 мин/);
+  assert.deepEqual(plain(d.getState()),before);
+});
+
+test('rendering every exercise and changing detail tabs never alters saved history, goals or load',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d,get}=app(null,clock),before=plain(d.getState());
+  for(const ex of Object.values(d.EXMAP)){
+    d.openExercise(ex.id);
+    assert.match(get('exerciseModal').innerHTML,/id="exercise-tab-technique"[^>]*aria-selected="true"/);
+    d.exerciseTab('history',true);
+    assert.equal(get('exercise-tab-history').getAttribute('aria-selected'),'true');
+    assert.equal(get('exercise-tab-history').tabIndex,0);assert.equal(get('exercise-tab-history').focused,true);
+    assert.equal(get('exercise-panel-technique').hidden,true);assert.equal(get('exercise-panel-history').hidden,false);
+    let prevented=false;
+    d.exerciseTabKey({key:'ArrowRight',target:{dataset:{exerciseTab:'history'}},preventDefault(){prevented=true;}});
+    assert.equal(prevented,true);assert.equal(get('exercise-tab-technique').getAttribute('aria-selected'),'true');
+    assert.equal(get('exercise-panel-history').hidden,true);assert.equal(get('exercise-panel-technique').hidden,false);
+    d.closeDialog('exerciseDialog');
+  }
+  assert.deepEqual(plain(d.getState()),before);
+});
+
+test('a lower current test preserves the working dose while details show the reduced suggestion',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d,get}=app(null,clock),ex=d.EXMAP.single_leg_calf_raise;
+  confirmedDose(d,ex,ex.dose,'easy',clock-3*DAY);completePlans(d,undefined,clock);
+  const session=d.recordTest('single_leg_calf_raise_test',{left:20,right:4,difficulty:'easy',stop_reason:'planned',pain_after:0},clock-2*DAY);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock-2*DAY);morning(d,d.getState().testLogs.at(-1));
+  const suggested=d.recommendedDose(ex),variant=d.nextVariant(ex);
+  assert.equal(suggested.dose.reps,2);assert.equal(suggested.working.reps,10);assert.equal(suggested.trial,null);assert.equal(variant,null);
+  d.openExercise(ex.id);
+  assert.match(get('exerciseModal').innerHTML,/Сейчас: 2 × 2 повт\./);
+  const progress=d.exerciseProgressHTML(ex,suggested,variant);
+  assert.match(progress,/Рабочий объём<\/div><div class="exercise-dose">2 × 10 повт\./);
+  assert.match(progress,/Связанный тест · 4/);assert.match(progress,/Результат ниже рабочего объёма/);
+  assert.doesNotMatch(progress,/Можно попробовать следующий шаг|Пробный шаг:/);
+});
+
+test('a later adverse test-session reaction remains visible as a progression condition after current recovery',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.tandem_walk_flat;
+  completePlans(d,undefined,clock);
+  const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'easy',stop_reason:'cap',pain_after:0},clock-3*DAY);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock-3*DAY);morning(d,d.getState().testLogs.at(-1));
+  d.completeAssessment(session,{pain_after:3,perceived_fatigue:'easy'},clock-DAY);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const suggested=d.recommendedDose(ex),variant=d.nextVariant(ex);
+  assert.equal(suggested.trial,null);assert.equal(variant,null);
+  const progress=d.exerciseProgressHTML(ex,suggested,variant);
+  assert.match(progress,/aria-label="Осталось"/);
+  assert.match(progress,/В сессии связанного теста отмечена неблагоприятная реакция/);
+  assert.doesNotMatch(progress,/Можно попробовать следующий шаг|Пробный шаг:/);
+});
+
+test('progress details do not add a calibration prerequisite to an actually available next variant',()=>{
+  const clock=new Date(2026,9,16,12).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.tandem_walk_flat;
+  confirmedDose(d,ex,ex.dose,'easy',clock-3*DAY);completePlans(d,undefined,clock);
+  const session=d.recordTest('tandem_flat_clean_steps',{value:4,difficulty:'easy',stop_reason:'planned',pain_after:0},clock-2*DAY);
+  d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock-2*DAY);morning(d,d.getState().testLogs.at(-1));
+  const suggested=d.recommendedDose(ex),variant=d.nextVariant(ex);
+  assert.equal(suggested.dose.target_steps,2);assert.equal(variant.ex.id,'tandem_walk_tiptoe');
+  const progress=d.exerciseProgressHTML(ex,suggested,variant);
+  assert.match(progress,/Проверить следующий вариант/);
+  assert.doesNotMatch(progress,/нужно подтвердить переносимость предложенной меньшей дозы/i);
 });
 
 require('./additional-plan-contract.cjs')({app,plain,comfortable,DAY});
