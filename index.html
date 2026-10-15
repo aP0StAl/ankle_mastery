@@ -83,7 +83,7 @@
     .exercise-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 12px;margin-top:18px}
     .exercise-tile{border:0;background:none;color:var(--text);padding:0;text-align:left;min-width:0;align-self:start}
     .exercise-picture{display:flex;position:relative;align-items:center;justify-content:center;aspect-ratio:1;border-radius:22px;border:1px solid #294354;background:radial-gradient(ellipse at 65% 25%,color-mix(in srgb,var(--exercise-color) 13%,transparent),transparent 80%),#112332;overflow:hidden;transition:transform .18s,border-color .18s}
-    .exercise-picture svg{width:85%;height:85%;color:var(--exercise-color)}
+    .exercise-picture img{display:block;width:100%;height:100%;object-fit:cover}
     .exercise-tile:hover .exercise-picture{border-color:var(--exercise-color);transform:translateY(-3px)}
     .exercise-tile:focus-visible{outline:2px solid var(--blue);outline-offset:6px;border-radius:18px}
     .exercise-tile[data-lifecycle="locked"] .exercise-picture,.exercise-tile[data-lifecycle="archived"] .exercise-picture{background:#11202d;border-style:dashed}
@@ -113,7 +113,7 @@
     .exercise-history-chart{height:142px;display:flex;gap:5px;align-items:flex-end;border-bottom:1px solid #345064;margin-top:14px;padding-top:18px;background:repeating-linear-gradient(0deg,transparent 0,transparent 34px,#203646 35px,transparent 36px)}.exercise-history-day{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;position:relative;border:0;padding:0;background:none}.exercise-history-day:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.exercise-history-day[aria-pressed="true"] .exercise-history-bar{outline:1px solid var(--green);outline-offset:2px}.exercise-history-bar{width:100%;min-height:3px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#75dcbd,#398c96)}.exercise-history-bar.empty-day{background:#1b3040}
     .exercise-chart-caption{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:8px}.exercise-calendar{display:flex;gap:5px;margin:14px 0 8px}.exercise-calendar span{flex:1;aspect-ratio:1;max-height:26px;border-radius:5px;background:#1b3040}.exercise-calendar .trained{background:#398c75}.exercise-calendar .pending{background:#527d9b}.exercise-calendar .reaction{background:#ceaa60}.exercise-calendar .today{outline:1px solid #9db8c7;outline-offset:2px}
     .exercise-entry{border-top:1px solid var(--line);padding:13px 0}.exercise-entry-head{display:flex;justify-content:space-between;gap:8px;font-size:12px}.exercise-entry .li-meta{line-height:1.6;font-size:11px}.exercise-entry .btn{margin-top:8px;min-height:40px;font-size:11px;padding:8px 10px}.exercise-history-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:10px;color:var(--muted);margin:10px 0}.exercise-history-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;background:var(--blue)}
-    @media(min-width:721px){.exercise-grid{gap:26px 24px}.exercise-picture{border-radius:28px}.exercise-tile .exercise-picture svg{max-width:180px}.tile-name{font-size:15px}.tile-status{font-size:11px}}
+    @media(min-width:721px){.exercise-grid{gap:26px 24px}.exercise-picture{border-radius:28px}.tile-name{font-size:15px}.tile-status{font-size:11px}}
     @media(max-width:380px){.exercise-grid{gap:18px 9px}.tile-name{font-size:12px}.exercise-detail-head{padding:16px 14px 14px;gap:10px;grid-template-columns:52px minmax(0,1fr)}.exercise-detail-head h3{font-size:17px}.exercise-detail-head .exercise-picture{width:52px}.exercise-overview,.exercise-panel{padding-left:16px;padding-right:16px}.exercise-tabs{gap:12px;padding:0 16px}.exercise-footer{padding-left:14px;padding-right:14px}.exercise-footer .btn{padding:11px 8px}}
     @media(prefers-reduced-motion:reduce){.exercise-picture{transition:none}}
     .progress{height:7px;background:#213543;border-radius:99px;overflow:hidden;margin-top:8px}.progress>i{display:block;height:100%;background:linear-gradient(90deg,#54e3aa,#64bfff)}
@@ -1558,41 +1558,33 @@ function setRing(id,valId,v,empty='0%'){
   if(v==null){el.style.setProperty('--v',0);ve.textContent=empty;}else{el.style.setProperty('--v',pct(v));ve.textContent=pct(v)+'%';}
 }
 
-const exerciseFigureHead='<circle cx="49" cy="20" r="7" fill="#a3c7e7" stroke="none"/>';
-const exerciseStanding=exerciseFigureHead+'<path d="M49 33v24m0-17L34 48m15-8 15 8"/>';
-const exerciseFloor='<path d="M19 85h62" stroke="#c3d5d9" stroke-width="2"/>';
-const exerciseTiptoe=exerciseStanding+'<path d="m49 57-10 19 5 7h8m-3-26 10 19 5 7h8"/>';
-function equipmentExerciseArt(dome,left,showSide=true){
-  return exerciseFigureHead+'<path d="m49 33 2 22m-1-15-13 11m13-11 15 8m-14 7-18 13-5 9 6 6h6m17-25 13 8 4 11 8 5h7"/>'+(dome?'<path d="M54 84a17 12 0 0 1 34 0Z" fill="#9fcfc6" stroke="#75aaa2" stroke-width="2"/>':'<path d="m54 82 33-3 1 5-33 3Z" fill="#a9b9e5" stroke="#8395c7" stroke-width="2"/><path d="m66 86 7 4 5-5" stroke="#8395c7" stroke-width="2"/>')+'<path d="m68 74 8 5h7" stroke="#a3c7e7"/>'+(showSide?'<circle cx="21" cy="25" r="9" fill="'+(left?'#dde9f2':'#d9eee5')+'" stroke="none"/><text x="21" y="29" text-anchor="middle" font-family="inherit" font-size="10" font-weight="700" fill="#436374" stroke="none">'+(left?'Л':'П')+'</text>':'')+exerciseFloor;
-}
 const exerciseVisuals={
-  towel_stretch_straight_knee:{label:'Прямая нога',color:'#78dbb4',art:'<circle cx="28" cy="28" r="7" fill="#a3c7e7" stroke="none"/><path d="m29 41 9 22h38l3-10M33 47l18 4 22 4"/><path d="m76 53-3-10-21 9" stroke="#5fa99a" stroke-width="3"/><path d="M22 76h61" stroke="#c3d5d9" stroke-width="2"/><path d="m65 35 7-1-2 7" stroke="#5fa99a" stroke-width="2"/>'},
-  towel_stretch_bent_knee:{label:'Согнутая нога',color:'#78dbb4',art:'<circle cx="27" cy="28" r="7" fill="#a3c7e7" stroke="none"/><path d="m28 41 9 23h12l14-18 13 18 5-8M32 46l20-2 24 12"/><path d="m80 56-4-10-23-2" stroke="#5fa99a" stroke-width="3"/><path d="M21 77h63" stroke="#c3d5d9" stroke-width="2"/>'},
-  bilateral_tiptoe_static:{label:'На носках',color:'#8abfff',art:exerciseTiptoe+'<path d="M23 69v-9m-4 4 4-4 4 4m50 5v-9m-4 4 4-4 4 4" stroke="#7f9bcc" stroke-width="2"/>'+exerciseFloor},
-  tandem_walk_flat:{label:'Ходьба по линии',color:'#78dbb4',art:'<path d="M49 16v70" stroke="#b5cbd0" stroke-width="2" stroke-dasharray="3 5"/><g fill="#82b6ab" stroke="none"><path d="M39 57c-4 1-5 8-3 14 2 5 7 6 10 3 3-3 2-9 0-13-2-3-4-5-7-4Z"/><path d="M55 28c4-1 6 5 5 11-1 6-5 9-9 7-4-2-4-8-3-12 1-3 4-6 7-6Z"/></g><path d="m69 50 7-8m-6 0h6v6" stroke="#a3c7e7" stroke-width="2"/>'},
-  tandem_walk_tiptoe:{label:'По линии на носках',color:'#8abfff',art:'<path d="M49 16v70" stroke="#b5cbd0" stroke-width="2" stroke-dasharray="3 5"/><g fill="#8fa9d3" stroke="none"><ellipse cx="41" cy="65" rx="7" ry="10" transform="rotate(-12 41 65)"/><ellipse cx="55" cy="35" rx="7" ry="10" transform="rotate(12 55 35)"/></g><g fill="#a3c7e7" stroke="none"><circle cx="37" cy="52" r="2"/><circle cx="42" cy="51" r="2"/><circle cx="50" cy="22" r="2"/><circle cx="55" cy="21" r="2"/></g><path d="m72 62 5-7m-6 0h6v6" stroke="#a3c7e7" stroke-width="2"/>'},
-  right_leg_balance_left_front_back:{label:'Нога вперёд и назад',color:'#b9a4f4',art:exerciseStanding+'<path d="m49 57-4 24h9m-5-24 14-9 10 13"/><path d="m49 57-14 10-11 10" stroke="#b3b1d2" stroke-dasharray="3 5" stroke-width="3"/><path d="M70 72c-12 8-25 8-37 5m5-5-5 5 5 3" stroke="#8b87b9" stroke-width="2"/>'+exerciseFloor},
-  left_side_lunge_right_leg_straight:{label:'Боковой выпад',color:'#78dbb4',art:'<circle cx="40" cy="23" r="7" fill="#a3c7e7" stroke="none"/><path d="m40 36 6 20m-3-13-16 5m16-5 17-2m-14 15-16 9-4 17h9m11-26 24 25h9"/><path d="M23 23h-8m4-4-4 4 4 4" stroke="#5fa99a" stroke-width="2"/>'+exerciseFloor},
-  slider_injured_leg_three_directions:{label:'Слайдер',color:'#8abfff',art:exerciseStanding+'<path d="m49 57-10 13 3 10h9m-2-23 17 19h9"/><ellipse cx="72" cy="81" rx="11" ry="3" fill="#aabce1" stroke="#8395c7" stroke-width="2"/><path d="M83 56v13m-4-4 4 4 4-4M64 89h15m-4-4 4 4-4 4" stroke="#8395c7" stroke-width="2"/>'+exerciseFloor},
-  hemisphere_weight_shift_injured_front:{label:'Перенос веса',color:'#b9a4f4',art:equipmentExerciseArt(true,false,false)},
-  hemisphere_weight_shift_rear_heel_up:{label:'Поднятая пятка',color:'#b9a4f4',art:equipmentExerciseArt(true,true,false)},
-  balance_board_both_tiptoe_right_front:{label:'Балансборд · правая',color:'#8abfff',art:equipmentExerciseArt(false,false)},
-  balance_board_both_tiptoe_left_front:{label:'Балансборд · левая',color:'#8abfff',art:equipmentExerciseArt(false,true)},
-  hemisphere_both_tiptoe_right_front:{label:'Полусфера · правая',color:'#78dbb4',art:equipmentExerciseArt(true,false)},
-  hemisphere_both_tiptoe_left_front:{label:'Полусфера · левая',color:'#78dbb4',art:equipmentExerciseArt(true,true)},
-  obstacle_high_knee_heel_to_toe:{label:'Перешагивания',color:'#b9a4f4',art:exerciseFigureHead+'<path d="M49 33v23m0-16-14 8m14-8 13 7m-13 9-9 26h9m0-26 17-12 8 17h9"/><path d="M60 82v-9h20v9" stroke="#a19ac9" stroke-width="3"/><path d="m65 36 7-1 2 6" stroke="#a19ac9" stroke-width="2"/>'+exerciseFloor},
-  tiptoe_sidewalk_ball_reaction:{label:'Шаги с мячом',color:'#8abfff',art:exerciseFigureHead+'<path d="M49 33v24m0-17 12-4 9 2m-21 4 9 10 14-5m-23 10-10 19 5 7h8m-3-26 10 19 5 7h8"/><circle cx="79" cy="35" r="10" fill="#abbde0" stroke="#8395c7" stroke-width="2"/><path d="m72 29 13 12m-14-6h17" stroke="#8395c7" stroke-width="1.5"/><path d="M24 55H14m4-4-4 4 4 4" stroke="#8395c7" stroke-width="2"/>'+exerciseFloor},
-  tiptoe_square_corner_lunges:{label:'К углам квадрата',color:'#78dbb4',art:'<path d="m22 34 28-10 28 10v39L50 84 22 73Z" stroke="#bad7ce" stroke-width="2" stroke-dasharray="3 5"/><g fill="#8fc2b1" stroke="none"><path d="m17 35 5-9 5 9Zm56 0 5-9 5 9ZM17 76l5-9 5 9Zm56 0 5-9 5 9Z"/></g><circle cx="47" cy="36" r="6" fill="#a3c7e7" stroke="none"/><path d="m48 48 7 13m-5-9-17 11-9 4m31-6-15 10-5 7m20-17 12 10 7 6" stroke-width="3.5"/>'},
-  tiptoe_sidewalk_cone_reach:{label:'Шаги к фишкам',color:'#b9a4f4',art:'<circle cx="43" cy="22" r="7" fill="#a3c7e7" stroke="none"/><path d="m43 35 10 23m-6-16 17 10 12 14m-28-22-17 5m22 9-15 16 4 7h8m3-23 10 18 5 5h8"/><path d="m74 78 6-13 6 13Z" fill="#b9b2d9" stroke="#9b91c2" stroke-width="2"/><path d="M22 62H12m4-4-4 4 4 4" stroke="#9b91c2" stroke-width="2"/>'+exerciseFloor},
-  sand_tiptoe_walk_or_stand:{label:'Носки на песке',color:'#e3c18e',art:exerciseTiptoe+'<path d="M16 87c7-4 12 4 19 0s12 4 19 0 12 4 19 0 9 1 12 0" stroke="#c5a982" stroke-width="2"/><g fill="#c5a982" stroke="none"><circle cx="23" cy="94" r="1.5"/><circle cx="39" cy="91" r="1"/><circle cx="58" cy="95" r="1.5"/><circle cx="77" cy="92" r="1"/></g>'},
-  single_leg_calf_raise:{label:'Подъём на одной',color:'#78dbb4',art:exerciseStanding+'<path d="m49 57-5 19 5 7h9m-9-26 16 9 6-10"/><path d="M29 73V60m-4 4 4-4 4 4" stroke="#5fa99a" stroke-width="2"/>'+exerciseFloor},
-  band_eversion:{label:'Стопа с резинкой',color:'#b9a4f4',art:'<path d="M38 20v35c0 9 8 12 14 17 4 3 8 7 12 5 5-2 3-8-1-12l-7-8V20"/><path d="m22 66 41-4 5 10-46 4Z" fill="#c5bddf" fill-opacity=".7" stroke="#9b91c2" stroke-width="2"/><path d="M20 60v22m54-36 9 6-3-7m3 7-8 2" stroke="#9b91c2" stroke-width="2"/>'+exerciseFloor},
-  hops_and_direction_changes:{label:'Прыжки и повороты',color:'#8abfff',art:'<circle cx="48" cy="17" r="7" fill="#a3c7e7" stroke="none"/><path d="m48 30 1 22m-1-15-15-7-7-9m22 16 15-7 7-9M49 52 35 63l10 9m4-20 15 10-5 11"/><path d="M27 83h13m-5-4 5 4-5 4m14-4h24m-5-4 5 4-5 4" stroke="#8395c7" stroke-width="2"/><path d="m19 63-3 7m64-7 3 7" stroke="#b4c4df" stroke-width="2"/>'},
-  single_leg_multidirectional_reach:{label:'Баланс по направлениям',color:'#b9a4f4',art:exerciseStanding+'<path d="m49 57-4 24h9m-5-24 19 13 10 1"/><path d="m49 57-21 9m21-9 12 24" stroke="#b3b1d2" stroke-width="3" stroke-dasharray="3 5"/><g fill="#a19ac9" stroke="none"><circle cx="21" cy="68" r="3"/><circle cx="64" cy="87" r="3"/><circle cx="85" cy="72" r="3"/></g>'+exerciseFloor}
+  towel_stretch_straight_knee:{label:'Прямая нога',color:'#78dbb4'},
+  towel_stretch_bent_knee:{label:'Согнутая нога',color:'#78dbb4'},
+  bilateral_tiptoe_static:{label:'На носках',color:'#8abfff'},
+  tandem_walk_flat:{label:'Ходьба по линии',color:'#78dbb4'},
+  tandem_walk_tiptoe:{label:'По линии на носках',color:'#8abfff'},
+  right_leg_balance_left_front_back:{label:'Нога вперёд и назад',color:'#b9a4f4'},
+  left_side_lunge_right_leg_straight:{label:'Боковой выпад',color:'#78dbb4'},
+  slider_injured_leg_three_directions:{label:'Слайдер',color:'#8abfff'},
+  hemisphere_weight_shift_injured_front:{label:'Перенос веса',color:'#b9a4f4'},
+  hemisphere_weight_shift_rear_heel_up:{label:'Поднятая пятка',color:'#b9a4f4'},
+  balance_board_both_tiptoe_right_front:{label:'Балансборд · правая',color:'#8abfff'},
+  balance_board_both_tiptoe_left_front:{label:'Балансборд · левая',color:'#8abfff'},
+  hemisphere_both_tiptoe_right_front:{label:'Полусфера · правая',color:'#78dbb4'},
+  hemisphere_both_tiptoe_left_front:{label:'Полусфера · левая',color:'#78dbb4'},
+  obstacle_high_knee_heel_to_toe:{label:'Перешагивания',color:'#b9a4f4'},
+  tiptoe_sidewalk_ball_reaction:{label:'Шаги с мячом',color:'#8abfff'},
+  tiptoe_square_corner_lunges:{label:'К углам квадрата',color:'#78dbb4'},
+  tiptoe_sidewalk_cone_reach:{label:'Шаги к фишкам',color:'#b9a4f4'},
+  sand_tiptoe_walk_or_stand:{label:'Носки на песке',color:'#e3c18e'},
+  single_leg_calf_raise:{label:'Подъём на одной',color:'#78dbb4'},
+  band_eversion:{label:'Стопа с резинкой',color:'#b9a4f4'},
+  hops_and_direction_changes:{label:'Прыжки и повороты',color:'#8abfff'},
+  single_leg_multidirectional_reach:{label:'Баланс по направлениям',color:'#b9a4f4'}
 };
 function exerciseArt(ex){
-  const visual=exerciseVisuals[ex.id]||exerciseVisuals.bilateral_tiptoe_static;
-  return `<svg class="exercise-art" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${visual.art}</svg>`;
+  return `<img class="exercise-art" src="assets/exercises/${ex.id}.webp" width="640" height="640" alt="" aria-hidden="true" loading="lazy" decoding="async">`;
 }
 
 let exerciseFilter='active';
