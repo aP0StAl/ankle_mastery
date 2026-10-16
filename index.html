@@ -127,6 +127,10 @@
     .modal{padding:18px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.modal-head h3{margin:0;font-size:18px}.x{border:0;background:#172a3a;color:#c8d6df;border-radius:11px;width:34px;height:34px}
     .field{margin:12px 0}.field label{display:block;font-size:12px;color:#a5b7c4;margin-bottom:7px}.field input,.field select,.field textarea{width:100%;background:#0f2231;color:#eef5fa;border:1px solid #294359;border-radius:12px;padding:11px}.field textarea{min-height:75px;resize:vertical}
     .seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{border:1px solid #294358;background:#102433;color:#bed0db;border-radius:10px;padding:9px 11px}.seg button.selected{background:#174c3b;color:#c7ffe6;border-color:#38c790}
+    .log-choice{min-width:0;padding:0;border:0}.log-choice legend{padding:0;margin-bottom:7px;font-size:12px;color:#a5b7c4}
+    .log-options{display:flex;border:1px solid #294359;border-radius:12px;overflow:hidden}.log-options label{display:flex;flex:1;min-width:0;position:relative;margin:0;cursor:pointer}
+    .log-options input{position:absolute;width:1px;height:1px;margin:0;padding:0;border:0;clip-path:inset(50%)}.log-options span{display:flex;flex:1;align-items:center;justify-content:center;min-height:44px;padding:9px 6px;background:#102433;color:#bed0db;font-size:12px;line-height:1.35;text-align:center;overflow-wrap:anywhere}
+    .log-options label+label span{border-left:1px solid #294359}.log-options input:checked+span{background:#174c3b;color:#c7ffe6;box-shadow:inset 0 0 0 1px #38c790}.log-options input:focus-visible+span{outline:2px solid var(--blue);outline-offset:-3px}
     .range-row{display:grid;grid-template-columns:1fr 42px;gap:10px;align-items:center}.range-row input{padding:0}.range-val{text-align:center;font-weight:800}
     .modal-actions{display:flex;gap:8px;margin-top:16px}.modal-actions .btn{flex:1}
     .notice{background:#12283a;border:1px solid #29495e;border-radius:14px;padding:11px 12px;font-size:12px;color:#bed0dc;line-height:1.45}
@@ -1900,6 +1904,18 @@ const steadinessNames={steady:'Устойчива',shaky:'Менее увере�
 function steadinessField(id,value='steady'){
   return `<div class="field"><label for="${id}">Устойчивость лодыжки</label><select id="${id}">${Object.entries(steadinessNames).map(([k,v])=>`<option value="${k}" ${k===value?'selected':''}>${v}</option>`).join('')}</select></div>`;
 }
+function logChoiceField(id,label,options,value){
+  if(options.length>=5)return `<div class="field"><label for="${id}">${esc(label)}</label><select id="${id}" ${id==='doseOption'?'onchange="AM.doseChanged()"':''}>${options.map(([v,n])=>`<option value="${v}" ${v===value?'selected':''}>${esc(n)}</option>`).join('')}</select></div>`;
+  return `<fieldset class="field log-choice"><legend>${esc(label)}</legend><div class="log-options" ${id==='doseOption'?'onchange="AM.doseChanged()"':''}>${options.map(([v,n])=>`<label><input type="radio" id="${id}_${v}" name="${id}" value="${v}" ${v===value?'checked':''}><span>${esc(n)}</span></label>`).join('')}</div></fieldset>`;
+}
+function logChoiceValue(id){
+  return document.querySelector(`input[name="${id}"]:checked`)?.value||document.getElementById(id)?.value||'';
+}
+function rememberLogWellbeing(open){
+  if(state.settings.logWellbeingOpen===open)return;
+  state.settings.logWellbeingOpen=open;
+  localStorage.setItem(KEY,JSON.stringify(state));
+}
 function openLog(id,useTrial=false){
   const ex=EXMAP[id];if(!ex)return;
   const plan=recommendedDose(ex),dose=useTrial===true&&plan.trial?plan.trial:plan.dose;
@@ -1908,22 +1924,24 @@ function openLog(id,useTrial=false){
   const entry=unprescribedFrequency(ex)&&additionalPlanState(ex);
   suggestedForLog.additionalPreview=entry?.automaticPreview||null;
   if(useTrial!==true&&plan.status==='normal'&&entry?.used>0&&sameDose(dose,entry.dose))suggestedForLog.kind='planned_remainder';
-  const option=doseOptions[id];
+  const option=doseOptions[id],last=state.logs.filter(l=>l.exerciseId===id&&l.ts<=now()).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
+  const rememberedOption=option&&last?.actualDose?.[option.key];
+  const optionValue=option&&(useTrial!==true&&option.values.some(([v])=>v===rememberedOption)?rememberedOption:option.values.some(([v])=>v===dose[option.key])?dose[option.key]:option.values[0][0]);
   document.getElementById('logModal').innerHTML=`
     <div class="modal-head"><div><div class="source">${useTrial===true?'Пробный шаг':'Запись выполнения'}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
     <div class="notice">Предложено: <b>${esc(doseText(ex,dose))}</b><br>${esc(plan.reason)}</div>
     <div class="section-title"><h4>Сколько сделал?</h4></div>
     ${(doseFields[ex.dose?.type]||[]).map(([key,label],i)=>`${i===1?'<details><summary>Уточнить удержание / подходы</summary>':''}<div class="field"><label for="dose_${key}">${label}</label><input id="dose_${key}" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${dose[key]||1}" oninput="AM.doseChanged()"></div>${i>0&&i===doseFields[ex.dose.type].length-1?'</details>':''}`).join('')}
-    ${option?`<div class="field"><label for="doseOption">${option.label}</label><select id="doseOption" onchange="AM.doseChanged()">${option.values.map(([v,n])=>`<option value="${v}" ${v===(dose[option.key]||option.values[0][0])?'selected':''}>${n}</option>`).join('')}</select></div>`:''}
-    <div class="field"><label for="difficultySel">Как дался объём?</label><select id="difficultySel"><option value="">Выбери</option><option value="normal">Посильно</option><option value="easy">Легко, есть запас</option><option value="hard">Тяжело, без запаса</option></select></div>
-    <div class="field"><label for="techSel">Качество движений</label><select id="techSel"><option value="">Выбери</option><option value="good">Хорошее</option><option value="ok">Приемлемое</option><option value="poor">Терял контроль</option></select></div>
+    ${option?logChoiceField('doseOption',option.label,option.values,optionValue):''}
+    ${logChoiceField('difficultySel','Как дался объём?',[['normal','Посильно'],['easy','Легко, есть запас'],['hard','Тяжело, без запаса']],last?.difficulty)}
+    ${logChoiceField('techSel','Качество движений',[['good','Хорошее'],['ok','Приемлемое'],['poor','Терял контроль']],last?.technique)}
       <div class="field" id="volumeReason" style="display:none"><label for="doseReason">Почему выбран такой объём?</label><select id="doseReason">${[['capacity','Подходит моим возможностям'],['daily_load','Меньше из-за общей нагрузки сегодня'],['time','Не хватило времени'],['recovery','Облегчение после реакции'],['trial','Пробую следующий шаг'],['test','Объём по результату теста'],...(suggestedForLog.kind==='planned_remainder'?[['planned_remainder','Остаток выбранного занятия']]:[]),...(suggestedForLog.kind==='calibration'?[['calibration','Объём по результату теста']]:[])].map(([v,n])=>`<option value="${v}" ${v===suggestedForLog.kind?'selected':''}>${n}</option>`).join('')}</select></div>
-    <details open><summary>Самочувствие после выполнения</summary>
+    <details id="logWellbeing" ${state.settings.logWellbeingOpen!==false?'open':''} ontoggle="AM.rememberLogWellbeing(this.open)"><summary>Самочувствие после выполнения</summary>
       <div class="field"><label for="painBefore">Боль до упражнения, 0–10</label><input id="painBefore" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
       <div class="field"><label for="painDuring">Боль во время, 0–10</label><input id="painDuring" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
       <div class="field"><label for="painAfter">Боль сейчас после всех нагрузок, 0–10</label><input id="painAfter" type="number" min="0" max="10" value="${currentSymptoms()?.pain||0}"></div>
-      ${steadinessField('logSteadiness',currentSymptoms()?.steadiness||'steady')}
-      <div class="field"><label for="fatigueSel">Местная усталость голеностопа / икр сейчас</label><select id="fatigueSel">${['low','medium','high'].map(k=>`<option value="${k}" ${k===(currentSymptoms()?.fatigue||'low')?'selected':''}>${fatigueNames[k]}</option>`).join('')}</select></div>
+      ${logChoiceField('logSteadiness','Устойчивость лодыжки',Object.entries(steadinessNames),last?.steadiness||(typeof last?.instability==='boolean'?(last.instability?'giving_way':'steady'):currentSymptoms()?.steadiness||'steady'))}
+      ${logChoiceField('fatigueSel','Местная усталость голеностопа / икр сейчас',['low','medium','high'].map(k=>[k,fatigueNames[k]]),last?.fatigue||currentSymptoms()?.fatigue||'low')}
       <label class="notice"><input type="checkbox" id="outerPain"> Боль у наружной лодыжки</label>
       <label class="notice" style="display:block;margin-top:10px"><input type="checkbox" id="swelling" ${currentSymptoms()?.swelling?'checked':''}> Новый/усилившийся отёк</label>
 
@@ -1931,27 +1949,28 @@ function openLog(id,useTrial=false){
     </details>
     <div class="modal-actions"><button class="btn primary" onclick="AM.saveLog('${id}')">Сохранить</button></div>`;
   showDialog('logDialog');
+  doseChanged();
 }
 function doseChanged(){
   if(!suggestedForLog)return;
   const ex=EXMAP[suggestedForLog.id],changed=(doseFields[ex.dose.type]||[]).some(([k])=>Number(document.getElementById('dose_'+k).value)!==suggestedForLog.dose[k]);
-  const option=doseOptions[ex.id],variant=option&&document.getElementById('doseOption').value!==(suggestedForLog.dose[option.key]||option.values[0][0]);
+  const option=doseOptions[ex.id],variant=option&&logChoiceValue('doseOption')!==(suggestedForLog.dose[option.key]||option.values[0][0]);
   document.getElementById('volumeReason').style.display=changed||variant?'block':'none';
 }
 function saveLog(id){
   const ex=EXMAP[id],dose={...ex.dose};
   for(const [key] of doseFields[ex.dose?.type]||[])dose[key]=Number(document.getElementById('dose_'+key).value);
-  const option=doseOptions[id];if(option)dose[option.key]=document.getElementById('doseOption').value;
-  const steadiness=document.getElementById('logSteadiness').value;
+  const option=doseOptions[id];if(option)dose[option.key]=logChoiceValue('doseOption');
+  const steadiness=logChoiceValue('logSteadiness');
   const pains=['painBefore','painDuring','painAfter'].map(k=>Number(document.getElementById(k).value));
   if(pains.some(v=>!Number.isFinite(v)||v<0||v>10))return toast('Укажи боль от 0 до 10');
-  if(!document.getElementById('difficultySel').value||!document.getElementById('techSel').value)return toast('Отметь трудность и качество выполнения');
+  if(!logChoiceValue('difficultySel')||!logChoiceValue('techSel'))return toast('Отметь трудность и качество выполнения');
   let log;
   try{log=recordExercise(id,dose,{
     painBefore:pains[0],painDuring:pains[1],painAfter:pains[2],doseReason:document.getElementById('doseReason').value||suggestedForLog?.kind||'capacity',
-    fatigue:document.getElementById('fatigueSel').value,technique:document.getElementById('techSel').value,
+    fatigue:logChoiceValue('fatigueSel'),technique:logChoiceValue('techSel'),
     symptomScope:'combined',
-    phase:'after',difficulty:document.getElementById('difficultySel').value,steadiness,instability:steadiness==='giving_way',
+    phase:'after',difficulty:logChoiceValue('difficultySel'),steadiness,instability:steadiness==='giving_way',
     localOuterAnklePain:document.getElementById('outerPain').checked,
     swelling:document.getElementById('swelling').checked,comment:document.getElementById('comment').value.trim()
   },now(),suggestedForLog?.id===id?suggestedForLog.dose:suggestedDose(ex).dose,suggestedForLog?.additionalPreview);}catch(e){return toast(e.message);}
@@ -2215,7 +2234,7 @@ document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('clo
 
 window.AM={
   openAdditionalPlan,closeAdditionalPlan,
-  openFeedback,openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,
+  openFeedback,openSymptoms,saveSymptoms,openMorning,saveMorning,doseChanged,rememberLogWellbeing,
   openPostpone,postponeAction,resumeAction,
   exerciseHistoryDay,exerciseTab,exerciseTabKey,openExercise,openLog,saveLog,openActivity,saveActivity,openTest,saveTest,deleteTest,openCheck,saveCheck,
   activateExercise,archiveExercise,suggestStage,openAssessment,saveAssessment,chooseFatigue,openAssessmentCheck,saveAssessmentCheck,openSelfReport,saveSelfReport,close:closeDialog,

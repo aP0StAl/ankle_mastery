@@ -8,6 +8,63 @@ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const KEY='ankle_mastery_static_v2';
 const plain=x=>JSON.parse(JSON.stringify(x));
 const comfortable={painDuring:0,painAfter:0,fatigue:'low',technique:'good',steadiness:'steady',instability:false,swelling:false,difficulty:'normal'};
+const selectedLogChoices=form=>Object.fromEntries([...form.matchAll(/<input\b[^>]*type="radio"[^>]*>/g)].filter(([input])=>/\bchecked\b/.test(input)).map(([input])=>[input.match(/\bname="([^"]+)"/)[1],input.match(/\bvalue="([^"]*)"/)[1]]));
+test('log form offers small choices as radios without pre-answering effort and technique',()=>{
+  const {dev:d,get}=app();d.openLog('bilateral_tiptoe_static');
+  const form=get('logModal').innerHTML,selected=selectedLogChoices(form);
+  for(const id of ['doseOption','difficultySel','techSel','logSteadiness','fatigueSel']){
+    assert.match(form,new RegExp(`type="radio"[^>]*name="${id}"`));
+    assert.doesNotMatch(form,new RegExp(`<select id="${id}"`));
+  }
+  assert.equal(selected.doseOption,'even');assert.equal(selected.logSteadiness,'steady');assert.equal(selected.fatigueSel,'low');
+  assert.equal(selected.difficultySel,undefined);assert.equal(selected.techSel,undefined);
+  assert.doesNotMatch(form,/type="radio"[^>]*value=""/);
+  assert.match(form,/<select id="doseReason">/);
+});
+test('log choices restore the latest saved execution of that exercise across reloads',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),source=app(null,clock),d=source.dev,ex=d.EXMAP.bilateral_tiptoe_static;
+  d.getState().logs.push(
+    {id:'latest',exerciseId:ex.id,ts:clock-60000,...comfortable,difficulty:'hard',technique:'ok',steadiness:'shaky',fatigue:'medium',actualDose:{type:'duration',target_sec:20,weight_distribution:'right_bias'},additionalPlanPart:true},
+    {id:'older',exerciseId:ex.id,ts:clock-120000,...comfortable,actualDose:{...ex.dose,weight_distribution:'even'}},
+    {id:'other',exerciseId:'obstacle_high_knee_heel_to_toe',ts:clock-30000,...comfortable,actualDose:{type:'steps',target_steps:20}},
+    {id:'future',exerciseId:ex.id,ts:clock+60000,...comfortable,actualDose:{...ex.dose,weight_distribution:'even'}}
+  );
+  d.recordSymptoms({pain:2,steadiness:'steady',fatigue:'low'},'combined',clock);
+  const saved=plain(d.getState()),restored=app(saved,clock);
+  restored.dev.openLog(ex.id);
+  assert.deepEqual(selectedLogChoices(restored.get('logModal').innerHTML),{doseOption:'right_bias',difficultySel:'hard',techSel:'ok',logSteadiness:'shaky',fatigueSel:'medium'});
+  assert.match(restored.get('logModal').innerHTML,/id="painAfter"[^>]*value="2"/);
+  restored.dev.openLog('obstacle_high_knee_heel_to_toe');
+  assert.deepEqual(selectedLogChoices(restored.get('logModal').innerHTML),{difficultySel:'normal',techSel:'good',logSteadiness:'steady',fatigueSel:'low'});
+  assert.deepEqual(plain(restored.dev.getState().logs),saved.logs);
+});
+test('log choices handle legacy instability and fall back when a saved option is unavailable',()=>{
+  const clock=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,clock),ex=d.EXMAP.bilateral_tiptoe_static;
+  d.getState().logs.push({id:'legacy',exerciseId:ex.id,ts:clock-60000,painAfter:0,instability:true,difficulty:'normal',technique:'good',actualDose:{...ex.dose,weight_distribution:'removed_option'}});
+  d.recordSymptoms({pain:1,steadiness:'steady',fatigue:'medium'},'combined',clock);
+  d.openLog(ex.id);
+  assert.deepEqual(selectedLogChoices(get('logModal').innerHTML),{doseOption:'even',difficultySel:'normal',techSel:'good',logSteadiness:'giving_way',fatigueSel:'medium'});
+  d.getState().logs[0].instability=false;
+  d.recordSymptoms({pain:1,steadiness:'shaky',fatigue:'medium'},'combined',clock);
+  d.openLog(ex.id);
+  assert.equal(selectedLogChoices(get('logModal').innerHTML).logSteadiness,'steady');
+});
+test('wellbeing expansion is shared by exercises and persists both states across reloads',()=>{
+  const a=app();a.dev.openLog('bilateral_tiptoe_static');
+  assert.match(a.get('logModal').innerHTML,/<details id="logWellbeing"[^>]*\sopen(?:\s|>)/);
+  a.context.window.AM.rememberLogWellbeing(false);
+  a.dev.openLog('obstacle_high_knee_heel_to_toe');
+  assert.doesNotMatch(a.get('logModal').innerHTML,/<details id="logWellbeing"[^>]*\sopen(?:\s|>)/);
+  assert.equal(JSON.parse(a.storage.get(KEY)).settings.logWellbeingOpen,false);
+  const restored=app(JSON.parse(a.storage.get(KEY)));
+  restored.dev.openLog('bilateral_tiptoe_static');
+  assert.doesNotMatch(restored.get('logModal').innerHTML,/<details id="logWellbeing"[^>]*\sopen(?:\s|>)/);
+  restored.context.window.AM.rememberLogWellbeing(true);
+  const reopened=app(JSON.parse(restored.storage.get(KEY)));
+  reopened.dev.openLog('obstacle_high_knee_heel_to_toe');
+  assert.match(reopened.get('logModal').innerHTML,/<details id="logWellbeing"[^>]*\sopen(?:\s|>)/);
+  assert.equal(reopened.dev.getState().logs.length,0);
+});
 test('balance cards name the front leg, both raised heels and the actual equipment',()=>{
   const {dev:d,get}=app();
   for(const [equipment,label] of [['balance_board','Балансборд'],['hemisphere','Полусфера']]){
@@ -90,7 +147,7 @@ function app(saved,clock=null){
     return elements.get(id);
   };
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
-  const context={document:{body:get('body'),getElementById:get,querySelector:q=>q==='dialog[open]'?dialogs.find(d=>d.open)||null:null,querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
+  const context={document:{body:get('body'),getElementById:get,querySelector:q=>{if(q==='dialog[open]')return dialogs.find(d=>d.open)||null;const choice=q.match(/^input\[name="([^"]+)"\]:checked$/);return choice&&get(choice[1]).value?get(choice[1]):null;},querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
     window.dev={startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
@@ -538,8 +595,12 @@ test('duration, support, range and weight distribution use exercise-specific tri
     ['left_side_lunge_right_leg_straight','range','increased'],
     ['bilateral_tiptoe_static','weight_distribution','right_bias']
   ]){
-    const {dev:d}=app(),ex=d.EXMAP[id];completePlans(d);confirmedDose(d,ex,ex.dose);
+    const {dev:d,get}=app(),ex=d.EXMAP[id];completePlans(d);confirmedDose(d,ex,ex.dose);
     assert.equal(d.suggestedDose(ex).trial[key],value);
+    if(key!=='target_sec'){
+      d.openLog(ex.id,true);
+      assert.equal(selectedLogChoices(get('logModal').innerHTML).doseOption,value);
+    }
   }
 });
 test('a failed trial returns to the confirmed variant instead of continuing the harder option',()=>{
@@ -1132,7 +1193,7 @@ test('a later whole-complex log keeps general fatigue and the next form preserve
   assert.equal(d.currentSymptoms(clock).generalFatigue,'high');
   d.openLog('obstacle_high_knee_heel_to_toe');
   const form=get('logModal').innerHTML;
-  assert.match(form,/<select id="fatigueSel">[\s\S]*?<option value="high" selected/);
+  assert.equal(selectedLogChoices(form).fatigueSel,'high');
   assert.match(form,/Боль сейчас после всех нагрузок/);
   for(const [id,value] of Object.entries({dose_target_steps:'15',difficultySel:'normal',techSel:'good',logSteadiness:'steady',fatigueSel:'high'}))get(id).value=value;
   const reports=d.getState().symptomReports.length;
