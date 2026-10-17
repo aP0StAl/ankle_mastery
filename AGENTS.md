@@ -4,6 +4,15 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## Project Scope and User Interaction
+
+- This is a personal app for the repository owner. Distribution to a wider audience is not planned.
+- The scope is the owner's current ankle injury, from the current rehabilitation stage through confident running. Design for the owner's current goals, circumstances, and existing program.
+- Do not expand the product into a universal rehabilitation app for arbitrary users, goals, diagnoses, or injuries. Generalized onboarding, goal selection, and configuration for hypothetical users are outside scope unless the owner explicitly requests them.
+- The owner evaluates symptoms and exercise parameters deliberately and reports changes when they occur. Many answers remain stable between entries.
+- Minimize clicks. Reusing previous answers and prefilling stable values is intentional product behavior; do not treat those values as unreliable solely because the owner did not reselect them.
+- Do not add mandatory repeated questions, per-field confirmations, or forced re-entry of unchanged values. Apply reported changes to the relevant decisions while preserving this low-friction interaction model.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
