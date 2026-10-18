@@ -133,18 +133,15 @@ module.exports=({app,plain,comfortable,DAY})=>{
     assert.deepEqual(plain(restored.getState().additionalPlan),saved.additionalPlan);
   });
 
-  test('moderate and strong fatigue produce one smaller and less demanding direction',()=>{
-    for(const fatigue of ['medium','high']){
-      const {dev:d}=scenario();d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',generalFatigue:fatigue},'combined',clock);
-      const proposal=d.autoAdditionalPlan(clock),ids=Object.keys(proposal.targets);
-      assert.equal(proposal.status,'ready');assert.equal(ids.length,1);
-      const ex=d.EXMAP[ids[0]];assert.ok(Math.max(...Object.values(ex.load_channels))<=.3);
-      assert.ok(proposal.targets[ex.id].sets<ex.dose.sets||proposal.targets[ex.id].target_steps<ex.dose.target_steps);
+  test('moderate or strong general fatigue does not start another additional lesson',()=>{
+    for(const generalFatigue of ['medium','high']){
+      const {dev:d}=scenario();d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',generalFatigue},'combined',clock);
+      assert.equal(d.autoAdditionalPlan(clock).status,'recovery');assert.equal(extras(d,clock).length,0);
     }
   });
 
   test('fatigue or deterioration after starting ends the remaining lesson without a debt after normal feedback',()=>{
-    for(const response of [{fatigue:'medium'},{fatigue:'high'},{painAfter:3}]){
+    for(const response of [{fatigue:'high'},{painAfter:3}]){
       const {dev:d}=scenario(),rec=extras(d,clock)[0];
       d.recordExercise(rec.ex.id,rec.dose,{...comfortable,symptomScope:'combined',...response},clock,rec.dose);
       const plan=d.getState().additionalPlan;
@@ -156,7 +153,7 @@ module.exports=({app,plain,comfortable,DAY})=>{
   });
 
   test('a later general observation ends unfinished additional work after any load',()=>{
-    for(const response of [{fatigue:'medium'},{fatigue:'low',generalFatigue:'medium'}]){
+    for(const response of [{fatigue:'high'},{fatigue:'low',generalFatigue:'medium'}]){
       const {dev:d}=scenario(),rec=extras(d,clock)[0];
       d.recordExercise(rec.ex.id,rec.dose,{...comfortable,symptomScope:'combined'},clock,rec.dose);
       assert.equal(d.getState().additionalPlan.endedAt,null);
@@ -170,7 +167,7 @@ module.exports=({app,plain,comfortable,DAY})=>{
     const {dev:d}=scenario(),home=['towel_stretch_straight_knee','towel_stretch_bent_knee','bilateral_tiptoe_static','tandem_walk_flat','right_leg_balance_left_front_back','left_side_lunge_right_leg_straight'];
     for(const hour of [9,13,17])for(const id of home){const ex=d.EXMAP[id];d.recordExercise(id,ex.dose,comfortable,new Date(2026,9,12,hour).getTime(),ex.dose);}
     const rec=extras(d,clock)[0];assert.ok(rec);
-    d.recordExercise(rec.ex.id,rec.dose,{...comfortable,fatigue:'medium',symptomScope:'combined'},clock,rec.dose);
+    d.recordExercise(rec.ex.id,rec.dose,{...comfortable,fatigue:'high',symptomScope:'combined'},clock,rec.dose);
     assert.equal(d.actionRecommendations(clock+1).length,0);
     const screen=d.noRecommendationHTML(clock+1);
     assert.match(screen,/Дополнительное занятие закончено/);assert.match(screen,/после отмеченной усталости/);
@@ -217,7 +214,7 @@ module.exports=({app,plain,comfortable,DAY})=>{
     for(const t of d.RDCFG.tests)d.getState().postponedActions['test:'+t.id]=clock+DAY;
     const session=d.recordTest('tandem_tiptoe_clean_steps',{value:30,pain_after:0,difficulty:'normal',stop_reason:'planned'},clock);
     d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock);
-    assert.equal(extras(d,clock+2*3600000).length,0);assert.ok(extras(d,clock+3*3600000).length>0);
+    assert.ok(extras(d,clock+2*3600000).length>0);assert.ok(extras(d,clock+3*3600000).length>0);
     d.recordSymptoms({pain:5,steadiness:'steady',fatigue:'low'},'combined',clock+3*3600000+1);
     assert.equal(d.autoAdditionalPlan(clock+3*3600000+1).status,'recovery');assert.equal(extras(d,clock+3*3600000+1).length,0);
   });

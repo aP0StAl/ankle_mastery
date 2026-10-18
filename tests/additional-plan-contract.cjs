@@ -185,7 +185,7 @@ module.exports=({app,plain,comfortable,DAY})=>{
     d.recordExercise(heron,{...ex.dose,target_steps:5},{...comfortable,doseReason:'time'},clock-60000,ex.dose);
     d.openLog(heron);
     assert.match(get('logModal').innerHTML,/value="planned_remainder" selected/);
-    for(const [id,value] of Object.entries({dose_target_steps:'15',difficultySel:'normal',techSel:'good',logSteadiness:'steady',fatigueSel:'low'}))get(id).value=value;
+    for(const [id,value] of Object.entries({dose_target_steps:'19',difficultySel:'normal',techSel:'good',logSteadiness:'steady',fatigueSel:'low'}))get(id).value=value;
     d.saveLog(heron);
     const log=d.getState().logs.at(-1);
     assert.equal(log.doseReason,'planned_remainder');assert.equal(log.additionalPlanPart,true);
@@ -200,11 +200,11 @@ module.exports=({app,plain,comfortable,DAY})=>{
     d.startAdditionalPlan([heron],clock);
     d.recordSymptoms({pain:3,steadiness:'steady',fatigue:'low',response:'worse'},'combined',clock+1);
     const rec=d.scoreExercise(ex,clock+2);
-    assert.ok(rec.score>=0);assert.equal(rec.dose.target_steps,15);
+    assert.ok(rec.score>=0);assert.equal(rec.dose.target_steps,19);
     d.recordExercise(heron,rec.dose,{...comfortable,doseReason:'daily_load',symptomScope:'combined'},clock+2,rec.dose);
     assert.equal(d.currentSymptoms(clock+2).pain,0);
     const entry=d.additionalPlanState(ex,clock+2);
-    assert.equal(entry.used,15);assert.equal(entry.remaining,5);assert.equal(entry.status,'stopped');
+    assert.equal(entry.used,19);assert.equal(entry.remaining,1);assert.equal(entry.status,'stopped');
     assert.equal(d.scoreExercise(ex,clock+2).score,-1);
     assert.equal(d.getState().additionalPlan.endedAt,clock+2);
   });
@@ -232,14 +232,14 @@ module.exports=({app,plain,comfortable,DAY})=>{
     const before=new Date(2026,9,11,4,59).getTime(),after=before+2*60000,{dev:d,get,context}=scenario(before),ex=d.EXMAP[heron];
     for(const id of Object.keys(d.getState().exerciseStatuses))d.getState().exerciseStatuses[id]='archived';
     d.getState().exerciseStatuses[heron]='active';
-    d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',generalFatigue:'high'},'combined',before);
-    d.openLog(heron);assert.match(get('logModal').innerHTML,/15 шагов/);
+    d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low',fatigue:'medium'},'combined',before);
+    d.openLog(heron);assert.match(get('logModal').innerHTML,/19 шагов/);
     assert.equal(d.suggestedDose(ex,after).dose.target_steps,20);
     context.Date.now=()=>after;
-    for(const [id,value] of Object.entries({dose_target_steps:'15',difficultySel:'normal',techSel:'good',logSteadiness:'steady',fatigueSel:'low'}))get(id).value=value;
+    for(const [id,value] of Object.entries({dose_target_steps:'19',difficultySel:'normal',techSel:'good',logSteadiness:'steady',fatigueSel:'low'}))get(id).value=value;
     d.saveLog(heron);
     assert.equal(d.getState().additionalPlan.startedAt,after);
-    assert.equal(d.getState().additionalPlan.targets[heron].target_steps,15);
+    assert.equal(d.getState().additionalPlan.targets[heron].target_steps,19);
     assert.equal(d.additionalPlanState(ex,after).status,'complete');
   });
 
