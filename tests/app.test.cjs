@@ -149,7 +149,7 @@ function app(saved,clock=null){
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>{if(q==='dialog[open]')return dialogs.find(d=>d.open)||null;const choice=q.match(/^input\[name="([^"]+)"\]:checked$/);return choice&&get(choice[1]).value?get(choice[1]):null;},querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={exerciseRestUntil,exerciseAfterTestUntil,stageFraction,stageProgressMean,stageGameProgress,homeRamp,strengthCadence,selectedProgramUpgrade,syncProgram,runTemplate,runConditionsMatch,recordRun,runningPlan,runningChecks,successfulRuns,runRecommendation,currentMeasurement,exposureSummary,exposureEvents,reduceDose,doseVolume,recordDecision,openRun,openRunningPlan,newExerciseSuggestion,sameConditions,startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={rememberProgramUpgrade,exerciseChangeNotice,adherencePercent,exerciseRestUntil,exerciseAfterTestUntil,stageFraction,stageProgressMean,stageGameProgress,homeRamp,strengthCadence,selectedProgramUpgrade,syncProgram,runTemplate,runConditionsMatch,recordRun,runningPlan,runningChecks,successfulRuns,runRecommendation,currentMeasurement,exposureSummary,exposureEvents,reduceDose,doseVolume,recordDecision,openRun,openRunningPlan,newExerciseSuggestion,sameConditions,startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
@@ -418,12 +418,12 @@ test('four complete plans block a trial; five unlock it without replacing qualit
   assert.equal(d.exerciseProgress(ex).confirmed,true);
   assert.equal(d.suggestedDose(ex).trial,null);
   completePlans(d,[7,6,5,4],clock);
-  assert.equal(d.progressionAdherence(clock).completedDays,4);
+  assert.equal(d.progressionAdherence(clock).minimumCount,12);
   assert.equal(d.suggestedDose(ex).trial,null);
-  assert.match(d.suggestedDose(ex).reason,/4 из последних 7/);
+  assert.match(d.suggestedDose(ex).reason,/12\/21/);
   d.openExercise(ex.id);assert.doesNotMatch(get('exerciseModal').innerHTML,/Пробный шаг:/);
   completePlans(d,[3],clock);
-  assert.equal(d.progressionAdherence(clock).completedDays,5);
+  assert.equal(d.progressionAdherence(clock).minimumCount,15);
   assert.equal(d.suggestedDose(ex).trial.reps,6);
   d.recordSymptoms({pain:0,steadiness:'shaky',fatigue:'low'},'combined',clock);
   assert.equal(d.suggestedDose(ex).trial,null);
@@ -431,12 +431,12 @@ test('four complete plans block a trial; five unlock it without replacing qualit
 test('adherence uses only seven full training days and rolls exactly at 05:00',()=>{
   const clock=new Date(2026,9,10,4,59).getTime(),{dev:d,get}=app(null,clock);
   completePlans(d,[8,4,3,2,1,0,-1],clock);
-  assert.equal(d.progressionAdherence(clock).completedDays,4);
+  assert.equal(d.progressionAdherence(clock).minimumCount,12);
   assert.equal(d.progressionAdherence(clock).allowed,false);
   const boundary=new Date(2026,9,10,5).getTime();
-  assert.equal(d.progressionAdherence(boundary).completedDays,5);
+  assert.equal(d.progressionAdherence(boundary).minimumCount,15);
   assert.equal(d.progressionAdherence(boundary).allowed,true);
-  d.renderHome();assert.match(get('dailyActivity').innerHTML,/Регулярность: 4\/7/);
+  d.renderHome();assert.match(get('dailyActivity').innerHTML,/Регулярность: 57,1%/);
   assert.match(get('dailyActivity').innerHTML,/Сегодняшний день пока не учитывается/);
 });
 test('a complete day requires all active goals and shared line variants count toward one goal',()=>{
@@ -444,18 +444,18 @@ test('a complete day requires all active goals and shared line variants count to
   completePlans(d,[7,5,4,2,1],clock);
   const missing=d.getState().logs.find(l=>l.exerciseId==='towel_stretch_straight_knee');
   d.getState().logs=d.getState().logs.filter(l=>l.id!==missing.id);
-  assert.equal(d.progressionAdherence(clock).completedDays,4);
+  assert.equal(d.progressionAdherence(clock).minimumCount,14);
   d.recordTest('knee_to_wall',{left:10,right:10},missing.ts);
-  assert.equal(d.progressionAdherence(clock).completedDays,4);
+  assert.equal(d.progressionAdherence(clock).minimumCount,14);
   d.getState().logs.push(missing);
   const lines=d.getState().logs.filter(l=>d.EXMAP[l.exerciseId].prescription_credit?.group==='line_walk');
   for(const [i,l] of lines.entries())l.exerciseId=i%2?'tandem_walk_tiptoe':'tandem_walk_flat';
-  assert.equal(d.progressionAdherence(clock).completedDays,5);
+  assert.equal(d.progressionAdherence(clock).minimumCount,15);
   const saved=plain(d.getState());
-  assert.equal(app(saved,clock).dev.progressionAdherence(clock).completedDays,5);
+  assert.equal(app(saved,clock).dev.progressionAdherence(clock).minimumCount,15);
   assert.deepEqual(plain(d.getState()),saved);
   for(const id of Object.keys(d.getState().exerciseStatuses))d.getState().exerciseStatuses[id]='archived';
-  assert.equal(d.progressionAdherence(clock).allowed,false);
+  assert.equal(d.progressionAdherence(clock).allowed,true);
 });
 test('capacity never raises routine volume; a harder variant requires adherence and known next-morning recovery',()=>{
   const clock=new Date(2026,9,10,12).getTime(),{dev:d}=app(null,clock),ex=d.EXMAP.tandem_walk_flat;
@@ -1391,7 +1391,7 @@ test('an assessment never changes the prescribed minimum or grants exercise or a
   assert.equal(d.planCounts(clock).line_walk,2);
   assert.equal(d.prescriptionCounts(clock).line_walk,2);
   assert.equal(d.getState().logs.length,2);assert.equal(d.getState().xp,beforeXp);
-  assert.equal(d.progressionAdherence(clock+DAY).completedDays,0);
+  assert.equal(d.progressionAdherence(clock+DAY).minimumCount,2);
   d.getState().testLogs=[];
   assert.equal(d.dailyTarget(ex,clock),3);
 });
@@ -1492,7 +1492,7 @@ test('three home rounds complete the plan and preserve adherence while a fourth 
   completePlans(d,[7,6,5,4,3],clock);
   for(const hour of [9,13,17])d.recordExercise(ex.id,ex.dose,comfortable,new Date(2026,9,10,hour).getTime(),ex.dose);
   const before=plain(d.progressionAdherence(clock)),extra=d.scoreExercise(ex,clock);
-  assert.equal(before.completedDays,5);assert.equal(before.allowed,true);
+  assert.equal(before.minimumCount,15);assert.equal(before.allowed,true);
   assert.equal(d.planCounts(clock).tiptoe_static,3);assert.equal(d.dailyTarget(ex,clock),3);
   assert.ok(extra.score>=0);assert.equal(extra.extraRound,true);
   d.renderHome();assert.equal(get('dailyCount').textContent,'1/1 ориентиров');
@@ -1583,7 +1583,7 @@ test('a normal test day keeps three home rounds as its minimum and permits a res
   d.recordExercise(ex.id,ex.dose,comfortable,fourth,ex.dose);
   assert.equal(d.planCounts(fourth).line_walk,4);assert.equal(d.prescriptionCounts(fourth).line_walk,4);
   assert.equal(d.scoreExercise(ex,fourth).score,-1);
-  assert.equal(d.progressionAdherence(clock+DAY).completedDays,1);
+  assert.equal(d.progressionAdherence(clock+DAY).minimumCount,4);
 });
 
 test('a due repeat measurement precedes optional fourth rounds once the daily minimum is completed',()=>{
@@ -1685,7 +1685,7 @@ test('daily home plans and morning measurements coexist through a full week of n
       assert.equal(d.planCounts(at(20))[group],3);assert.equal(d.prescriptionCounts(at(20))[group],3);
     }
   }
-  assert.equal(measured.size,7);assert.equal(d.progressionAdherence(clock).completedDays,6);
+  assert.equal(measured.size,7);assert.equal(d.progressionAdherence(clock).minimumCount,18);
 });
 
 test('correcting or replacing a test preserves daily targets and manual historical snapshots',()=>{
@@ -1709,7 +1709,7 @@ test('correcting or replacing a test preserves daily targets and manual historic
   assert.equal(d.dailyTarget(ex,previous),2);
   assert.deepEqual(plain(d.getState().dailyPlans),savedPlans);
   assert.equal(d.planCounts(clock).line_walk,0);assert.equal(d.prescriptionCounts(clock).line_walk||0,0);
-  assert.equal(d.progressionAdherence(clock+DAY).completedDays,0);
+  assert.equal(d.progressionAdherence(clock+DAY).minimumCount,0);
   const restored=app(plain(d.getState()),clock).dev;
   assert.deepEqual(plain(restored.getState().dailyPlans),savedPlans);
 });
@@ -2027,7 +2027,7 @@ test('progress details show the missing adherence day, then a real trial, and re
   const logs=confirmedDose(d,ex,{...ex.dose,reps:5},'easy',clock-2*DAY);
   completePlans(d,[7,6,5,4],clock);
   let progress=d.exerciseProgressHTML(ex,d.recommendedDose(ex),d.nextVariant(ex));
-  assert.match(progress,/4\/7 последних полных дней/);assert.doesNotMatch(progress,/Пробный шаг:/);
+  assert.match(progress,/12\/21/);assert.doesNotMatch(progress,/Пробный шаг:/);
   completePlans(d,[3],clock);
   progress=d.exerciseProgressHTML(ex,d.recommendedDose(ex),d.nextVariant(ex));
   assert.match(progress,/Можно попробовать следующий шаг/);assert.match(progress,/Пробный шаг: 6 × 5 сек/);assert.match(progress,/\+20%/);
@@ -2120,3 +2120,5 @@ require('./algorithm-improvements.cjs')({app,plain,comfortable,DAY,morning,confi
 require('./progression-choices.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,completePlans});
 
 require('./numeric-program.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,completePlans});
+
+require('./progression-queue.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,completePlans});

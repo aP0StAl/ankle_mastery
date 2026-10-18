@@ -13,6 +13,14 @@
       --blue:#66b9ff; --yellow:#ffd166; --orange:#ff9b67; --red:#ff6b7d; --purple:#9b8cff;
       --shadow:0 18px 50px rgba(0,0,0,.22); --radius:20px;
     }
+    .load-change{border-color:#43e4dd!important;background:linear-gradient(145deg,#123e44,#102331)!important;box-shadow:0 0 0 1px #43e4dd44,var(--shadow)}
+    .change-notice{margin:12px 0;padding:12px;border:1px solid #2f9eaa;border-radius:14px;background:#123a43;color:#e6ffff;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+    .change-badge{display:inline-flex;align-items:center;padding:4px 9px;margin-bottom:7px;border-radius:999px;background:#55e4dc;color:#052f35;font-size:11px;font-weight:800;letter-spacing:.02em}
+    .change-notice small{display:block;margin-top:4px;color:#abe0e1;font-size:11px}
+    .load-change .btn.primary{background:linear-gradient(180deg,#6cf2e7,#39cecc);color:#04383c}
+    .load-change .exercise-tabs,.load-change .exercise-footer{background:#102b35}
+    .load-change .exercise-tabs [aria-selected="true"]{color:#72efe4;border-color:#55e4dc}
+    .load-change input[type="number"],.load-change .log-options input:checked+span{border-color:#43c9d1}
     *{box-sizing:border-box}
     html,body{margin:0;background:linear-gradient(180deg,#06101a 0%,#0a1622 100%);color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif}
@@ -290,7 +298,7 @@ const EXMAP = Object.fromEntries(EX.map(x => [x.id,x]));
 const KEY = 'ankle_mastery_static_v2';
 const DAY = 86400000;
 const TEST_REPEAT_DAYS = 7;
-const RULES_VERSION='numeric-2026-10-18';
+const RULES_VERSION='queue-70-2026-10-19';
 // Preparation intervals are scheduling defaults, not measured physiological recovery.
 const TEST_PREPARATION={
   hemisphere_hold:{preparation_channels:['ankle_control'],preparation_minutes:60,effort:'brief'},
@@ -868,29 +876,56 @@ function upgradeSessionEligible(ts){
   if(days.at(-1)!=null&&day<trainingDayOffset(days.at(-1),2))return false;
   return additionalSessionDays(ts).filter(d=>d>=trainingDayOffset(day,-6)).length<limit;
 }
+function upgradeKey(step){return JSON.stringify([step.id,step.kind||'dose',step.blocks||null,Object.entries(step.dose).sort(([a],[b])=>a.localeCompare(b))]);}
+function upgradeReadyAt(ex,progress,ts){
+  const required=progressConfirmations(ex,progress.confirmed),good=progress.run.filter(l=>strengthExercise(ex)?confirmedSafe(l,ts)&&l.difficulty!=='hard'&&l.technique==='good':confirmedEasy(l,ts));
+  const proof=good[required-1],evidence=testDoseEvidence(ex,ts),testAt=evidence&&testSupportsProgression(evidence,ts)?morningFor(evidence.log,ts)?.ts:null;
+  const practiceAt=proof?Math.max(progress.confirmedAt||0,morningFor(proof,ts)?.ts||nextDayStart(proof.ts)):null;
+  return Math.min(...[practiceAt,testAt].filter(Number.isFinite),ts);
+}
 function selectedProgramUpgrade(ts=now()){
   const changed=state.logs.filter(l=>l.ts<=ts&&(l.variantProbe||l.transitionFrom||l.frequencyBlocks||l.doseReason==='trial')).sort((a,b)=>a.ts-b.ts);
-  const today=changed.filter(l=>l.ts>=startOfDay(ts)).at(0);
-  if(today)return {id:today.exerciseId,dose:today.actualDose};
+  const today=changed.find(l=>l.ts>=startOfDay(ts));
+  if(today)return {id:today.exerciseId,dose:today.actualDose,performed:true};
   const last=changed.at(-1);
   if(last&&!morningFor(last,ts)&&!state.logs.some(l=>l.ts>last.ts&&confirmedSafe(l,ts)))return null;
   const current=currentSymptoms(ts);
   if(!progressionAdherence(ts).allowed||safetyFlag(ts)||current&&(responseLevel(current)!=='normal'||current.fatigue==='high'||current.generalFatigue==='high'))return null;
-  const extra=upgradeSessionEligible(ts),priority=['single_leg_calf_raise','tandem_walk_flat','right_leg_balance_left_front_back','bilateral_tiptoe_static',...EX.map(ex=>ex.id)];
-  for(const id of [...new Set(priority)]){
-    const ex=EXMAP[id];if(!ex?.dose||state.exerciseStatuses[id]!=='active'||postponedUntil('exercise',id,ts)||unprescribedFrequency(ex)&&!extra)continue;
-    if(unprescribedFrequency(ex)&&isNewPractice(ex,ts))return {id,dose:{...ex.dose}};
-    const ramp=homeRamp(ex,exerciseProgress(ex,ts),ts);
-    if(!ramp.complete&&ramp.adopted&&ramp.limit>ramp.adopted)return {id,dose:{...exerciseProgress(ex,ts).working},kind:'frequency',blocks:ramp.limit};
+  const extra=upgradeSessionEligible(ts),steps=[],add=(step,readyAt)=>{step.key=upgradeKey(step);step.readyAt=readyAt;steps.push(step);};
+  for(const ex of EX){
+    if(!ex.dose||state.exerciseStatuses[ex.id]!=='active'||postponedUntil('exercise',ex.id,ts)||unprescribedFrequency(ex)&&!extra)continue;
+    const progress=exerciseProgress(ex,ts),readyAt=upgradeReadyAt(ex,progress,ts),ramp=homeRamp(ex,progress,ts);
+    if(unprescribedFrequency(ex)&&isNewPractice(ex,ts)){add({id:ex.id,dose:{...ex.dose},kind:'new'},readyAt);continue;}
+    if(!ramp.complete&&ramp.adopted&&ramp.limit>ramp.adopted){add({id:ex.id,dose:{...progress.working},kind:'frequency',blocks:ramp.limit},ramp.limit===2?progress.confirmedAt||ts:Math.max(progress.confirmedAt||0,...progress.logs.filter(l=>l.frequencyBlocks===2&&confirmedSafe(l,ts)).map(l=>morningFor(l,ts)?.ts||l.ts)));continue;}
     const proposed=suggestedDose(ex,ts,false);
-    if(proposed.trial)return {id,dose:proposed.trial};
-    const variant=nextVariant(ex,ts,false);if(variant){
-      const p=exerciseProgress(variant.ex,ts),r=homeRamp(variant.ex,p,ts,unprescribedFrequency(variant.ex)?null:exerciseProgress(ex,ts).working);
-      if(!p.confirmed||!recoveredAfter(p,lastAdverseExercise(variant.ex,ts),ts))return {id:variant.ex.id,dose:{...variant.ex.dose}};
-      if(!r.complete&&r.limit>r.adopted)return {id:variant.ex.id,dose:{...p.working},kind:'frequency',blocks:r.limit};
-    }
+    if(proposed.trial){add({id:ex.id,dose:proposed.trial},readyAt);continue;}
+    const variant=nextVariant(ex,ts,false);if(!variant)continue;
+    const next=exerciseProgress(variant.ex,ts),r=homeRamp(variant.ex,next,ts,unprescribedFrequency(variant.ex)?null:progress.working);
+    if(!next.confirmed||!recoveredAfter(next,lastAdverseExercise(variant.ex,ts),ts))add({id:variant.ex.id,dose:{...variant.ex.dose},kind:'variant',fromId:ex.id},readyAt);
+    else if(!r.complete&&r.limit>r.adopted)add({id:variant.ex.id,dose:{...next.working},kind:'frequency',blocks:r.limit,fromId:ex.id},next.confirmedAt||ts);
   }
-  return null;
+  const offers=state.decisionLog.filter(d=>d.action==='upgrade_scheduled'&&d.ts<=ts),chosen=offers.findLast(d=>d.ts>=startOfDay(ts));
+  const retained=chosen&&steps.find(step=>step.key===chosen.details.stepKey);if(retained)return retained;
+  const previousOffer=step=>offers.findLast(d=>d.details.stepKey===step.key&&d.ts<startOfDay(ts))?.ts;
+  const waiting=step=>Math.max(step.readyAt,previousOffer(step)||0);
+  return steps.sort((a,b)=>Number(previousOffer(a)!=null)-Number(previousOffer(b)!=null)||waiting(a)-waiting(b)||EXMAP[a.id].order_in_tier-EXMAP[b.id].order_in_tier||a.id.localeCompare(b.id))[0]||null;
+}
+function rememberProgramUpgrade(ts=now()){
+  const step=selectedProgramUpgrade(ts);if(!step||step.performed)return;
+  const key='upgrade:'+startOfDay(ts)+':'+step.key;if(state.decisionLog.some(d=>d.key===key))return;
+  recordDecision('upgrade_scheduled','Выбран следующий шаг на этот день: '+EXMAP[step.id].name,{exerciseId:step.id,stepKey:step.key,dose:step.dose,kind:step.kind,blocks:step.blocks},ts,key);
+  localStorage.setItem(KEY,JSON.stringify(state));
+}
+function upgradeWaitReason(ex,ts=now()){
+  if(unprescribedFrequency(ex)&&state.additionalPlan?.closedAt==null&&state.additionalPlan?.endedAt==null&&state.additionalPlan?.targets[ex.id])return 'Продолжаем оставшийся объём начатого занятия; новую дозу выберем для следующего занятия';
+  const adherence=progressionAdherence(ts);if(!adherence.allowed)return adherence.reason;
+  const step=selectedProgramUpgrade(ts);
+  if(step&&step.id!==ex.id)return `${step.performed?'Сегодня уже выполнена проба':'На этот день выбрана проба'}: ${EXMAP[step.id].name} · ${doseText(EXMAP[step.id],step.dose)}${step.blocks?' · до '+step.blocks+' блоков за день':''}. Здесь сохраняем рабочий объём; очередь пересматривается в следующий тренировочный день после оценки восстановления`;
+  const current=currentSymptoms(ts);
+  if(safetyFlag(ts)||current&&(responseLevel(current)!=='normal'||current.fatigue==='high'||current.generalFatigue==='high'))return 'Новое повышение ждёт нормального самочувствия и восстановления после отмеченной усталости или реакции';
+  if(unprescribedFrequency(ex))return 'Новое повышение ждёт следующего дополнительного занятия по расписанию';
+  const last=state.logs.filter(l=>l.ts<=ts&&(l.variantProbe||l.transitionFrom||l.frequencyBlocks||l.doseReason==='trial')).sort((a,b)=>a.ts-b.ts).at(-1);
+  return last&&!morningFor(last,ts)?'Новый шаг пока не выбран: нужна известная нормальная реакция после предыдущей пробы. Здесь сохраняем рабочий объём':'Новый шаг сейчас не выбран; продолжаем установленный рабочий объём';
 }
 function strengthCadence(ts=now()){
   const ids=['single_leg_calf_raise','weighted_calf_raise'],logs=state.logs.filter(l=>ids.includes(l.exerciseId)&&l.ts<=ts&&!l.additionalPlanPart&&l.actualDose&&(!EXMAP[l.exerciseId].dose.sides||l.actualDose.sides===EXMAP[l.exerciseId].dose.sides)&&(!EXMAP[l.exerciseId].dose.protocol_id||l.actualDose.protocol_id===EXMAP[l.exerciseId].dose.protocol_id)).sort((a,b)=>a.ts-b.ts);
@@ -955,10 +990,30 @@ function suggestedDose(ex,ts=now(),select=true){
       else if(transitioning&&!trial&&!progress.candidate){dose={...working};reason=limit===ramp.adopted&&ramp.limit>limit?`Сохраняем новую дозу в ${limit} блоке дня; расширение частоты ждёт выбранного шага программы`:`Расширяем переносимую новую дозу: до ${limit} блоков за день. Следующее повышение после нормального утра полного дня`;}
     }
   }
-  if(select&&trial&&selectedProgramUpgrade(ts)?.id!==ex.id){trial=null;reason='На этот день выбрана другая следующая проба программы. Здесь сохраняем рабочий объём';}
+  if(select&&trial&&selectedProgramUpgrade(ts)?.id!==ex.id){trial=null;reason=upgradeWaitReason(ex,ts);}
   const confirmedDays=sameDose(dose,working)?progress.confirmedDays:Math.min(3,progress.candidateRun.length);
   if(unprescribedFrequency(ex)&&state.additionalPlan?.closedAt==null&&state.additionalPlan?.endedAt==null&&state.additionalPlan?.targets[ex.id])trial=null;
   return {dose,working,confirmed:progress.confirmed,confirmedDays,trial,reentry,doseFromTest,evidence,reason,status:plan.status};
+}
+function exerciseChangeNotice(ex,dose,ts=now(),fromId=null){
+  if(!dose||!ex.dose)return null;
+  const progress=exerciseProgress(ex,ts),step=selectedProgramUpgrade(ts),selected=step?.id===ex.id&&sameDose(step.dose,dose)?step:null;
+  fromId=fromId||selected?.fromId||null;
+  const kind=selected?.kind==='frequency'?'frequency':fromId?'variant':!sameDose(dose,progress.working)&&forwardDose(ex,dose,progress.working)?'dose':isNewPractice(ex,ts)?'new':null;
+  const key=kind?upgradeKey({id:ex.id,dose,kind,blocks:selected?.blocks}):null;
+  const previous=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts<=ts&&l.changeNotice).sort((a,b)=>a.ts-b.ts).at(-1)?.changeNotice;
+  let change=previous&&sameDose(previous.target,dose)&&(!kind||previous.key===key)?previous:null;
+  if(!change&&kind){
+    const from=fromId?exerciseProgress(EXMAP[fromId],ts).working:progress.working;
+    const text=kind==='frequency'?`Теперь до ${selected.blocks} блоков новой дозы за день`:kind==='variant'?`${EXMAP[fromId].name} → ${ex.name}. Новый объём: ${doseText(ex,dose)}`:kind==='new'?`Новое упражнение: ${doseText(ex,dose)}`:`${doseText(ex,from)} → ${doseText(ex,dose)}`;
+    change={key,kind,target:{...dose},startedAt:ts,text};
+  }
+  if(!change)return null;
+  const completed=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts>=change.startedAt&&l.ts<=ts&&!l.additionalPlanPart&&l.actualDose&&sameDose(l.actualDose,change.target)).length;
+  return completed<5?{...change,completed,next:completed+1}:null;
+}
+function changeNoticeHTML(change){
+  return change?`<div class="change-notice"><span class="change-badge">✦ Изменение · ${change.next}/5</span><div>${esc(change.text)}</div><small>Напоминание на первые пять выполнений. Проверь вариант и объём.</small></div>`:'';
 }
 function reportedSymptoms(ts=now()){
   const reports=state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts);
@@ -995,8 +1050,13 @@ function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[
   const actualDose={...ex.dose,...Object.fromEntries(fields.map(([k])=>[k,dose[k]])),...(option&&dose[option.key]?{[option.key]:dose[option.key]}:{})};
   const log={id:makeId('l'),exerciseId:id,ts,...response,actualDose,rulesVersion:RULES_VERSION,suggestedDose:{...suggested},
     doseFactor:doseVolume(actualDose)/doseVolume(ex.dose||{}),doseReason:response.doseReason||'capacity',sameDay:null,nextDay:null};
-  const progress=exerciseProgress(ex,ts),upgrade=selectedProgramUpgrade(ts);
-  if(upgrade?.kind==='frequency'&&upgrade.id===id)log.frequencyBlocks=upgrade.blocks;
+  const progress=exerciseProgress(ex,ts),upgrade=selectedProgramUpgrade(ts),change=exerciseChangeNotice(ex,actualDose,ts,response.transitionFrom);
+  if(change)log.changeNotice={key:change.key,kind:change.kind,target:change.target,startedAt:change.startedAt,text:change.text};
+  if(upgrade?.kind==='frequency'&&upgrade.id===id&&sameDose(actualDose,upgrade.dose))log.frequencyBlocks=upgrade.blocks;
+  if(progress.confirmed&&sameDose(actualDose,progress.working)&&!log.frequencyBlocks&&!log.transitionFrom){
+    if(!unprescribedFrequency(ex)&&['capacity','trial'].includes(log.doseReason))log.suggestedDose={...progress.working};
+    if(log.doseReason==='trial')log.doseReason='capacity';
+  }
   log.variantProbe=progress.confirmed&&(!sameConditions(actualDose,progress.working)||doseVolume(actualDose)>doseVolume(progress.working));
   if(!log.limitCause)log.limitCause=actualDose.sets<suggested.sets&&actualDose[doseKey(ex)]===suggested[doseKey(ex)]?'sets':'unknown';
   settleAdditionalPlan(ts);
@@ -1272,17 +1332,17 @@ function planCounts(ts=now()){
   }
   return counts;
 }
+function adherencePercent(score){return score==null?'не применяется':(Math.round(score*1000)/10).toLocaleString('ru-RU')+'%';}
 function progressionAdherence(ts=now()){
-  let completedDays=0;
+  const groups=Object.keys(dailyPlan(ts).targets).map(id=>({id,label:EX.find(ex=>ex.prescription_credit?.group===id)?.name||id,count:0}));
   for(let i=1;i<=7;i++){
     const day=new Date(startOfDay(ts));day.setDate(day.getDate()-i);
-    const end=nextDayStart(+day)-1,plan=dailyPlan(end),counts=planCounts(end),groups=Object.keys(plan.targets);
-    if(groups.length&&groups.every(group=>{
-      const ex=EX.find(ex=>ex.prescription_credit?.group===group);
-      return counts[group]>=dailyTarget(ex,end);
-    }))completedDays++;
+    const counts=planCounts(nextDayStart(+day)-1);
+    for(const group of groups)group.count+=counts[group.id]||0;
   }
-  return {completedDays,allowed:completedDays>=5&&Object.keys(dailyPlan(ts).targets).length>0,reason:`Повышение ждёт регулярности: дневной план выполнен в ${completedDays} из последних 7 полных дней; нужно хотя бы 5.`};
+  const minimumCount=groups.length?Math.min(...groups.map(g=>g.count)):null,score=minimumCount==null?null:minimumCount/21,allowed=score==null||score>=.7;
+  const reason=score==null?'Обязательных домашних групп сейчас нет; условие регулярности не применяется':`Регулярность: ${adherencePercent(score)}. Минимум по домашним группам — ${minimumCount}/21 за последние 7 полных дней; для повышения нужно не меньше 70% (15/21 в каждой группе).`;
+  return {groups,minimumCount,denominator:21,score,allowed,reason};
 }
 
 function weeklySkillExposure(ts=now()){
@@ -1822,6 +1882,7 @@ function noRecommendationHTML(ts=now()){
 
 let dayBoundaryTimer=null;
 function renderHome(){
+  rememberProgramUpgrade();
   const dayKey=String(startOfDay());
   if(!state.dailyPlans[dayKey]){ensureDailyPlan();localStorage.setItem(KEY,JSON.stringify(state));}
   document.getElementById('todayLabel').textContent=new Date(startOfDay()).toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
@@ -1845,12 +1906,15 @@ function renderHome(){
   const best=recs[0];
   const bestEl=document.getElementById('bestNow');
   bestEl.classList.toggle('rest',!best);
+  const bestChange=best?.kind==='exercise'?exerciseChangeNotice(best.ex,best.dose,now(),best.transitionFrom):null;
+  bestEl.classList.toggle('load-change',!!bestChange);
   if(best){
     const when=best.status==='green'?'Можно сейчас':best.status==='yellow'?'С учётом самочувствия':'Пауза';
     bestEl.innerHTML=`
       <span class="best-label">⭐ Лучшее сейчас · ${when} · ${best.kind==='feedback'?'Самочувствие':best.kind==='run'?'Бег':best.kind==='test'?'Тест':'Упражнение'}</span>
       <div class="rec-name">${esc(['feedback','run'].includes(best.kind)?best.name:best.kind==='test'?best.test.name:best.ex.name)}</div>
       <div class="dose">${esc(['feedback','run'].includes(best.kind)?best.detail:best.kind==='test'?testDoseText(best.test):doseText(best.ex,best.dose))}</div>
+      ${changeNoticeHTML(bestChange)}
       ${best.extraRound?'<div class="li-meta">✓ Цель группы выполнена · дополнительное выполнение по назначению 3–4 раза в день</div>':''}
       ${best.kind==='test'?`<div class="li-meta">${esc(best.test.what_measures)}</div>`:''}
       <div class="rec-actions ${best.kind==='exercise'?'exercise-actions':''}">${actionButtonHTML(best)}</div>
@@ -1871,10 +1935,11 @@ function renderHome(){
       target.insertAdjacentHTML('beforeend',`<button type="button" class="list-item" style="color:inherit;text-align:left" onclick="AM.openTest('${r.test.id}')"><span class="status-dot status-green"></span><span class="li-main"><span class="li-title">${esc(r.test.name)}</span><span class="li-meta" style="display:block">${esc(testDoseText(r.test))} · ${esc(r.reasons[0])}</span></span><span class="pill green">Тест</span></button>`);
       return;
     }
+    const change=exerciseChangeNotice(r.ex,r.dose,now(),r.transitionFrom);
     const next=r.status==='green'?null:nextGoodWindow(r.ex); const delay=next&&next-now()>20*60000?`лучше ${fmtTime(next)}`:(r.status==='green'?'можно сейчас':'проверь самочувствие');
     target.insertAdjacentHTML('beforeend',`
-      <div class="list-item" onclick="AM.openExercise('${r.ex.id}')">
-        <span class="status-dot status-${r.status}"></span><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-meta">${r.extraRound?'✓ Цель группы выполнена · дополнительное выполнение<br>':''}${esc(doseText(r.ex,r.dose))} · ${esc(r.reasons[0]||'')}</div></div>
+      <div class="list-item ${change?'load-change':''}" onclick="AM.openExercise('${r.ex.id}')">
+        <span class="status-dot status-${r.status}"></span><div class="li-main"><div class="li-title">${esc(r.ex.name)}</div><div class="li-meta">${r.extraRound?'✓ Цель группы выполнена · дополнительное выполнение<br>':''}${esc(doseText(r.ex,r.dose))} · ${esc(r.reasons[0]||'')}</div>${changeNoticeHTML(change)}</div>
         <span class="pill ${r.status}">${esc(delay)}</span>
       </div>`);
   });
@@ -1895,7 +1960,7 @@ function renderHome(){
   document.getElementById('dailyCount').textContent=`${closed}/${total} ориентиров`;
   const adherence=progressionAdherence();
   const testsToday=state.testLogs.filter(l=>l.ts>=startOfDay());
-  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}<p><b>Регулярность: ${adherence.completedDays}/7 полных дней с выполненным планом.</b>${adherence.allowed?'<br>Условие 5 из 7 для повышения выполнено.':''}</p><details><summary>Как считается план</summary><p>Домашнее назначение — 3–4 раза в день: три зачтённых выполнения закрывают минимум, четвёртое можно выполнить дополнительно по переносимости. Четвёртое не требуется для регулярности 5 из 7 дней.</p><p>В план входят полные выполнения предложенного объёма с приемлемой техникой и перерывами; сокращённый из-за самочувствия объём тоже учитывается. Цели дня сохраняются при паузе, наверстывать их через боль не нужно.</p><p>Для повышения нагрузки нужно выполнить дневной план хотя бы в 5 из последних 7 полных дней; дальше учитываем качество и восстановление. День засчитывается по сохранённым целям этого дня. Сегодняшний день пока не учитывается. Реакцию следующим утром проверяем отдельно.</p></details></div>`;
+  document.getElementById('dailyActivity').innerHTML=`<div class="notice" style="margin-top:12px">Сегодня: ${logsToday().length} выполнений упражнений · ${testsToday.length} тестов · ${customToday().length} других активностей.${testsToday.map(l=>`<div class="li-meta">✓ ${esc(RDCFG.tests.find(t=>t.id===l.testId)?.name||'Тест')} · ${fmtTime(l.ts)}</div>`).join('')}<p><b>Регулярность: ${adherencePercent(adherence.score)}${adherence.minimumCount==null?'':' · минимум '+adherence.minimumCount+'/21'}.</b>${adherence.score==null?'':adherence.allowed?'<br>Порог 70% для нового повышения выполнен.':'<br>Для нового повышения нужно не меньше 70% у каждой домашней группы.'}</p><details><summary>Как считается план</summary><p>Домашнее назначение — 3–4 раза в день: три зачтённых выполнения закрывают дневной минимум. Для регулярности складываем все зачтённые выполнения каждой обязательной группы за последние семь полных тренировочных дней и делим на 21. Берём самую маленькую долю. Варианты одной группы считаются вместе; четвёртое выполнение тоже учитывается.</p><p>Нужно минимум 15/21 у каждой группы. Например, четыре дня по три и три дня по два дают 18/21 = 85,7%. Сегодняшний день пока не учитывается. Тесты и дополнительные занятия не закрывают домашнее назначение; качество и утреннюю реакцию проверяем отдельно.</p>${adherence.groups.map(g=>`<div class="li-meta">${esc(g.label)}: ${g.count}/21</div>`).join('')}</details></div>`;
 
   const f=fatigueAt(), fc=document.getElementById('fatigueCard');fc.innerHTML='';
   for(const [k,v] of Object.entries(f)){
@@ -2184,7 +2249,7 @@ function exerciseProgressHTML(ex,suggested,variant){
   const current=currentSymptoms(),recovered=!safetyFlag()&&dailyLoadPlan(ex).status==='normal'&&(!current||responseLevel(current)==='normal'&&current.fatigue!=='high'&&!(current.generalFatigue==='high'&&startOfDay(current.ts)===startOfDay()));
   const checks=[
     {passed:!!testPassed||progress.confirmed&&easy===required,text:testPassed?'Качество базового варианта подтверждено связанным тестом':`${strengthExercise(ex)?'Переносимые силовые занятия':'Лёгкие выполнения'} с хорошей техникой и известной нормальной реакцией утром: ${easy}/${required} за последние 30 дней. Объём одинаковый, дни разные.`},
-    {passed:adherence.allowed,text:`Дневной план выполнен в ${adherence.completedDays}/7 последних полных дней; нужно не меньше 5.`},
+    {passed:adherence.allowed,text:adherence.reason},
     {passed:recovered,text:recovered?'Текущее самочувствие допускает повышение.':'Повышение ждёт нормального самочувствия и восстановления. '+dailyLoadPlan(ex).reason}
   ];
   const adverse=lastAdverseExercise(ex,now()),nextAdverse=next&&lastAdverseExercise(next,now());
@@ -2202,8 +2267,8 @@ function exerciseProgressHTML(ex,suggested,variant){
     <h4 style="margin-top:22px">${suggested.trial||variant?'Можно попробовать следующий шаг':canGrow?'Что осталось до следующего шага':'Текущая задача освоена'}</h4>
     ${suggested.trial&&!variant?`<div class="notice"><b>Пробный шаг: ${esc(doseText(ex,suggested.trial))}</b><p>${doseVolume(suggested.trial)>doseVolume(working)?'Изменение объёма: +'+Math.round((doseVolume(suggested.trial)/doseVolume(working)-1)*100)+'%.':doseVolume(suggested.trial)<doseVolume(working)?'Изменение объёма: '+Math.round((doseVolume(suggested.trial)/doseVolume(working)-1)*100)+'%; меняются условия задачи.':'Меняются условия задачи; численный объём прежний.'} Приложение выбрало эту пробу для следующего планового выполнения. Рабочий уровень изменится после подтверждения переносимости.</p></div>`:''}
     ${variant?`<div class="notice" style="margin-top:12px"><b>Выбрано приложением: ${esc(variant.ex.name)} · ${esc(doseText(variant.ex,recommendedDose(variant.ex).dose))}</b><p>${ex.progression?.type==='unlock_next'?'По указанию реабилитолога после освоения обычной линии переходим на носки. ':'Текущий вариант освоен. '}Новый вариант проверяем по его собственной дозе и истории. Дневная цель остаётся общей; дополнительное выполнение не добавляется.</p>${variant.after>now()?`<div>Ближайшее выполнение — не раньше ${fmtTime(variant.after)}.</div>`:''}</div>`:''}
-    ${canGrow?`<ul class="progress-checks">${checks.map(c=>`<li><span class="check-mark ${c.passed?'passed':''}" aria-label="${c.passed?'Выполнено':'Осталось'}">${c.passed?'✓':'○'}</span><span>${esc(c.text)}</span></li>`).join('')}</ul>${!suggested.trial&&!variant?`<p>${esc(suggested.reason)}. Предложение появится отдельно, когда условия действующих правил совпадут.</p>`:''}`:`<details><summary>Качество и восстановление</summary><ul class="progress-checks">${checks.map(c=>`<li><span class="check-mark ${c.passed?'passed':''}">${c.passed?'✓':'○'}</span><span>${esc(c.text)}</span></li>`).join('')}</ul></details><p>${ex.id==='bilateral_tiptoe_static'?'Исходное назначение восстановлено. Дальше развиваем одноногие динамические подъёмы и силу; после переносимого полного дня и трёх силовых занятий частая статика станет одним разминочным блоком перед силой.':'Сохраняем короткую освоенную практику. Следующую развиваемую задачу выбирает программа; бесконечного роста повторов здесь нет.'}</p>`}
-    ${exerciseEvidenceHTML(ex,suggested)}<p class="source">Три подтверждения, регулярность 5 из 7 и ступени объёма — правила приложения, не оценка заживления и не разрешение на бег.</p>`;
+    ${canGrow?`<ul class="progress-checks">${checks.map(c=>`<li><span class="check-mark ${c.passed?'passed':''}" aria-label="${c.passed?'Выполнено':'Осталось'}">${c.passed?'✓':'○'}</span><span>${esc(c.text)}</span></li>`).join('')}</ul>${!suggested.trial&&!variant?`<p>${esc(suggested.reason)}</p>`:''}`:`<details><summary>Качество и восстановление</summary><ul class="progress-checks">${checks.map(c=>`<li><span class="check-mark ${c.passed?'passed':''}">${c.passed?'✓':'○'}</span><span>${esc(c.text)}</span></li>`).join('')}</ul></details><p>${ex.id==='bilateral_tiptoe_static'?'Исходное назначение восстановлено. Дальше развиваем одноногие динамические подъёмы и силу; после переносимого полного дня и трёх силовых занятий частая статика станет одним разминочным блоком перед силой.':'Сохраняем короткую освоенную практику. Следующую развиваемую задачу выбирает программа; бесконечного роста повторов здесь нет.'}</p>`}
+    ${exerciseEvidenceHTML(ex,suggested)}<p class="source">Подтверждения, регулярность от 70% и ступени объёма — правила приложения, не оценка заживления и не разрешение на бег.</p>`;
 }
 function exerciseHistoryHTML(ex){
   const logs=state.logs.filter(l=>l.exerciseId===ex.id&&l.ts<=now()).sort((a,b)=>a.ts-b.ts);
@@ -2244,14 +2309,15 @@ function exerciseTabKey(event){
 function openExercise(id){
   const ex=EXMAP[id];if(!ex)return;
   const st=state.exerciseStatuses[id],rec=scoreExercise(ex),until=postponedUntil('exercise',id),suggested=recommendedDose(ex),variant=nextVariant(ex),visual=exerciseVisuals[id]||{color:'#78dbb4',label:ex.name};
-  const action=homeVariantChoice(ex).ex;
+  const action=homeVariantChoice(ex).ex,actionPlan=action.id===id?suggested:recommendedDose(action),change=exerciseChangeNotice(action,actionPlan.dose,now(),actionPlan.transitionFrom);
+  document.getElementById('exerciseDialog').classList.toggle('load-change',!!change);
   if(suggested.trial){recordDecision('trial_offered',suggested.reason,{exerciseId:id,working:suggested.working,trial:suggested.trial},now(),'offer:'+id+':'+JSON.stringify(suggested.trial)+':'+exerciseProgress(ex).run.map(l=>l.id).join(','));localStorage.setItem(KEY,JSON.stringify(state));}
   if(variant&&action.id===variant.ex.id){recordDecision('variant_offered',suggested.reason,{exerciseId:id,relatedExerciseIds:[action.id],working:suggested.working,targets:{[action.id]:recommendedDose(action).dose}},now(),'variant:'+id+':'+action.id+':'+exerciseProgress(ex).run.map(l=>l.id).join(','));localStorage.setItem(KEY,JSON.stringify(state));}
   const instructions=ex.instructions?.length?ex.instructions:extraTechnique[id]?.steps||[];
   const statusActions=st==='available'?`<button class="btn primary" onclick="AM.activateExercise('${id}')">Добавить в программу</button>`:st==='active'?`<button class="btn ghost" onclick="AM.archiveExercise('${id}')">Убрать из активных</button>`:'';
   document.getElementById('exerciseModal').innerHTML=`
     <div class="exercise-detail-head"><div class="exercise-picture" style="--exercise-color:${visual.color}">${exerciseArt(ex)}</div><div><div class="source">${esc(sourceLabels[ex.source]||ex.source)}</div><h3 id="exerciseTitle">${esc(ex.name)}</h3></div><button class="x" aria-label="Закрыть упражнение" onclick="AM.close('exerciseDialog')">×</button></div>
-    <div class="exercise-overview">${ex.dose?`<div class="exercise-dose">Сейчас: ${esc(doseText(ex,suggested.dose))}</div><div class="li-meta">${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}</div>`:'<div class="notice">Следующий этап · протокол и объём пока не заданы</div>'}
+    <div class="exercise-overview">${changeNoticeHTML(change)}${ex.dose?`<div class="exercise-dose">Сейчас: ${esc(doseText(ex,suggested.dose))}</div><div class="li-meta">${esc(suggested.reason||'Начальный объём; дальше учитываем выполнения и реакцию')}</div>`:'<div class="notice">Следующий этап · протокол и объём пока не заданы</div>'}
       ${until?`<div class="exercise-state">Отложено до ${fmtDate(until)} ${fmtTime(until)} <button class="btn ghost" onclick="AM.resumeAction('exercise','${id}');AM.openExercise('${id}')">Вернуть в рекомендации</button></div>`:st==='active'?`<div class="exercise-state"><b>${rec.score<0||rec.status==='red'?'Почему сейчас не предлагается':'Почему предлагается'}:</b> ${esc(rec.score<0||rec.status==='red'?exercisePauseReason(ex,rec):rec.reasons.join(' · '))}</div>`:`<div class="exercise-state">${esc(statusLabels[st])}${ex.activation_rule?' · '+esc(ex.activation_rule):''}</div>`}</div>
     <div class="exercise-tabs" role="tablist" aria-label="Об упражнении" onkeydown="AM.exerciseTabKey(event)">${[['technique','Техника'],['progress','Прогресс'],['history','История']].map(([tab,label])=>`<button type="button" role="tab" id="exercise-tab-${tab}" data-exercise-tab="${tab}" aria-controls="exercise-panel-${tab}" aria-selected="${tab==='technique'}" tabindex="${tab==='technique'?0:-1}" onclick="AM.exerciseTab('${tab}')">${label}</button>`).join('')}</div>
     <section class="exercise-panel" id="exercise-panel-technique" role="tabpanel" aria-labelledby="exercise-tab-technique"><h4>Как выполнять</h4>${instructions.length?`<ol class="technique-steps">${instructions.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:'<p>Подробная техника пока не добавлена. Этот вариант требует отдельного согласования; автоматической активации нет.</p>'}
@@ -2287,6 +2353,8 @@ function rememberLogWellbeing(open){
 function openLog(id,useTrial=false){
   const ex=EXMAP[id];if(!ex)return;
   const plan=recommendedDose(ex),dose=useTrial===true&&plan.trial?plan.trial:plan.dose,trial=useTrial===true&&!!plan.trial||!!plan.selectedTrial;
+  const change=exerciseChangeNotice(ex,dose,now(),plan.transitionFrom);
+  document.getElementById('logDialog').classList.toggle('load-change',!!change);
   const previous=exerciseProgress(ex).logs.slice(-1)[0]?.doseReason;
   suggestedForLog={id,dose,kind:trial?'trial':plan.status==='light'?'daily_load':plan.doseFromTest?'test':!sameDose(dose,plan.working)&&['trial','calibration','test'].includes(previous)?previous:sameDose(dose,plan.working)?'capacity':'recovery'};
   suggestedForLog.transitionFrom=plan.transitionFrom;
@@ -2300,6 +2368,7 @@ function openLog(id,useTrial=false){
   const optionValue=option&&(option.values.some(([v])=>v===proposedOption)?proposedOption:option.values.some(([v])=>v===dose[option.key])?dose[option.key]:option.values[0][0]);
   document.getElementById('logModal').innerHTML=`
     <div class="modal-head"><div><div class="source">${trial?'Пробный шаг':'Запись выполнения'}</div><h3>${esc(ex.name)}</h3></div><button class="x" onclick="AM.close('logDialog')">×</button></div>
+    ${changeNoticeHTML(change)}
     <div class="notice">Предложено: <b>${esc(doseText(ex,dose))}</b><br>${esc(plan.reason)}</div>
     <div class="section-title"><h4>Сколько сделал?</h4></div>
     ${(doseFields[ex.dose?.type]||[]).map(([key,label],i)=>`${i===1?'<details><summary>Уточнить удержание / подходы</summary>':''}<div class="field"><label for="dose_${key}">${label}</label><input id="dose_${key}" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${dose[key]||1}" oninput="AM.doseChanged()"></div>${i>0&&i===doseFields[ex.dose.type].length-1?'</details>':''}`).join('')}

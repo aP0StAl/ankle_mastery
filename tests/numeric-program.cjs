@@ -133,7 +133,7 @@ module.exports=({app,plain,comfortable,DAY,morning,confirmedDose,completePlans})
   test('NUMERIC an added home block waits while the program introduces strength',()=>{
     const {dev:d}=setup(),ex=d.EXMAP.bilateral_tiptoe_static;completePlans(d,undefined,clock);confirmedDose(d,ex,{...ex.dose,reps:5},'easy',clock-8*DAY);
     for(const age of [5,4,3]){const l=d.recordExercise(ex.id,{...ex.dose,reps:6},{...comfortable,difficulty:'easy',doseReason:'trial'},clock-age*DAY);morning(d,l);}
-    d.getState().exerciseStatuses.single_leg_calf_raise='active';assert.equal(d.selectedProgramUpgrade().id,'single_leg_calf_raise');
+    d.getState().exerciseStatuses.single_leg_calf_raise='active';d.recordExercise('single_leg_calf_raise',d.EXMAP.single_leg_calf_raise.dose,{...comfortable,doseReason:'trial'},clock-3600000,d.EXMAP.single_leg_calf_raise.dose);assert.equal(d.selectedProgramUpgrade().id,'single_leg_calf_raise');
     d.recordExercise(ex.id,{...ex.dose,reps:6},comfortable,clock-1);assert.equal(d.recommendedDose(ex).dose.reps,5);assert.equal(d.homeRamp(ex,d.exerciseProgress(ex)).adopted,1);
   });
   test('NUMERIC missed introductory weeks can be completed later and old weighted work cannot establish them',()=>{
