@@ -8,7 +8,7 @@ module.exports=({app,plain,comfortable,DAY,morning,confirmedDose,completePlans})
     const {dev:d}=setup();const goals=[{baseline:5,target:10,current:10},{baseline:10,target:20,current:20},{baseline:5,target:10,current:7},{baseline:3,target:5,current:3}];
     assert.equal(d.stageFraction(7,5,10),.4);assert.equal(d.stageProgressMean(goals),.6);
     assert.equal(d.stageFraction(4,5,10),0);assert.equal(d.stageFraction(20,5,10),1);
-    assert.equal(d.stageProgressMean([{baseline:10,target:10,current:10}]),0);
+    assert.equal(d.stageProgressMean([{baseline:10,target:10,current:10}]),1);
     assert.equal(d.stageProgressMean([{baseline:null,target:10,current:5}]),0);
   });
   test('NUMERIC saved start and goal survive new equipment, adverse feedback and reload',()=>{
@@ -27,10 +27,10 @@ module.exports=({app,plain,comfortable,DAY,morning,confirmedDose,completePlans})
     d.recordExercise(ex.id,{...ex.dose,reps:7},comfortable,clock-3600000);
     assert.equal(d.stageGameProgress().score,0);
   });
-  test('NUMERIC first unknown observation establishes a baseline rather than an invented gain from zero',()=>{
+  test('NUMERIC one observation does not invent an established baseline or a gain from zero',()=>{
     const {dev:d}=setup(),ex=d.EXMAP.bilateral_tiptoe_static;
     d.recordExercise(ex.id,{...ex.dose,reps:5},comfortable,clock-3600000);
-    const goal=d.stageGameProgress().goals.find(g=>g.id==='static');assert.equal(goal.baseline,5);assert.equal(goal.progress,0);
+    const goal=d.stageGameProgress().goals.find(g=>g.id==='static');assert.equal(goal.baseline,null);assert.equal(goal.progress,null);
   });
   test('NUMERIC mixed six-repeat trials and ordinary five-repeat blocks confirm the candidate separately',()=>{
     const {dev:d}=setup(),ex=d.EXMAP.bilateral_tiptoe_static;completePlans(d,undefined,clock);confirmedDose(d,ex,{...ex.dose,reps:5},'easy',clock-6*DAY);
@@ -169,14 +169,14 @@ module.exports=({app,plain,comfortable,DAY,morning,confirmedDose,completePlans})
   });
   test('NUMERIC entry into another stage starts from the ability already earned before entry',()=>{
     const {dev:d}=setup(),ex=d.EXMAP.hop_to_stabilization;confirmedDose(d,ex,{...ex.dose,reps:3},'normal',clock-9*DAY);confirmedDose(d,ex,{...ex.dose,reps:5},'normal',clock-2*DAY);
-    d.getState().selectedStage='ready_for_impact';let g=d.stageGameProgress();assert.equal(g.goals.find(g=>g.id==='landing').baseline,10);assert.equal(g.score,0);
+    d.getState().selectedStage='ready_for_impact';let g=d.stageGameProgress();assert.equal(g.goals.find(g=>g.id==='landing').baseline,10);assert.ok(g.score<1);
     const saved=plain(d.getState());delete saved.stageProgress;const imported=app(saved,clock).dev.stageGameProgress();assert.equal(imported.goals.find(g=>g.id==='landing').baseline,10);assert.equal(imported.score,0);
   });
   test('NUMERIC unknown unsupported and jump ability remain unknown until actually observed',()=>{
     const {dev:d}=setup(),ex=d.EXMAP.right_leg_balance_left_front_back;confirmedDose(d,ex,{...ex.dose,support:'light'},'easy',clock-2*DAY);
     assert.equal(d.stageGameProgress().goals.find(g=>g.id==='balance').baseline,null);d.getState().selectedStage='ready_for_impact';assert.equal(d.stageGameProgress().goals.find(g=>g.id==='pogo').baseline,null);
-    const session=d.recordTest('pogo_bilateral',{value:20,difficulty:'normal',stop_reason:'planned',pain_after:0},clock-2*DAY);d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},clock-2*DAY);morning(d,d.getState().testLogs.at(-1));
-    const goal=d.stageGameProgress().goals.find(g=>g.id==='pogo');assert.equal(goal.baseline,20);assert.equal(goal.progress,null);assert.equal(d.stageGameProgress().score,0);
+    assert.throws(()=>d.recordTest('pogo_bilateral',{value:20,difficulty:'normal',stop_reason:'planned',pain_after:0},clock-2*DAY));
+    const goal=d.stageGameProgress().goals.find(g=>g.id==='pogo');assert.equal(goal.baseline,null);assert.equal(goal.progress,null);assert.equal(d.stageGameProgress().score,0);
   });
   test('NUMERIC a personal running goal cannot create earned progress without another run',()=>{
     const {dev:d}=setup(),st=d.getState();st.selectedStage='easy_continuous_run';

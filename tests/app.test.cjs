@@ -149,10 +149,29 @@ function app(saved,clock=null){
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>{if(q==='dialog[open]')return dialogs.find(d=>d.open)||null;const choice=q.match(/^input\[name="([^"]+)"\]:checked$/);return choice&&get(choice[1]).value?get(choice[1]):null;},querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
   const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
-    window.dev={rememberProgramUpgrade,exerciseChangeNotice,adherencePercent,exerciseRestUntil,exerciseAfterTestUntil,stageFraction,stageProgressMean,stageGameProgress,homeRamp,strengthCadence,selectedProgramUpgrade,syncProgram,runTemplate,runConditionsMatch,recordRun,runningPlan,runningChecks,successfulRuns,runRecommendation,currentMeasurement,exposureSummary,exposureEvents,reduceDose,doseVolume,recordDecision,openRun,openRunningPlan,newExerciseSuggestion,sameConditions,startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
+    window.dev={stagePreparationProgress,lineWalkObservations,runWalkCompleted,testAvailable,impactDoseConfirmed,impactTestLockReason,recordImpactCheck,impactCheckStatus,rehabWorkChecks,stageGoalDefinitions,goalAchievement,runningWeekEvidence,rememberProgramUpgrade,exerciseChangeNotice,adherencePercent,exerciseRestUntil,exerciseAfterTestUntil,stageFraction,stageProgressMean,stageGameProgress,homeRamp,strengthCadence,selectedProgramUpgrade,syncProgram,runTemplate,runConditionsMatch,recordRun,runningPlan,runningChecks,successfulRuns,runRecommendation,currentMeasurement,exposureSummary,exposureEvents,reduceDose,doseVolume,recordDecision,openRun,openRunningPlan,newExerciseSuggestion,sameConditions,startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
   vm.runInNewContext(code,context);
   return {dev:context.window.dev,storage,get,context};
+}
+function seedRehab(d,clock){
+  const ids=['bilateral_tiptoe_static','tandem_walk_tiptoe','right_leg_balance_left_front_back','single_leg_calf_raise'];
+  for(const age of [18,16,14]){
+    let last;
+    for(const id of ids){
+      const ex=d.EXMAP[id],dose={...ex.dose,...(id==='bilateral_tiptoe_static'?{reps:10}:id==='right_leg_balance_left_front_back'?{support:'none'}:id==='single_leg_calf_raise'?{reps:10,sets:2}:{})};
+      for(let i=0;i<(id==='tandem_walk_tiptoe'?3:1);i++)last=d.recordExercise(id,dose,{...comfortable,difficulty:'easy'},clock-age*DAY+i*3*3600000,dose);
+    }
+    d.finishAdditionalPlan(clock-age*DAY+1);morning(d,last);
+  }
+  d.recordImpactCheck({gait:true,mobility:true,dynamic:true,strength:true,willing:true},'self',clock-13*DAY);
+  d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock-1);
+  morning(d,{ts:clock-2*DAY});
+}
+function seedImpact(d,clock,{pending=false}={}){
+  const landing=d.EXMAP.hop_to_stabilization,pogo=d.EXMAP.bilateral_pogo;
+  for(const age of [12,10,8]){const l=d.recordExercise(landing.id,{...landing.dose,reps:5},comfortable,clock-age*DAY);d.finishAdditionalPlan(clock-age*DAY+1);morning(d,l);}
+  for(const age of [6,4,2]){const at=pending&&age===2?clock-2*3600000:clock-age*DAY,l=d.recordExercise(pogo.id,{...pogo.dose,reps:10},comfortable,at);d.finishAdditionalPlan(at+1);if(!pending||age!==2)morning(d,l);}
 }
 function assessmentScenario(d,ts=Date.now()){
   d.recordTest('hemisphere_hold',{left:30,right:15},ts);
@@ -259,7 +278,7 @@ test('an unmeasured available test leads the best-now widget ahead of prescribed
   assert.equal(d.testRecommendations().length,7);
   assert.ok(!actions.some(r=>r.test?.status==='locked'));
   d.getState().selectedStage='ready_for_impact';
-  assert.equal(d.testRecommendations().length,10);
+  assert.equal(d.testRecommendations().length,7);
   d.renderHome();
   assert.match(get('bestNow').innerHTML,/Пройти тест/);
   assert.ok(get('bestNow').innerHTML.includes(actions[0].test.name));
@@ -339,7 +358,7 @@ test('one automatic measurement block per day preserves missing tests for after 
 });
 test('postponing replaces the recommendation without changing history, load, mastery or XP',()=>{
   const ts=new Date(2026,9,10,12).getTime(),{dev:d,get}=app(null,ts);
-  d.ensureDailyPlan(ts);d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts);
+  d.ensureDailyPlan(ts);d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts);d.stagePreparationProgress();
   const before=plain(d.getState()),id='towel_stretch_straight_knee';
   d.postponeAction('exercise',id,'hour',ts);
   assert.ok(!d.recommendations(ts).some(r=>r.ex.id===id));
@@ -661,7 +680,7 @@ test('readiness needs every fresh domain, preserves unknowns and includes curren
   d.getState().selfReports.push({ts,trust:10,fear:0,ready:10});
   assert.equal(d.readinessSummary().score,null);assert.ok(d.readinessSummary().missing.includes('impact_running_capacity'));
   d.getState().selectedStage='ready_for_impact';
-  for(const t of d.RDCFG.tests.filter(t=>t.status==='locked'))d.recordTest(t.id,t.bilateral?{left:20,right:20}:{value:20},ts);
+  for(const t of d.RDCFG.tests.filter(t=>t.status==='locked'))d.getState().testLogs.push({id:'historic_'+t.id,testId:t.id,protocol_id:t.protocol_id,ts,pain_after:0,...(t.bilateral?{left:20,right:20}:{value:20})});
   d.recordSymptoms({pain:0,fatigue:'low',steadiness:'steady'},'unknown');
   assert.ok(Number.isFinite(d.readinessSummary().score));
   d.recordSymptoms({pain:0,fatigue:'low',steadiness:'shaky'},'unknown');assert.equal(d.readinessSummary().score,null);
@@ -759,6 +778,7 @@ test('fresh normal symptoms cannot erase pain or an adverse response in the stag
   }
   state.selfReports.push({ts,trust:10,fear:0,ready:10});
   morning(d,{ts:ts-2*DAY});d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts);
+  seedRehab(d,ts);
   let confirmations=0;a.context.confirm=()=>{confirmations++;return true;};
   a.context.window.AM.suggestStage('ready_for_impact');
   assert.equal(confirmations,1);assert.equal(state.selectedStage,'ready_for_impact');
@@ -786,14 +806,15 @@ test('running stage requires the morning after impact rather than an older norma
   }
   state.selfReports.push({ts,trust:10,fear:0,ready:10});
   morning(d,{ts:ts-2*DAY});d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts);
+  seedRehab(d,ts);seedImpact(d,ts,{pending:true});state.settings.runningPlan={runPermitted:true};
   let confirmations=0;a.context.confirm=()=>{confirmations++;return true;};
   a.context.window.AM.suggestStage('ready_for_run_walk');
   assert.equal(confirmations,0);assert.equal(state.selectedStage,'ready_for_impact');
-  assert.match(a.get('toast').textContent,/реакция после ударной пробы/);
+  assert.equal(d.stageTransition('ready_for_run_walk').checks.find(c=>c.id==='impact_reactive').passed,false);
   state.settings.runningPlan={runPermitted:true};
   state.customActivities.push({id:'walk',ts:ts-2*DAY,presetId:'general_walk',minutes:20,painAfter:0,response:'same'});
   const next=app(plain(state),ts+DAY),impact=next.dev.getState().testLogs.find(l=>l.testId==='pogo_bilateral');
-  morning(next.dev,impact);next.dev.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts+DAY);
+  morning(next.dev,impact);morning(next.dev,next.dev.getState().logs.filter(l=>l.exerciseId==='bilateral_pogo').at(-1));next.dev.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts+DAY);
   next.context.confirm=()=>{confirmations++;return true;};
   next.context.window.AM.suggestStage('ready_for_run_walk');
   assert.equal(confirmations,1);assert.equal(next.dev.getState().selectedStage,'ready_for_run_walk');
@@ -808,9 +829,10 @@ test('manual stage confirmation does not call a low impact result fulfilled runn
   }
   state.selfReports.push({ts,trust:10,fear:0,ready:10});
   morning(d,{ts:ts-2*DAY});d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',ts);
+  seedRehab(d,ts);
   let text=null;a.context.confirm=message=>{text=message;return false;};
   a.context.window.AM.suggestStage('ready_for_run_walk');
-  assert.equal(text,null);assert.match(a.get('toast').textContent,/ударной подготовки/);
+  assert.equal(text,null);assert.equal(d.stageTransition('ready_for_run_walk').checks.find(c=>c.id==='impact').passed,false);
   assert.equal(state.selectedStage,'ready_for_impact');
   assert.ok(Number.isFinite(d.readinessSummary(ts).score));
   d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,{...comfortable,fatigue:'high'},ts+1);
@@ -891,7 +913,7 @@ test('late-night exercise counts, streak and chart share one day and keep origin
   const clock=new Date(2026,9,7,0,30).getTime(),{dev:d,get}=app(null,clock);
   const evening=clock-3600000,ex=d.EXMAP.towel_stretch_straight_knee;
   d.recordExercise(ex.id,ex.dose,comfortable,evening);
-  d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,clock);
+  d.recordExercise('tandem_walk_flat',d.EXMAP.tandem_walk_flat.dose,comfortable,clock);d.stagePreparationProgress();
   const before=plain(d.getState());
   assert.equal(d.prescriptionCounts().towel_straight,1);assert.equal(d.prescriptionCounts().line_walk,1);
   assert.equal(d.xpAndStreak().streak,1);d.renderAll();
@@ -1006,8 +1028,8 @@ test('the same movement and step count have the same estimated load in a test an
 });
 
 test('clean flat walking requires next-morning recovery before offering a harder variant without transferring results',()=>{
-  const ts=Date.now(),{dev:d}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
-  completePlans(d);
+  const ts=new Date('2026-10-18T18:00:00+07:00').getTime(),{dev:d}=app(null,ts),ex=d.EXMAP.tandem_walk_flat;
+  completePlans(d,undefined,ts);
   const session=d.recordTest('tandem_flat_clean_steps',{value:100,difficulty:'normal',stop_reason:'cap',pain_after:0},ts-DAY);
   d.completeAssessment(session,{pain_after:0,perceived_fatigue:'easy'},ts-DAY);
   assert.equal(d.nextVariant(ex,ts-DAY),null);
@@ -1892,7 +1914,7 @@ test('measurement coverage names a locked impact direction without turning missi
     assert.ok(!testCard(get,t.id).includes(`AM.openTest('${t.id}')`));
   }
   state.selectedStage='ready_for_impact';d.renderTests();
-  for(const t of locked)assert.notEqual(d.testSchedule(t,d.testPlans(clock),clock).status,'locked');
+  for(const t of locked)assert.equal(d.testSchedule(t,d.testPlans(clock),clock).status,'locked');
   assert.equal(d.readinessSummary(clock).score,null);
 });
 
@@ -1918,19 +1940,20 @@ test('rehabilitation can reach 100 percent of its next-stage conditions before a
   }
   state.selfReports.push({ts:clock,trust:10,fear:0,ready:10});
   morning(d,{ts:clock-2*DAY});d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock);
+  seedRehab(d,clock);
   const transition=d.stageTransition('ready_for_impact',clock);
   assert.equal(transition.score,1);assert.ok(transition.checks.every(c=>c.passed));
   assert.equal(d.readinessSummary(clock).domainScores.impact_running_capacity,null);
   assert.equal(d.readinessSummary(clock).score,null);
   d.renderHome();d.renderTests();
-  assert.equal(get('readinessValue').textContent,'7/7');
+  assert.equal(get('readinessValue').textContent,'12/12');
   assert.ok(get('roadmap').innerHTML.includes(transition.target.name));
   for(const check of transition.checks)assert.ok(get('roadmap').innerHTML.includes(check.label));
   assert.ok(get('roadmap').innerHTML.includes("AM.suggestStage('ready_for_impact')"));
   assert.match(get('measurementCoverage').textContent,/3 измерений/);assert.equal(state.selectedStage,'rehab');
   state.selectedStage='ready_for_impact';
   const next=d.stageTransition('ready_for_run_walk',clock);
-  assert.ok(next.score<1);assert.match(next.reasons.join(' '),/ударн/i);
+  assert.ok(next.score<1);assert.equal(next.checks.find(c=>c.id==='impact').passed,false);
   d.renderHome();d.renderTests();
   assert.notEqual(get('readinessValue').textContent,'7/7');
 });
@@ -1949,9 +1972,11 @@ test('concrete task checks do not turn symmetry into capability or a medical per
   const strength=state.testLogs.find(l=>l.testId==='single_leg_calf_raise_test'),dynamic=state.testLogs.find(l=>l.testId==='tandem_flat_clean_steps');
   strength.left=10;strength.right=10;dynamic.value=50;
   const improved=d.stageTransition('ready_for_impact',clock);
-  assert.ok(improved.score>low.score);assert.equal(improved.score,1);
+  assert.equal(improved.score,low.score);assert.ok(improved.score<1);
+  seedRehab(d,clock);assert.equal(d.stageTransition('ready_for_impact',clock).score,1);
   const rom=state.testLogs.find(l=>l.testId==='knee_to_wall');
   strength.left=20;strength.right=20;dynamic.value=100;rom.right=0;
+  d.recordImpactCheck({gait:true,mobility:false,dynamic:true,strength:true,willing:true},'self',clock);
   const almost=d.stageTransition('ready_for_impact',clock);
   assert.ok(almost.score<1);assert.ok(almost.reasons.length>0);
   assert.ok(!almost.checks.every(c=>c.passed));
@@ -2122,3 +2147,7 @@ require('./progression-choices.cjs')({app,plain,comfortable,DAY,morning,confirme
 require('./numeric-program.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,completePlans});
 
 require('./progression-queue.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,completePlans});
+
+require('./stage-contract.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,completePlans,seedRehab,seedImpact});
+
+require('./progress-criteria.cjs')({app,plain,comfortable,DAY,morning,confirmedDose,seedRehab,seedImpact});
