@@ -5,16 +5,16 @@ const path=require('node:path');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),output=process.env.ANKLE_QA_OUTPUT||'/tmp/ankle-mobile-qa';
 const source=fs.readFileSync(path.join(root,'index.html'),'utf8');
-const hook=source.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`\nwindow.qa={stagePreparationProgress,recordImpactCheck,impactCheckStatus,rehabWorkChecks,testAvailable,stageTransition,finishAdditionalPlan,feedbackRecommendation,selectedProgramUpgrade,exerciseChangeNotice,progressionAdherence,stageGameProgress,defaultState,recordExercise,recordTest,recordSymptoms,completeAssessment,autoAdditionalPlan,renderAll,startAdditionalPlan,recommendedDose,exerciseProgress,EXMAP,RDCFG,startOfDay,DAY,getState:()=>state};\nrenderAll();\nsetInterval(renderHome,15*60*1000);`);
+const hook=source.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`\nwindow.qa={homeReturnState,homeReturns,planCounts,stagePreparationProgress,recordImpactCheck,impactCheckStatus,rehabWorkChecks,testAvailable,stageTransition,finishAdditionalPlan,feedbackRecommendation,selectedProgramUpgrade,exerciseChangeNotice,progressionAdherence,stageGameProgress,defaultState,recordExercise,recordTest,recordSymptoms,completeAssessment,autoAdditionalPlan,renderAll,startAdditionalPlan,recommendedDose,exerciseProgress,EXMAP,RDCFG,startOfDay,DAY,getState:()=>state};\nrenderAll();\nsetInterval(renderHome,15*60*1000);`);
 (async()=>{
   fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
   try{
-    const cases=['before','rest','completed','measured','recovery','progress','line','balance','game','notice_static','notice_toes','stage_check','impact_ladder',...(process.env.ANKLE_QA_BACKUP?['backup']:[])];
+    const cases=['before','rest','completed','measured','recovery','progress','line','balance','game','notice_static','notice_toes','stage_check','impact_ladder','return_before','return_rest','return_completed','return_measured','return_feedback','return_minor','return_fatigue',...(process.env.ANKLE_QA_BACKUP?['backup']:[]),...(process.env.ANKLE_RETURN_BACKUP?['return_backup']:[])].filter(name=>!process.env.ANKLE_QA_CASES||process.env.ANKLE_QA_CASES.split(',').includes(name));
     for(const name of cases){
       const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,timezoneId:'Asia/Ho_Chi_Minh',locale:'ru-RU'});
       const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-      await page.addInitScript(clockString=>{const RealDate=Date,clock=new RealDate(clockString).getTime();window.Date=class extends RealDate{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}};},name==='backup'&&process.env.ANKLE_QA_BACKUP.includes('2026-10-18')?'2026-10-18T18:00:00+07:00':'2026-10-17T18:00:00+07:00');
+      await page.addInitScript(clockString=>{const RealDate=Date,clock=new RealDate(clockString).getTime();window.Date=class extends RealDate{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}};},name.startsWith('return_')?'2026-10-23T18:00:00+07:00':name==='backup'&&process.env.ANKLE_QA_BACKUP.includes('2026-10-18')?'2026-10-18T18:00:00+07:00':'2026-10-17T18:00:00+07:00');
       await page.route('http://ankle.test/**',async route=>{
         const pathname=new URL(route.request().url()).pathname;
         if(pathname==='/')return route.fulfill({body:hook,contentType:'text/html'});
@@ -22,10 +22,37 @@ const hook=source.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',
         return route.fulfill({body:fs.readFileSync(file),contentType:'image/webp'});
       });
       if(name==='backup'){const backup=JSON.parse(fs.readFileSync(process.env.ANKLE_QA_BACKUP,'utf8'));await page.addInitScript(data=>{if(!localStorage.getItem('ankle_mastery_static_v2'))localStorage.setItem('ankle_mastery_static_v2',JSON.stringify(data));},backup);}
+      if(name==='return_backup'){const backup=JSON.parse(fs.readFileSync(process.env.ANKLE_RETURN_BACKUP,'utf8'));await page.addInitScript(data=>localStorage.setItem('ankle_mastery_static_v2',JSON.stringify(data)),backup);}
       await page.goto('http://ankle.test/');
       await page.evaluate(name=>{
         const d=window.qa,state=d.getState(),ts=Date.now(),comfortable={painDuring:0,painAfter:0,fatigue:'low',technique:'good',steadiness:'steady',difficulty:'normal',symptomScope:'combined'};
-        if(name==='backup'){d.renderAll();return;}
+        if(name==='backup'||name==='return_backup'){d.renderAll();return;}
+        if(name.startsWith('return_')){
+          const ids=['towel_stretch_straight_knee','towel_stretch_bent_knee','tandem_walk_flat','left_side_lunge_right_leg_straight','bilateral_tiptoe_static','right_leg_balance_left_front_back'];
+          const key=ex=>({duration:'target_sec',steps:'target_steps',cycles:'cycles',hold_reps:'reps'})[ex.dose.type];
+          const morning=(at,response='same',pain=0)=>d.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(at),response,historyKnown:true,historyWorse:false,pain,fatigue:'low',steadiness:'steady'},'combined',d.startOfDay(at)+d.DAY+3*3600000);
+          for(const id of Object.keys(state.exerciseStatuses))state.exerciseStatuses[id]=ids.includes(id)?'active':'archived';
+          for(const t of d.RDCFG.tests)state.postponedActions['test:'+t.id]=ts+d.DAY;
+          for(const age of [20,19,18,3,2]){
+            let last;
+            for(const hour of age<10?[5,8,11]:[5])for(const id of ids){
+              const ex=d.EXMAP[id],value=ex.dose.type==='duration'?(age<10?50:60):ex.dose.type==='steps'?(age<10?14:16):(age<10?3:5),dose={...ex.dose,[key(ex)]:value,...(ex.dose.type==='cycles'?{support:'light'}:{})};
+              last=d.recordExercise(id,dose,{...comfortable,phase:'after',doseReason:age<10?'recovery':'capacity'},d.startOfDay(ts-age*d.DAY)+hour*3600000,dose);
+            }
+            morning(last.ts);
+          }
+          d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',d.startOfDay(ts)+4*3600000);
+          if(name==='return_rest'){const ex=d.EXMAP.bilateral_tiptoe_static,p=d.recommendedDose(ex);d.recordExercise(ex.id,p.dose,{...comfortable,phase:'after',doseReason:'return'},ts-3600000,p.dose);}
+          if(name==='return_completed')for(const hour of [5,8,11])for(const id of ids){const ex=d.EXMAP[id],at=d.startOfDay(ts)+hour*3600000,p=d.recommendedDose(ex,at);d.recordExercise(id,p.dose,{...comfortable,phase:'after',doseReason:'return'},at,p.dose);}
+          if(name==='return_measured'){const s=d.recordTest('knee_to_wall',{left:16,right:11,conditions:'standard'},ts);d.completeAssessment(s,{pain_after:0,perceived_fatigue:'easy',instability:false,swelling:false},ts);}
+          if(name==='return_feedback'){const ex=d.EXMAP.bilateral_tiptoe_static,dose={...ex.dose,reps:3};d.recordExercise(ex.id,dose,{...comfortable,phase:'after',doseReason:'recovery'},ts-d.DAY,dose);}
+          if(name==='return_minor')d.recordSymptoms({pain:1,response:'worse',steadiness:'steady',fatigue:'low'},'combined',ts-1);
+          if(name==='return_fatigue'){
+            d.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(ts-d.DAY),response:'worse',historyKnown:true,historyWorse:false,pain:1,fatigue:'low',steadiness:'steady'},'combined',ts-2);
+            const s=d.recordTest('knee_to_wall',{left:16,right:11,conditions:'standard'},ts);d.completeAssessment(s,{pain_after:0,perceived_fatigue:'strong',instability:false,swelling:false},ts);
+          }
+          d.renderAll();return;
+        }
         if(name==='stage_check'||name==='impact_ladder'){
           const morning=l=>{const at=new Date(d.startOfDay(l.ts));at.setDate(at.getDate()+1);at.setHours(8,0,0,0);d.recordSymptoms({phase:'morning',trainingDay:d.startOfDay(l.ts),response:'same',historyKnown:true,historyWorse:false,pain:0,fatigue:'low',steadiness:'steady'},'combined',+at);};
           for(const age of [18,16,14]){
@@ -93,6 +120,23 @@ const hook=source.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+' horizontal overflow');
       assert.deepEqual(errors,[],name+' runtime errors');
       const best=await page.locator('#bestNow').innerText();
+      if(name.startsWith('return_')){
+        const actual=await page.evaluate(()=>({returns:qa.homeReturns().map(r=>({id:r.ex.id,dose:r.dose,goal:r.goal,days:r.days})),step:qa.selectedProgramUpgrade(),counts:qa.planCounts(),extra:qa.autoAdditionalPlan(),feedback:qa.feedbackRecommendation()}));
+        assert.equal(actual.returns.length,6);assert.equal(actual.returns.find(r=>r.id==='bilateral_tiptoe_static').goal.reps,5);
+        if(name==='return_before')assert.equal(actual.step.kind,'return');
+        if(name==='return_rest')assert.equal(actual.step.performed,true);
+        if(name==='return_completed'){assert.ok(Object.values(actual.counts).every(n=>n>=3));assert.match(await page.locator('#bestNow').innerText(),/достаточно|выполнен|утр/i);}
+        if(name==='return_feedback'||name==='return_backup')assert.equal(actual.feedback.mode,'morning');
+        if(name==='return_minor'){assert.equal(actual.step,null);assert.equal(actual.returns.find(r=>r.id==='bilateral_tiptoe_static').dose.reps,3);}
+        if(name==='return_fatigue'){assert.equal(actual.step,null);assert.equal(await page.evaluate(()=>qa.recommendedDose(qa.EXMAP.bilateral_tiptoe_static).dose.reps),2);assert.equal(actual.returns.find(r=>r.id==='bilateral_tiptoe_static').dose.reps,3);}
+        if(name==='return_backup'){assert.equal(actual.extra.status,'waiting');assert.equal(actual.returns.find(r=>r.id==='towel_stretch_straight_knee').dose.target_sec,50);}
+        await page.evaluate(()=>AM.openExercise('towel_stretch_straight_knee'));await page.getByRole('tab',{name:'Прогресс',exact:true}).click();
+        assert.match(await page.locator('#exercise-panel-progress').innerText(),/Возврат прежнего объёма/);assert.match(await page.locator('#exercise-panel-progress').innerText(),/60/);
+        await page.screenshot({path:path.join(output,name+'-progress.png')});await page.evaluate(()=>AM.close('exerciseDialog'));
+        await page.evaluate(()=>AM.openLog('bilateral_tiptoe_static'));assert.match(await page.locator('#logModal').innerText(),/Возврат прежнего объёма/);
+        await page.screenshot({path:path.join(output,name+'-form.png')});assert.deepEqual(errors,[],name+' return flow errors');
+        await context.close();process.stdout.write(name+': return goals, next action and forms checked at 390×844\n');continue;
+      }
       if(['before','rest','completed','measured','recovery','backup'].includes(name)){
         await page.locator('#readinessRing').click();assert.equal(await page.locator('#readinessDetails').getAttribute('open')!==null,true);
         assert.equal(await page.locator('#readinessChecks li').count(),12);const count=(await page.locator('#readinessValue').innerText()).split('/')[0];assert.equal(await page.locator('#readinessChecks .passed').count(),Number(count));
