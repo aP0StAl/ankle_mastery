@@ -154,7 +154,7 @@ module.exports=({app,plain,comfortable,DAY,morning,confirmedDose,completePlans})
   test('ALGO-09 offers keep the actual confirmations and linked mornings even after unrelated home entries',()=>{
     const {dev:d}=scenario(),ex=d.EXMAP.band_eversion;d.getState().exerciseStatuses[ex.id]='active';confirmedDose(d,ex,ex.dose,'easy',clock-8*DAY);completePlans(d,undefined,clock);
     d.finishAdditionalPlan(clock-1);
-    d.openExercise(ex.id);const decision=d.getState().decisionLog.find(e=>e.action==='trial_offered');assert.ok(decision);assert.ok(decision.snapshot.executions.length>=3);assert.ok(decision.snapshot.executions.every(l=>l.exerciseId===ex.id));assert.ok(decision.snapshot.evidence.filter(e=>e.morning).length>=3);
+    d.openExercise(ex.id);const decision=d.getState().decisionLog.find(e=>e.action==='trial_offered');assert.ok(decision);const snapshot=d.decisionSnapshot(decision);assert.ok(snapshot.executions.length>=3);assert.ok(snapshot.executions.every(l=>l.exerciseId===ex.id));assert.ok(snapshot.evidence.filter(e=>e.morning).length>=3);
     const count=d.getState().decisionLog.length;d.openExercise(ex.id);assert.equal(d.getState().decisionLog.length,count);
   });
   test('ALGO-02 worsening after a walk stops unfinished work even with no pain',()=>{

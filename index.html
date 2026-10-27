@@ -348,7 +348,7 @@ function defaultState(){
   return {
     version:3, createdAt:Date.now(), logs:[], customActivities:[], testLogs:[], selfReports:[],
     assessment_sessions:[], load_events:[], last_self_report_at:null,
-    delayedChecks:[], symptomReports:[], decisionLog:[], stageProgress:{}, dailyPlans:{}, additionalPlan:null, exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
+    delayedChecks:[], symptomReports:[], decisionLog:[], decisionFacts:[], stageProgress:{}, dailyPlans:{}, additionalPlan:null, exerciseStatuses:statuses, postponedActions:{}, xp:0, selectedStage:'rehab', settings:{}
   };
 }
 let state = loadState();
@@ -356,9 +356,12 @@ function migrateState(x){
   const base=defaultState();
   const out={...base,...x,stageProgress:{...(x.stageProgress||{})},version:3,exerciseStatuses:{...base.exerciseStatuses,...(x.exerciseStatuses||{})}};
   for(const id of ['hemisphere_weight_shift_injured_front','hemisphere_weight_shift_rear_heel_up'])out.exerciseStatuses[id]='archived';
-  for(const k of ['logs','customActivities','testLogs','selfReports','delayedChecks','symptomReports','assessment_sessions','load_events','decisionLog']){
+  for(const k of ['logs','customActivities','testLogs','selfReports','delayedChecks','symptomReports','assessment_sessions','load_events','decisionLog','decisionFacts']){
     if(!Array.isArray(out[k]))throw new Error('Некорректная история');
   }
+  out.decisionFacts=[...out.decisionFacts];
+  const factIndexes=new Map(out.decisionFacts.map((fact,i)=>[JSON.stringify(fact),i]));
+  out.decisionLog=out.decisionLog.map(d=>({...d,snapshot:compactDecisionSnapshot(d.snapshot,out.decisionFacts,factIndexes)}));
   if(!out.dailyPlans||typeof out.dailyPlans!=='object'||Array.isArray(out.dailyPlans))throw new Error('Некорректные дневные планы');
   out.testLogs=out.testLogs.map(l=>({...l,protocol_id:l.protocol_id||'legacy_'+l.testId}));
   // Bring linked test loads onto the same per-unit scale as the matching exercise.
@@ -389,16 +392,42 @@ function loadState(){
   }catch(e){ return defaultState(); }
 }
 function save(){ localStorage.setItem(KEY,JSON.stringify(state)); renderAll(); }
+function mapDecisionFacts(snapshot,fact){
+  const result={...snapshot};
+  for(const key of ['observations','measurements','executions','activities'])if(Array.isArray(snapshot[key]))result[key]=snapshot[key].map(fact);
+  for(const key of ['evidence','activityEvidence'])if(Array.isArray(snapshot[key]))result[key]=snapshot[key].map(entry=>{
+    const item={...entry};
+    if(entry.morning!=null)item.morning=fact(entry.morning);
+    for(const field of ['reports','reactions'])if(Array.isArray(entry[field]))item[field]=entry[field].map(fact);
+    return item;
+  });
+  return result;
+}
+function compactDecisionSnapshot(snapshot,pool,indexes=new Map(pool.map((fact,i)=>[JSON.stringify(fact),i]))){
+  if(!snapshot||snapshot.format==='facts-v1')return snapshot;
+  // Facts are immutable copies shared across decisions; references preserve order and duplicates.
+  return {...mapDecisionFacts(snapshot,value=>{
+    const key=JSON.stringify(value);
+    if(!indexes.has(key)){indexes.set(key,pool.length);pool.push(JSON.parse(key));}
+    return indexes.get(key);
+  }),format:'facts-v1'};
+}
+function decisionSnapshot(decision,source=state){
+  if(decision.snapshot?.format!=='facts-v1')return decision.snapshot;
+  const {format,...snapshot}=decision.snapshot;
+  return mapDecisionFacts(snapshot,i=>source.decisionFacts[i]);
+}
 function recordDecision(action,reason,details={},ts=now(),key=null){
   if(key&&state.decisionLog.some(d=>d.key===key))return;
   const observations=reportedSymptoms(ts).sort((a,b)=>a.ts-b.ts).slice(-3);
   const measurements=RDCFG.tests.map(t=>currentMeasurement(t,ts)).filter(Boolean);
   const ids=details.exerciseId?[details.exerciseId,...(details.relatedExerciseIds||[])]:Object.keys(details.targets||details.original||{});
   const executions=state.logs.filter(l=>l.ts<=ts&&ts-l.ts<=30*DAY&&ids.includes(l.exerciseId));
-  const evidence=executions.map(l=>{const morning=morningFor(l,ts);return {logId:l.id,morning:morning||null,reports:observationsFor(l,ts),reactions:reactionEntries(ts).filter(r=>r.ts>=l.ts&&r.ts<=(morning?.ts||l.ts))};});
+  const reactions=reactionEntries(ts);
+  const evidence=executions.map(l=>{const morning=morningFor(l,ts);return {logId:l.id,morning:morning||null,reports:observationsFor(l,ts),reactions:reactions.filter(r=>r.ts>=l.ts&&r.ts<=(morning?.ts||l.ts))};});
   const activities=details.activityMode?state.customActivities.filter(a=>a.ts<=ts&&ts-a.ts<=30*DAY&&a.running):state.customActivities.filter(a=>a.ts<=ts).slice(-3);
   const activityEvidence=activities.map(a=>({activityId:a.id,morning:morningFor(a,ts)||null}));
-  const snapshot={observations,measurements,executions,evidence,activities,activityEvidence};
+  const snapshot=compactDecisionSnapshot({observations,measurements,executions,evidence,activities,activityEvidence},state.decisionFacts);
   const event={id:makeId('d'),version:RULES_VERSION,ts,action,reason,key,details,snapshot};
   state.decisionLog.push(JSON.parse(JSON.stringify(event)));
 }
@@ -406,7 +435,19 @@ function endAdditionalPlan(plan,ts,reason){
   plan.endedAt=ts;plan.endedReason=reason;
   recordDecision('plan_ended',reason,{planId:plan.id,targets:plan.targets,limits:plan.limits},ts,'end:'+plan.id);
 }
-function now(){ return Date.now(); }
+// Reuse history calculations within one synchronous action; release them afterwards.
+let historyCache=null;
+function withHistoryCache(render){
+  if(historyCache)return render();
+  historyCache={ts:Date.now(),values:new Map()};
+  try{return render();}finally{historyCache=null;}
+}
+function historyValue(key,calculate){
+  if(!historyCache)return calculate();
+  if(!historyCache.values.has(key))historyCache.values.set(key,calculate());
+  return historyCache.values.get(key);
+}
+function now(){ return historyCache?.ts??Date.now(); }
 function startOfDay(ts=now(),hour=5){
   const d=new Date(ts);if(d.getHours()<hour)d.setDate(d.getDate()-1);
   d.setHours(hour,0,0,0);return d.getTime();
@@ -470,14 +511,14 @@ function doseVolume(d){
   }
 }
 function observationsFor(l,ts=now()){
-  return state.symptomReports.filter(r=>r.ts<=ts&&r.logId===l.id);
+  return historyValue('observations:'+l.id+':'+ts,()=>state.symptomReports.filter(r=>r.ts<=ts&&r.logId===l.id));
 }
 // Older morning reports used midnight as the stored day key. Keep their original associations.
 function morningDayHour(r){return new Date(r.trainingDay).getHours()===0?0:5;}
 function morningMatches(r,activityTs){return r.phase==='morning'&&r.trainingDay===startOfDay(activityTs,morningDayHour(r));}
 function validMorningDay(r){const hour=morningDayHour(r);return nextDayStart(r.trainingDay,hour)===startOfDay(r.ts,hour);}
 function morningFor(l,ts=now()){
-  return state.symptomReports.filter(r=>r.ts<=ts&&morningMatches(r,l.ts)&&validMorningDay(r)).slice(-1)[0];
+  return historyValue('morning:'+l.ts+':'+ts,()=>state.symptomReports.filter(r=>r.ts<=ts&&morningMatches(r,l.ts)&&validMorningDay(r)).slice(-1)[0]);
 }
 function exerciseResponse(l,ts=now()){
   const reports=observationsFor(l,ts),rank={steady:0,shaky:1,giving_way:2};
@@ -552,7 +593,9 @@ function forwardDose(ex,a,b){
   return option&&option.values.findIndex(v=>v[0]===a[option.key])>option.values.findIndex(v=>v[0]===(b[option.key]||option.values[0][0]));
 }
 function exerciseProgress(ex,ts=now()){
+  return historyValue('progress:'+ex.id+':'+ts,()=>{
   const logs=state.logs.filter(l=>l.exerciseId===ex.id&&!l.additionalPlanPart&&l.actualDose?.type===ex.dose?.type&&l.ts<=ts&&(!ex.dose.protocol_id||l.actualDose.protocol_id===ex.dose.protocol_id)&&(!ex.dose.sides||l.actualDose.sides===ex.dose.sides)).sort((a,b)=>a.ts-b.ts);
+  const symptoms=reportedSymptoms(ts);
   let working={...ex.dose},confirmed=false,confirmedAt=null,transition=null,adverse=false;
   const banks=new Map(),achievements=[];let candidate=null;
   const signature=d=>JSON.stringify([d.type,...['support','range','weight_distribution','resistance','weight_kg','equipment','tempo','protocol_id','sides'].map(k=>d[k]??(k==='weight_distribution'?'even':k==='support'||k==='range'?'usual':k==='sides'?1:null)),...(doseFields[d.type]||[]).map(([k])=>d[k])]);
@@ -560,7 +603,7 @@ function exerciseProgress(ex,ts=now()){
     const option=doseOptions[ex.id],known=!['resistance','weight_kg'].includes(option?.key)||l.actualDose[option.key]!=null;
     const response=exerciseResponse(l,ts),m=morningFor(l,ts);
     if(known&&!confirmed&&!['time','daily_load','trial','calibration','test'].includes(l.doseReason)&&responseLevel(response)==='normal')working={...l.actualDose};
-    const failed=!isSuccessful(l,ts)||l.difficulty==='hard'||l.fatigue==='high'||m&&(responseLevel(m)!=='normal'||m.historyWorse)||reportedSymptoms(ts).some(r=>r.ts>=l.ts&&r.ts<=(m?.ts||l.ts+DAY)&&responseLevel(r)!=='normal');
+    const failed=!isSuccessful(l,ts)||l.difficulty==='hard'||l.fatigue==='high'||m&&(responseLevel(m)!=='normal'||m.historyWorse)||symptoms.some(r=>r.ts>=l.ts&&r.ts<=(m?.ts||l.ts+DAY)&&responseLevel(r)!=='normal');
     if(failed){banks.clear();candidate=null;adverse=true;continue;}
     if(!known||['time','daily_load','planned_remainder'].includes(l.doseReason))continue;
     const key=signature(l.actualDose),entry=banks.get(key)||{dose:{...l.actualDose},logs:[]};
@@ -582,6 +625,7 @@ function exerciseProgress(ex,ts=now()){
   const run=banks.get(signature(working))?.logs||[];
   if(candidate&&sameDose(candidate.dose,working))candidate=null;
   return {working,confirmed,confirmedAt,transition,achievements,logs,run,candidate:candidate?.dose||null,candidateRun:candidate?.logs||[],candidateDays:Math.min(3,candidate?candidate.logs.length:run.length),confirmedDays:confirmed?3:Math.min(3,run.length)};
+  });
 }
 function doseKey(ex){return doseFields[ex.dose?.type]?.[0]?.[0];}
 function doseCeiling(ex,working,ts=now()){
@@ -1119,11 +1163,15 @@ function changeNoticeHTML(change){
   return change?`<div class="change-notice"><span class="change-badge">✦ Изменение · ${change.next}/5</span><div>${esc(change.text)}</div><small>Напоминание на первые пять выполнений. Проверь вариант и объём.</small></div>`:'';
 }
 function reportedSymptoms(ts=now()){
+  return [...historyValue('symptoms:'+ts,()=>{
   const reports=state.symptomReports.filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts);
+  const reportsByDay=new Map();
+  for(const r of reports){const day=startOfDay(r.ts);if(!reportsByDay.has(day))reportsByDay.set(day,[]);reportsByDay.get(day).push(r);}
   const overall=state.logs.filter(l=>(l.symptomScope==='combined'||l.symptomScope==null&&l.phase==='after')&&l.ts<=ts).map(l=>({ts:l.ts,pain:l.painAfter,painBefore:l.painBefore||0,
     steadiness:l.steadiness||(l.instability?'giving_way':'steady'),swelling:!!l.swelling,fatigue:l.fatigue,phase:'current',context:'combined',sourceLogId:l.id,
-    generalFatigue:reports.findLast(r=>r.ts<=l.ts&&startOfDay(r.ts)===startOfDay(l.ts))?.generalFatigue||'unknown'}));
+    generalFatigue:reportsByDay.get(startOfDay(l.ts))?.findLast(r=>r.ts<=l.ts)?.generalFatigue||'unknown'}));
   return [...overall,...reports];
+  })];
 }
 function currentSymptoms(ts=now()){
   const explicit=reportedSymptoms(ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
@@ -1145,6 +1193,7 @@ function testSupportsProgression(evidence,ts=now()){
 }
 
 function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[id],ts).dose,offered=null){
+  return withHistoryCache(()=>{
   const ex=EXMAP[id],fields=doseFields[ex?.dose?.type]||[];
   if(!ex||fields.some(([k])=>!Number.isInteger(dose[k])||dose[k]<1||dose[k]>10000))throw new Error('Проверь фактически выполненный объём');
   const option=doseOptions[id];
@@ -1193,11 +1242,12 @@ function recordExercise(id,dose,response,ts=now(),suggested=suggestedDose(EXMAP[
     }
   }
   ensureDailyPlan(ts);
-  state.logs.push(log);addXp(ex,log);maybeAddDelayedCheck(log);
+  state.logs.push(log);historyCache.values.clear();addXp(ex,log);maybeAddDelayedCheck(log);
   if(log.returnStep)recordDecision('return_step','Возвращаем прежнюю дозу; остальные домашние группы сохраняют свой объём',{logId:log.id,exerciseId:id,from:log.returnFrom,actual:actualDose,goal:log.returnGoal,blocked:log.returnBlocked},ts);
   else if(log.doseReason==='trial'||log.variantProbe)recordDecision('trial_started','Записана отдельная проба; прежний рабочий уровень сохранён',{logId:log.id,exerciseId:id,offered:suggested,actual:actualDose},ts);
   settleAdditionalPlan(ts);
   return log;
+  });
 }
 function syncProgram(ts=now()){
   const calf=EXMAP.single_leg_calf_raise,evidence=testDoseEvidence(calf,ts),m=evidence&&morningFor(evidence.log,ts),session=evidence&&state.assessment_sessions.find(s=>s.test_log_ids.includes(evidence.log.id));
@@ -1258,6 +1308,7 @@ function exposureSummary(ts=now(),since=startOfDay(ts)){
   return [...totals.values()];
 }
 function fatigueAt(ts=now()){
+  return historyValue('fatigue:'+ts,()=>{
   const out={}; Object.keys(APP.fatigue_channels).forEach(k=>out[k]=0);
   for(const ev of allLoadEvents()){
     if(ev.timestamp>ts) continue;
@@ -1269,6 +1320,7 @@ function fatigueAt(ts=now()){
   }
   for(const k in out) out[k]=Math.min(100,out[k]);
   return out;
+  });
 }
 function relevantFatigue(ex,ts=now()){
   const f=fatigueAt(ts), loads=ex.load_channels||{};
@@ -1356,14 +1408,14 @@ function testAvailable(t,ts=now()){
   return !impactTestLockReason(t,ts);
 }
 function reactionEntries(ts=now()){
-  return [
+  return historyValue('reactions:'+ts,()=>[
     ...reportedSymptoms(ts).filter(r=>r.sourceLogId).map(r=>({...r,source_type:'symptoms',instability:r.steadiness==='giving_way',normal:responseLevel(r)==='normal'})),
     ...state.logs.filter(l=>l.ts<=ts).map(l=>({source_type:'exercise',ts:l.ts,pain:Math.max(l.painDuring||0,l.painAfter||0),swelling:l.swelling,instability:l.instability||l.steadiness==='giving_way',worse:l.sameDay==='worse'||l.nextDay==='worse',normal:!observationsFor(l,ts).length&&l.nextDay&&isSuccessful(l,ts)})),
     ...state.customActivities.map(a=>({ts:a.ts,pain:a.painAfter||0,worse:a.response==='worse',swelling:a.swelling,instability:a.instability,normal:false})),
     ...state.testLogs.filter(l=>l.pain_after!=null).map(l=>({ts:l.ts,pain:l.pain_after,normal:false,source_type:'test'})),
     ...state.symptomReports.map(r=>({...r,source_type:'symptoms',instability:r.steadiness==='giving_way',normal:responseLevel(r)==='normal'})),
     ...state.assessment_sessions.filter(s=>s.pain_after!=null).map(s=>({ts:s.reaction_at||s.completed_at||sessionLastAt(s),pain:s.pain_after,swelling:s.swelling,instability:s.instability,worse:s.same_day_response==='worse'||s.next_day_response==='worse',normal:s.next_day_response&&s.next_day_response!=='worse'&&s.same_day_response!=='worse'&&s.pain_after<=2&&!s.swelling&&!s.instability}))
-  ].filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts);
+  ].filter(r=>r.ts<=ts).sort((a,b)=>a.ts-b.ts));
 }
 function safetyFlag(ts=now()){
   let flagged=false;
@@ -1429,6 +1481,7 @@ function ensureDailyPlan(ts=now()){
   return state.dailyPlans[key];
 }
 function planExecutions(ts=now()){
+  return historyValue('executions:'+ts,()=>{
   const plan=dailyPlan(ts),counts=Object.fromEntries(Object.keys(plan.targets).map(g=>[g,0])),lastPerformed={},restUntil={},accepted=[];
   const logs=state.logs.filter(l=>l.ts<=ts).sort((a,b)=>a.ts-b.ts);
   for(const log of logs){
@@ -1436,8 +1489,9 @@ function planExecutions(ts=now()){
     if(!(group in counts)||log.additionalPlanId)continue;
     const until=Math.max(restUntil[group]||0,lastPerformed[group]!=null?lastPerformed[group]+(ex.min_rest_minutes||0)*60000:0);
     lastPerformed[group]=log.ts;restUntil[group]=Math.max(until,log.ts+(ex.min_rest_minutes||0)*60000);
+    if(log.ts<plan.day||log.ts<until||exerciseAfterTestUntil(ex,log.ts)>log.ts)continue;
     const weakMorning=minorReaction(morningFor(log,ts))&&['normal','hold'].includes(loadResponseLevel(exerciseResponse(log,ts)))&&log.technique!=='poor';
-    if(log.ts<plan.day||log.ts<until||exerciseAfterTestUntil(ex,log.ts)>log.ts||!isSuccessful(log,ts)&&!weakMorning)continue;
+    if(!isSuccessful(log,ts)&&!weakMorning)continue;
     if(log.actualDose){
       const suggested=log.suggestedDose||ex.dose,actualVolume=doseVolume(log.actualDose),suggestedVolume=doseVolume(suggested);
       if(log.actualDose.type!==suggested.type||!Number.isFinite(actualVolume)||!Number.isFinite(suggestedVolume)||suggestedVolume<=0||actualVolume<suggestedVolume)continue;
@@ -1446,10 +1500,12 @@ function planExecutions(ts=now()){
     accepted.push(log);
   }
   return {counts,logs:accepted};
+  });
 }
 function planCounts(ts=now()){return planExecutions(ts).counts;}
 function adherencePercent(score){return score==null?'не применяется':(Math.round(score*1000)/10).toLocaleString('ru-RU')+'%';}
 function progressionAdherence(ts=now()){
+  return historyValue('adherence:'+ts,()=>{
   const groups=Object.keys(dailyPlan(ts).targets).map(id=>({id,label:EX.find(ex=>ex.prescription_credit?.group===id)?.name||id,count:0}));
   for(let i=1;i<=7;i++){
     const day=new Date(startOfDay(ts));day.setDate(day.getDate()-i);
@@ -1459,6 +1515,7 @@ function progressionAdherence(ts=now()){
   const minimumCount=groups.length?Math.min(...groups.map(g=>g.count)):null,score=minimumCount==null?null:minimumCount/21,allowed=score==null||score>=.7;
   const reason=score==null?'Обязательных домашних групп сейчас нет; условие регулярности не применяется':`Регулярность: ${adherencePercent(score)}. Минимум по домашним группам — ${minimumCount}/21 за последние 7 полных дней; для повышения нужно не меньше 70% (15/21 в каждой группе).`;
   return {groups,minimumCount,denominator:21,score,allowed,reason};
+  });
 }
 
 function weeklySkillExposure(ts=now()){
@@ -2131,6 +2188,7 @@ function noRecommendationHTML(ts=now()){
 
 let dayBoundaryTimer=null;
 function renderHome(){
+  return withHistoryCache(()=>{
   rememberProgramUpgrade();
   const dayKey=String(startOfDay());
   if(!state.dailyPlans[dayKey]){ensureDailyPlan();localStorage.setItem(KEY,JSON.stringify(state));}
@@ -2226,6 +2284,7 @@ function renderHome(){
   const days=pendingMorningDays().filter(day=>nextDayStart(day)!==startOfDay());
   if(days.length)wrap.insertAdjacentHTML('beforeend',`<details style="margin-top:12px"><summary>Предыдущие дни без проверки · ${days.length}</summary><div class="li-meta">Прошлую утреннюю реакцию не восстанавливаем предположениями.</div>${days.map(day=>`<button class="btn ghost" onclick="AM.openMorning(${day})">${fmtDate(day)}</button>`).join('')}</details>`);
   if(safetyFlag())wrap.insertAdjacentHTML('beforeend','<div class="notice bad" style="margin-top:12px">Боль, новый отёк или нестабильность: предложения перехода между этапами приостановлены до последующей нормальной реакции. Это продуктовая мера предосторожности, не диагноз.</div>');
+  });
 }
 function setRing(id,valId,v,empty='0%'){
   const el=document.getElementById(id), ve=document.getElementById(valId);
@@ -2453,12 +2512,14 @@ function renderStats(){
 }
 function decisionHistoryHTML(){
   if(!state.decisionLog.length)return '<p class="muted">Причины прежних решений неизвестны. Новые важные изменения будут сохраняться здесь.</p>';
-  return state.decisionLog.slice(-30).reverse().map(d=>`<details><summary>${fmtDate(d.ts)} ${fmtTime(d.ts)} · ${esc(d.reason)}</summary>${Object.entries(d.details.targets||d.details.original||{}).map(([id,dose])=>`<div class="li-meta">Исходный план: ${esc(EXMAP[id]?.name||id)} · ${esc(doseText(EXMAP[id]||{},dose))}</div>`).join('')}${d.snapshot.executions.map(l=>`<div class="li-meta">Выполнение ${fmtDate(l.ts)}: ${esc(EXMAP[l.exerciseId]?.name||l.exerciseId)} · ${esc(doseText(EXMAP[l.exerciseId]||{},l.actualDose||{}))} · ${esc({easy:'легко',normal:'посильно',hard:'тяжело'}[l.difficulty]||'усилие неизвестно')}</div>`).join('')}${d.snapshot.observations.map(r=>`<div class="li-meta">Оценка ${fmtDate(r.ts)} ${fmtTime(r.ts)}: боль ${r.pain}/10 · ${esc(responseNames[r.response]||'сравнение не указано')}${r.historyWorse?' · было ухудшение':''}</div>`).join('')}<div class="source">Версия правил: ${esc(d.version)}. Сохранены сведения, известные в момент решения.</div></details>`).join('');
+  return state.decisionLog.slice(-30).reverse().map(event=>{const d={...event,snapshot:decisionSnapshot(event)};return `<details><summary>${fmtDate(d.ts)} ${fmtTime(d.ts)} · ${esc(d.reason)}</summary>${Object.entries(d.details.targets||d.details.original||{}).map(([id,dose])=>`<div class="li-meta">Исходный план: ${esc(EXMAP[id]?.name||id)} · ${esc(doseText(EXMAP[id]||{},dose))}</div>`).join('')}${d.snapshot.executions.map(l=>`<div class="li-meta">Выполнение ${fmtDate(l.ts)}: ${esc(EXMAP[l.exerciseId]?.name||l.exerciseId)} · ${esc(doseText(EXMAP[l.exerciseId]||{},l.actualDose||{}))} · ${esc({easy:'легко',normal:'посильно',hard:'тяжело'}[l.difficulty]||'усилие неизвестно')}</div>`).join('')}${d.snapshot.observations.map(r=>`<div class="li-meta">Оценка ${fmtDate(r.ts)} ${fmtTime(r.ts)}: боль ${r.pain}/10 · ${esc(responseNames[r.response]||'сравнение не указано')}${r.historyWorse?' · было ухудшение':''}</div>`).join('')}<div class="source">Версия правил: ${esc(d.version)}. Сохранены сведения, известные в момент решения.</div></details>`;}).join('');
 }
 
 function renderAll(){
-  syncProgram();
-  renderHome();renderExercises();renderTests();renderStats();
+  withHistoryCache(()=>syncProgram());
+  return withHistoryCache(()=>{
+    renderHome();renderExercises();renderTests();renderStats();
+  });
 }
 
 const equipmentLabels={slider_or_towel_on_smooth_floor:'Слайдер или полотенце и гладкий пол',hemisphere_or_balance_dome:'Полусфера',balance_board:'Балансборд',hemisphere:'Полусфера',safe_low_obstacles:'Невысокие безопасные препятствия',soft_ball_or_wall:'Мягкий мяч и партнёр / стена', '4_cones_or_markers':'Четыре фишки или ориентира',cones_or_household_markers:'Фишки или домашние ориентиры',sand:'Песок',resistance_band:'Эластичная лента'};
