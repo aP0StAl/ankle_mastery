@@ -1,10 +1,8 @@
 // No build step or third-party dependencies: node --test tests/app.test.cjs
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
 const vm=require('node:vm');
-const path=require('node:path');
-const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+const {html,scripts}=require('./source.cjs');
 const KEY='ankle_mastery_static_v2';
 const plain=x=>JSON.parse(JSON.stringify(x));
 const comfortable={painDuring:0,painAfter:0,fatigue:'low',technique:'good',steadiness:'steady',instability:false,swelling:false,difficulty:'normal'};
@@ -140,18 +138,20 @@ function app(saved,clock=null){
   const storage=new Map(saved?[[KEY,JSON.stringify(saved)]]:[]),elements=new Map();
   const get=id=>{
     if(!elements.has(id)){
-      const config=html.match(new RegExp('id="'+id+'">(.*?)</script>'));
       const classes=new Set(),handlers={};
-      elements.set(id,{textContent:config?config[1]:'',value:'',innerHTML:'',style:{setProperty(){}},classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k),toggle(k,on){if(on??!classes.has(k))classes.add(k);else classes.delete(k);}},appendChild(){},insertAdjacentHTML(_,s){this.innerHTML+=s;},setAttribute(k,v){this[k]=String(v);},getAttribute(k){return this[k];},focus(){this.focused=true;},open:false,showModal(){this.open=true;},close(){this.open=false;handlers.close?.();},addEventListener(k,fn){handlers[k]=fn;},querySelector(){return this.focused||null;},click(){}});
+      elements.set(id,{textContent:'',value:'',innerHTML:'',style:{setProperty(){}},classList:{add:k=>classes.add(k),remove:k=>classes.delete(k),contains:k=>classes.has(k),toggle(k,on){if(on??!classes.has(k))classes.add(k);else classes.delete(k);}},appendChild(){},insertAdjacentHTML(_,s){this.innerHTML+=s;},setAttribute(k,v){this[k]=String(v);},getAttribute(k){return this[k];},focus(){this.focused=true;},open:false,showModal(){this.open=true;},close(){this.open=false;handlers.close?.();},addEventListener(k,fn){handlers[k]=fn;},querySelector(){return this.focused||null;},click(){}});
     }
     return elements.get(id);
   };
   const dialogs=[...html.matchAll(/<dialog id="(.*?)"/g)].map(m=>get(m[1]));
   const context={document:{body:get('body'),getElementById:get,querySelector:q=>{if(q==='dialog[open]')return dialogs.find(d=>d.open)||null;const choice=q.match(/^input\[name="([^"]+)"\]:checked$/);return choice&&get(choice[1]).value?get(choice[1]):null;},querySelectorAll:q=>q==='dialog'?dialogs:[],createElement:()=>({click(){}})},window:{scrollY:0,scrollTo({top}){this.scrollY=top;this.restoredScrollY=top;}},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},Date:clock==null?Date:class extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}},Math,JSON,Number,Object,Array,Set,Infinity,Blob,URL,setTimeout:()=>0,clearTimeout:()=>{},setInterval:()=>0,confirm:()=>false};
-  const code=html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
+  vm.createContext(context);
+  for(const script of scripts){
+    const code=script.code.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`
     window.dev={decisionSnapshot,homeReturnState,homeReturns,repeatedMorningReaction,minorReaction,stagePreparationProgress,lineWalkObservations,runWalkCompleted,testAvailable,impactDoseConfirmed,impactTestLockReason,recordImpactCheck,impactCheckStatus,rehabWorkChecks,stageGoalDefinitions,goalAchievement,runningWeekEvidence,rememberProgramUpgrade,exerciseChangeNotice,adherencePercent,exerciseRestUntil,exerciseAfterTestUntil,stageFraction,stageProgressMean,stageGameProgress,homeRamp,strengthCadence,selectedProgramUpgrade,syncProgram,runTemplate,runConditionsMatch,recordRun,runningPlan,runningChecks,successfulRuns,runRecommendation,currentMeasurement,exposureSummary,exposureEvents,reduceDose,doseVolume,recordDecision,openRun,openRunningPlan,newExerciseSuggestion,sameConditions,startAdditionalPlan,finishAdditionalPlan,additionalPlanState,autoAdditionalPlan,additionalPattern,additionalChoice,additionalTrainingDays,openAdditionalPlan,closeAdditionalPlan,recommendedDose,openFeedback,feedbackRecommendation,testDoseEvidence,nextVariant,lastRelatedExecution,openTest,editTest,deleteTest,startOfDay,nextDayStart,daysAgo,xpAndStreak,renderAll,closeDialog,showDialog,noRecommendationHTML,defaultState,migrateState,recordTest,completeAssessment,recalculateSession,testLoad,testHistory,symmetry,fatigueAt,allLoadEvents,prescriptionCounts,progressionAdherence,dailyPlan,ensureDailyPlan,planCounts,testPlans,testSchedule,stageTransition,measurementPlan,testPreparationUntil,testSupportsProgression,exerciseMastery,trainingMastery,readinessSummary,scoreExercise,scoreExerciseAtTime,recommendations,testRecommendations,actionRecommendations,postponeAction,resumeAction,postponedUntil,pendingAssessmentChecks,safetyFlag,assessmentSymptomModifier,selfReportDue,importData,exportData,saveTest,saveSelfReport,renderHome,renderTests,suggestedDose,exerciseProgress,exerciseResponse,confirmedSafe,dailyLoadPlan,currentSymptoms,recordExercise,recordSymptoms,classifyLog,isSuccessful,dailyTarget,openLog,saveLog,openSymptoms,saveSymptoms,openCheck,saveCheck,openMorning,saveMorning,pendingMorningDays,openExercise,exerciseProgressHTML,exerciseHistoryHTML,exerciseRulesHTML,exerciseTab,exerciseTabKey,renderStats,EXMAP,RDCFG,APP,getState:()=>state,setState:x=>state=x};
   `);
-  vm.runInNewContext(code,context);
+    vm.runInContext(code,context,{filename:script.src});
+  }
   return {dev:context.window.dev,storage,get,context};
 }
 function seedRehab(d,clock){
@@ -264,7 +264,8 @@ test('self report interval and export/import round trip keep assessment loads',(
   d.getState().last_self_report_at=Date.now()-8*86400000;assert.equal(d.selfReportDue(),true);
 });
 test('UI includes units and protocols, no native prompt or Chinese characters',()=>{
-  assert.ok(!/\bprompt\s*\(/.test(html));assert.ok(!/[\u3400-\u9fff]/.test(html));
+  const source=html+scripts.map(script=>script.code).join('\n');
+  assert.ok(!/\bprompt\s*\(/.test(source));assert.ok(!/[\u3400-\u9fff]/.test(source));
   const {dev:d}=app();
   for(const t of d.RDCFG.tests){assert.ok(t.unit);assert.ok(t.protocol.length);assert.ok(t.test_load_vector);}
 });

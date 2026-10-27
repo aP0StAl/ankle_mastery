@@ -1,1 +1,3 @@
 .local-backups/
+.DS_Store
+.idea/

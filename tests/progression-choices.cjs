@@ -4,7 +4,7 @@ module.exports=({app,plain,comfortable,DAY,morning,confirmedDose,completePlans})
   const clock=new Date(2026,9,18,18).getTime();
   function scenario(){const a=app(null,clock),d=a.dev;for(const t of d.RDCFG.tests)d.getState().postponedActions['test:'+t.id]=clock+DAY;d.recordSymptoms({pain:0,steadiness:'steady',fatigue:'low'},'combined',clock-1);return a;}
   function lineReady(d){const ex=d.EXMAP.tandem_walk_flat;completePlans(d,undefined,clock);confirmedDose(d,ex,ex.dose,'easy',clock-DAY);return ex;}
-  function lineChoices(d,ts=clock){return d.recommendations(ts).filter(r=>r.ex.prescription_credit?.group==='line_walk');}
+  function lineChoices(d,ts=clock){return Array.from(d.recommendations(ts)).filter(r=>r.ex.prescription_credit?.group==='line_walk');}
   test('a mastered prescribed line selects the toe-walking practice and its own dose instead of two promotions',()=>{
     const {dev:d,get}=scenario(),flat=lineReady(d),toe=d.EXMAP.tandem_walk_tiptoe;
     assert.equal(d.suggestedDose(flat).trial,null);

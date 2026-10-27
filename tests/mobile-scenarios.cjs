@@ -4,8 +4,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..'),output=process.env.ANKLE_QA_OUTPUT||'/tmp/ankle-mobile-qa';
-const source=fs.readFileSync(path.join(root,'index.html'),'utf8');
-const hook=source.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`\nwindow.qa={homeReturnState,homeReturns,planCounts,stagePreparationProgress,recordImpactCheck,impactCheckStatus,rehabWorkChecks,testAvailable,stageTransition,finishAdditionalPlan,feedbackRecommendation,selectedProgramUpgrade,exerciseChangeNotice,progressionAdherence,stageGameProgress,defaultState,recordExercise,recordTest,recordSymptoms,completeAssessment,autoAdditionalPlan,renderAll,startAdditionalPlan,recommendedDose,exerciseProgress,EXMAP,RDCFG,startOfDay,DAY,getState:()=>state};\nrenderAll();\nsetInterval(renderHome,15*60*1000);`);
+const {html:source,scripts}=require('./source.cjs');
+const hook=scripts.find(script=>script.src==='src/app.js').code.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',`\nwindow.qa={homeReturnState,homeReturns,planCounts,stagePreparationProgress,recordImpactCheck,impactCheckStatus,rehabWorkChecks,testAvailable,stageTransition,finishAdditionalPlan,feedbackRecommendation,selectedProgramUpgrade,exerciseChangeNotice,progressionAdherence,stageGameProgress,defaultState,recordExercise,recordTest,recordSymptoms,completeAssessment,autoAdditionalPlan,renderAll,startAdditionalPlan,recommendedDose,exerciseProgress,EXMAP,RDCFG,startOfDay,DAY,getState:()=>state};\nrenderAll();\nsetInterval(renderHome,15*60*1000);`);
 (async()=>{
   fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
@@ -17,9 +17,10 @@ const hook=source.replace('\nrenderAll();\nsetInterval(renderHome,15*60*1000);',
       await page.addInitScript(clockString=>{const RealDate=Date,clock=new RealDate(clockString).getTime();window.Date=class extends RealDate{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}};},name.startsWith('return_')?'2026-10-23T18:00:00+07:00':name==='backup'&&process.env.ANKLE_QA_BACKUP.includes('2026-10-18')?'2026-10-18T18:00:00+07:00':'2026-10-17T18:00:00+07:00');
       await page.route('http://ankle.test/**',async route=>{
         const pathname=new URL(route.request().url()).pathname;
-        if(pathname==='/')return route.fulfill({body:hook,contentType:'text/html'});
+        if(pathname==='/')return route.fulfill({body:source,contentType:'text/html'});
+        if(pathname==='/src/app.js')return route.fulfill({body:hook,contentType:'text/javascript'});
         const file=path.join(root,pathname);if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
-        return route.fulfill({body:fs.readFileSync(file),contentType:'image/webp'});
+        return route.fulfill({body:fs.readFileSync(file),contentType:{'.js':'text/javascript','.css':'text/css','.webp':'image/webp'}[path.extname(file)]||'application/octet-stream'});
       });
       if(name==='backup'){const backup=JSON.parse(fs.readFileSync(process.env.ANKLE_QA_BACKUP,'utf8'));await page.addInitScript(data=>{if(!localStorage.getItem('ankle_mastery_static_v2'))localStorage.setItem('ankle_mastery_static_v2',JSON.stringify(data));},backup);}
       if(name==='return_backup'){const backup=JSON.parse(fs.readFileSync(process.env.ANKLE_RETURN_BACKUP,'utf8'));await page.addInitScript(data=>localStorage.setItem('ankle_mastery_static_v2',JSON.stringify(data)),backup);}
