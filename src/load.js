@@ -73,6 +73,7 @@ function allLoadEvents(){
   return [...exEvents,...cEvents,...state.load_events];
 }
 function exposureEvents(ts=now()){
+  return historyValue('exposureEvents:'+ts,()=>{
   const rows=[],conditions=d=>JSON.stringify(Object.fromEntries(['support','range','weight_distribution','resistance','weight_kg','equipment','tempo','protocol_id','sides'].map(k=>[k,d[k]??null])));
   const unit=d=>['duration','duration_sets','hold_reps','cycles'].includes(d.type)?'сек':d.type==='steps'?'шагов':d.type==='directional_rounds'?'направлений':'повторений';
   for(const l of state.logs.filter(l=>l.ts<=ts&&l.actualDose)){
@@ -88,6 +89,7 @@ function exposureEvents(ts=now()){
   }
   for(const a of state.customActivities.filter(a=>a.ts<=ts))rows.push({sourceId:a.id,ts:a.ts,movement:a.running?'run:'+a.running.mode:'activity:'+a.presetId,side:'both',conditions:a.running?.surface||'usual',unit:'мин',quantity:a.running?.runMinutes||a.minutes});
   return rows;
+  });
 }
 function exposureSummary(ts=now(),since=startOfDay(ts)){
   const totals=new Map();

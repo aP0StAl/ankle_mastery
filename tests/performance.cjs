@@ -43,14 +43,16 @@ module.exports=({app,plain,comfortable,DAY})=>{
       const day=d.startOfDay(clock-age*DAY);
       for(const hour of [2,6,10])for(const id of ids){
         const ex=d.EXMAP[id],dose={...ex.dose};
-        state.logs.push({id:age+'_'+hour+'_'+id,exerciseId:id,ts:day+hour*3600000,...comfortable,phase:'after',symptomScope:'combined',actualDose:dose,suggestedDose:{...dose}});
+        const returning=age<=5&&id==='bilateral_tiptoe_static';
+        if(returning)dose.target_sec=Math.max(5,dose.target_sec-10);
+        state.logs.push({id:age+'_'+hour+'_'+id,exerciseId:id,ts:day+hour*3600000,...comfortable,phase:'after',symptomScope:'combined',actualDose:dose,suggestedDose:{...dose},doseReason:returning?'recovery':'capacity'});
       }
       state.symptomReports.push({id:'morning'+age,ts:day+DAY+3*3600000,trainingDay:day,phase:'morning',context:'combined',pain:0,steadiness:'steady',fatigue:'low',response:'same',historyKnown:true,historyWorse:false});
     }
     const original=plain(state.logs),OriginalDate=a.context.Date;
     let dateWork=0;
     // A deterministic work budget catches the previous millions of repeated scans without a timing assertion.
-    a.context.Date=class extends OriginalDate{constructor(...args){super(...args);assert.ok(++dateWork<2000000,'repeated history calculations exceeded the date-work budget');}};
+    a.context.Date=class extends OriginalDate{constructor(...args){super(...args);assert.ok(++dateWork<200000,'repeated history calculations exceeded the date-work budget');}};
     d.renderAll();
     assert.deepEqual(plain(state.logs),original);
     assert.ok(dateWork>0);

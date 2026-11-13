@@ -35,6 +35,7 @@ function morningReaction(ts=now()){
   return state.symptomReports.filter(r=>r.phase==='morning'&&validMorningDay(r)&&r.ts<=ts&&startOfDay(r.ts)===startOfDay(ts)).at(-1);
 }
 function repeatedMorningReaction(ts=now()){
+  return historyValue('repeatedMorningReaction:'+ts,()=>{
   const days=new Map();
   for(const r of state.symptomReports.filter(r=>r.phase==='morning'&&validMorningDay(r)&&r.ts<=ts).sort((a,b)=>a.ts-b.ts))days.set(startOfDay(r.ts),r);
   let bad=0,good=0,held=false,previous=null;
@@ -46,6 +47,7 @@ function repeatedMorningReaction(ts=now()){
     previous=day;
   }
   return held;
+  });
 }
 function progressionHeld(ts=now()){
   const morning=morningReaction(ts);
@@ -86,6 +88,7 @@ function reportedSymptoms(ts=now()){
   })];
 }
 function currentSymptoms(ts=now()){
+  return historyValue('currentSymptoms:'+ts,()=>{
   const explicit=reportedSymptoms(ts).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
   const exercise=state.logs.filter(l=>l.ts<=ts&&l.painAfter!=null).sort((a,b)=>a.ts-b.ts).slice(-1)[0];
   const session=state.assessment_sessions.filter(s=>s.pain_after!=null&&(s.reaction_at||s.completed_at)<=ts).sort((a,b)=>(a.reaction_at||a.completed_at)-(b.reaction_at||b.completed_at)).slice(-1)[0];
@@ -94,6 +97,7 @@ function currentSymptoms(ts=now()){
   const last=assessment&&(unresolved||!exercise||assessment.ts>=exercise.ts)?assessment:exercise;
   if(explicit&&responseLevel(explicit)!=='normal'&&!unresolved||!last||explicit&&explicit.ts>=last.ts)return explicit;
   return {ts:last.ts,pain:last.painAfter,painBefore:last.painBefore||0,steadiness:last.steadiness||(last.instability?'giving_way':'steady'),swelling:!!last.swelling,fatigue:last.fatigue,generalFatigue:explicit&&startOfDay(explicit.ts)===startOfDay(ts)?explicit.generalFatigue:'unknown',phase:'after',context:last.context||'exercise',logId:last.id,worse:!!last.worse};
+  });
 }
 function testSupportsProgression(evidence,ts=now()){
   const {log}=evidence,morning=morningFor(log,ts),session=state.assessment_sessions.find(s=>s.test_log_ids.includes(log.id));

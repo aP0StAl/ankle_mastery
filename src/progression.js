@@ -177,8 +177,10 @@ function homeReturnState(ex,ts=now(),progress=exerciseProgress(ex,ts)){
     reason:`${doseFromTest?'Результат теста ниже текущей дозы: проверяем меньший объём. ':''}${sameDose(dose,goal)?'Прежний объём возвращён: '+doseText(ex,goal):'Возвращаем прежний объём: '+doseText(ex,dose)+' → '+doseText(ex,goal)}. Полных переносимых дней на этой ступени: ${Math.min(2,full.length)}/2. Частота сохраняется`};
 }
 function homeReturns(ts=now()){
+  return historyValue('homeReturns:'+ts,()=>{
   const order=['bilateral_tiptoe_static','right_leg_balance_left_front_back','tandem_walk_flat','left_side_lunge_right_leg_straight','towel_stretch_straight_knee','towel_stretch_bent_knee'];
   return order.filter(id=>state.exerciseStatuses[id]==='active').map(id=>({ex:EXMAP[id],...homeReturnState(EXMAP[id],ts)})).filter(r=>r.goal);
+  });
 }
 function homeRamp(ex,progress,ts=now(),from=null){
   if(unprescribedFrequency(ex))return {limit:Infinity,complete:true};

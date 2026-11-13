@@ -144,6 +144,7 @@ function rememberLogWellbeing(open){
   localStorage.setItem(KEY,JSON.stringify(state));
 }
 function openLog(id,useTrial=false){
+  return withHistoryCache(()=>{
   const ex=EXMAP[id];if(!ex)return;
   const plan=recommendedDose(ex),dose=useTrial===true&&plan.trial?plan.trial:plan.dose,trial=useTrial===true&&!!plan.trial||!!plan.selectedTrial;
   const change=exerciseChangeNotice(ex,dose,now(),plan.transitionFrom);
@@ -184,6 +185,7 @@ function openLog(id,useTrial=false){
     <div class="modal-actions"><button class="btn primary" onclick="AM.saveLog('${id}')">Сохранить</button></div>`;
   showDialog('logDialog');
   doseChanged();
+  });
 }
 function doseChanged(){
   if(!suggestedForLog)return;
@@ -358,9 +360,11 @@ function openCheck(id){
   const c=state.delayedChecks.find(x=>x.id===id);if(c)openSymptoms(c.logId);
 }
 function pendingMorningDays(ts=now()){
+  return historyValue('pendingMorningDays:'+ts,()=>{
   const activities=[...state.logs,...state.customActivities,...state.testLogs].filter(l=>l.ts<=ts&&startOfDay(l.ts)<startOfDay(ts));
   const unchecked=activities.filter(l=>!state.symptomReports.some(r=>r.ts<=ts&&morningMatches(r,l.ts)));
   return [...new Set(unchecked.map(l=>startOfDay(l.ts)))].sort((a,b)=>b-a);
+  });
 }
 function openMorning(day){
   if(day>=startOfDay())return;
